@@ -1,1 +1,1 @@
-To run the initial code, use `npm install`
+To run the initial code, use `pnpm install`
