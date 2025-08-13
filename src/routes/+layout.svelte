@@ -2,6 +2,6 @@
 	let { children } = $props();
 	import '../app.css';
 </script>
-<div class="min-h-screen bg-background text-foreground flex flex-col">
-{@render children?.()}
+<div class="h-screen bg-background text-foreground flex flex-col">
+	{@render children?.()}
 </div>
