@@ -1,4 +1,6 @@
-
+<svelte:head>
+	<title>Home</title>
+</svelte:head>
 
 <!-- Navbar -->
 <nav class="h-16 flex flex-row-reverse space-x-10 space-x-reverse font-medium py-5 pr-8 bg-secondary text-nav-foreground">
