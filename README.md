@@ -1,4 +1,5 @@
-# Vanar Assignment — SvelteKit + Drizzle ORM
+# Vanar Assignment — SvelteKit + Drizzle ORM + PostgreSQL
+
 
 A minimal SvelteKit app wired with Drizzle ORM (PostgreSQL) and ready-to-run DB scripts.
 
