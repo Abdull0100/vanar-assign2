@@ -1,18 +1,17 @@
 <script lang="ts">
-  import { enhance } from '$app/forms';
   import type { ActionData } from './$types';
 
   export let form: ActionData;
 </script>
 
 <svelte:head>
-  <title>Login</title>
+  <title>Sign Up</title>
 </svelte:head>
 
-<div class="login-container">
-  <h1>Login</h1>
+<div class="signup-container">
+  <h1>Sign Up</h1>
   
-  <form method="POST" action="?/login">
+  <form method="POST" action="?/signup">
     <div class="form-group">
       <label for="email">Email:</label>
       <input 
@@ -21,6 +20,18 @@
         name="email" 
         required 
         autocomplete="email"
+        value={form?.email || ''}
+      />
+    </div>
+    
+    <div class="form-group">
+      <label for="name">Name:</label>
+      <input 
+        type="text" 
+        id="name" 
+        name="name" 
+        autocomplete="name"
+        value={form?.name || ''}
       />
     </div>
     
@@ -31,7 +42,8 @@
         id="password" 
         name="password" 
         required 
-        autocomplete="current-password"
+        autocomplete="new-password"
+        minlength="6"
       />
     </div>
     
@@ -41,16 +53,16 @@
       </div>
     {/if}
     
-    <button type="submit">Login</button>
+    <button type="submit">Sign Up</button>
   </form>
   
-  <div class="signup-link">
-    Don't have an account? <a href="/signup">Sign up here</a>
+  <div class="login-link">
+    Already have an account? <a href="/login">Login here</a>
   </div>
 </div>
 
 <style>
-  .login-container {
+  .signup-container {
     max-width: 400px;
     margin: 2rem auto;
     padding: 2rem;
@@ -92,7 +104,7 @@
   button {
     width: 100%;
     padding: 0.75rem;
-    background-color: #007bff;
+    background-color: #28a745;
     color: white;
     border: none;
     border-radius: 4px;
@@ -102,7 +114,7 @@
   }
   
   button:hover {
-    background-color: #0056b3;
+    background-color: #218838;
   }
   
   .error {
@@ -114,19 +126,19 @@
     margin-bottom: 1rem;
   }
   
-  .signup-link {
+  .login-link {
     text-align: center;
     margin-top: 1rem;
     padding-top: 1rem;
     border-top: 1px solid #eee;
   }
   
-  .signup-link a {
+  .login-link a {
     color: #007bff;
     text-decoration: none;
   }
   
-  .signup-link a:hover {
+  .login-link a:hover {
     text-decoration: underline;
   }
 </style>
