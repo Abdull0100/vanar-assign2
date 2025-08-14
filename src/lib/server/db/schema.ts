@@ -8,6 +8,7 @@ import {
 	jsonb,
 	index
 } from 'drizzle-orm/pg-core';
+import { createId } from '@paralleldrive/cuid2';
 
 // Users table - follows common Auth.js adapter schema shape
 export const users = pgTable(
@@ -18,12 +19,16 @@ export const users = pgTable(
 		email: text('email').notNull(),
 		emailVerified: timestamp('emailVerified', { mode: 'date' }),
 		image: text('image'),
-		// Additional user fields
+		// Additional fields for credentials auth and role-based access
+		password: text('password'), // Required for credentials auth
+		role: text('role').default('user'), // 'user' | 'admin'
+		isEmailVerified: boolean('isEmailVerified').default(false),
 		createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
 		updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow()
 	},
 	(table) => ({
-		emailIdx: index('user_email_idx').on(table.email)
+		emailIdx: index('user_email_idx').on(table.email),
+		roleIdx: index('user_role_idx').on(table.role)
 	})
 );
 
@@ -68,16 +73,19 @@ export const sessions = pgTable(
 	})
 );
 
-// Verification tokens table - for email verification and password reset
+// Verification tokens table - Auth.js compatible with optional custom type
 export const verificationTokens = pgTable(
 	'verificationToken',
 	{
 		identifier: text('identifier').notNull(),
 		token: text('token').notNull(),
-		expires: timestamp('expires', { mode: 'date' }).notNull()
+		expires: timestamp('expires', { mode: 'date' }).notNull(),
+		// Optional custom column not used by Auth.js adapter
+		type: text('type')
 	},
 	(table) => ({
-		compoundKey: primaryKey({ columns: [table.identifier, table.token] })
+		compoundKey: primaryKey({ columns: [table.identifier, table.token] }),
+		expiresIdx: index('verification_token_expires_idx').on(table.expires)
 	})
 );
 
@@ -103,6 +111,25 @@ export const chats = pgTable(
 	})
 );
 
+// OTP tokens table - for email verification and password reset using OTP
+export const otpTokens = pgTable(
+	'otpToken',
+	{
+		id: text('id').notNull().primaryKey().$defaultFn(() => createId()),
+		identifier: text('identifier').notNull(), // email address
+		otp: text('otp').notNull(), // 6-digit OTP
+		expires: timestamp('expires', { mode: 'date' }).notNull(),
+		type: text('type').notNull(), // 'email_verification' | 'password_reset'
+		attempts: integer('attempts').default(0).notNull(),
+		maxAttempts: integer('maxAttempts').default(3).notNull(),
+		createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow()
+	},
+	(table) => ({
+		identifierTypeIdx: index('otp_identifier_type_idx').on(table.identifier, table.type),
+		expiresIdx: index('otp_expires_idx').on(table.expires)
+	})
+);
+
 // Export types for TypeScript
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -118,3 +145,6 @@ export type NewVerificationToken = typeof verificationTokens.$inferInsert;
 
 export type Chat = typeof chats.$inferSelect;
 export type NewChat = typeof chats.$inferInsert;
+
+export type OtpToken = typeof otpTokens.$inferSelect;
+export type NewOtpToken = typeof otpTokens.$inferInsert;
