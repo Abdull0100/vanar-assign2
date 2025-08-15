@@ -1,8 +1,16 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
+  import { onMount } from 'svelte';
 
   $: session = $page.data.session;
+
+  onMount(() => {
+    // Redirect authenticated users to dashboard
+    if (session?.user) {
+      goto('/dashboard');
+    }
+  });
 
   function navigateTo(path: string) {
     goto(path);
