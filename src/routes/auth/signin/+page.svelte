@@ -36,7 +36,7 @@
   }
 
   async function handleOAuthSignIn(provider: string) {
-    await signIn(provider, { callbackUrl: '/dashboard' });
+    await signIn(provider, { callbackUrl: 'http://localhost:5173/auth/callback/google' });
   }
 </script>
 

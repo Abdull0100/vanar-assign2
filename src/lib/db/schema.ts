@@ -30,13 +30,10 @@ export const accounts = pgTable('accounts', {
   session_state: text('session_state'),
 });
 
-export const sessions = pgTable('sessions', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  sessionToken: text('sessionToken').notNull().unique(),
-  userId: uuid('userId')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  expires: timestamp('expires', { mode: 'date' }).notNull(),
+export const sessions = pgTable("sessions", {
+  sessionToken: text("sessionToken").primaryKey(),  // Make this the primary key
+  userId: uuid("userId").notNull().references(() => users.id),
+  expires: timestamp("expires", { mode: "date" }).notNull(),
 });
 
 export const verificationTokens = pgTable('verificationToken', {

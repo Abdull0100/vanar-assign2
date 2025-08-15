@@ -7,7 +7,8 @@ import Email from '@auth/core/providers/email';
 import { db } from './db';
 import { users, accounts, sessions, verificationTokens } from './db/schema';
 import bcrypt from 'bcryptjs';
-import { sendVerificationEmail, sendPasswordResetEmail } from './email';
+import { sendVerificationEmail, sendPasswordResetEmail } from '$lib/email';
+import { eq } from 'drizzle-orm';
 
 export const { handle, signIn, signOut } = SvelteKitAuth({
   adapter: DrizzleAdapter(db, {
@@ -16,6 +17,10 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
     sessionsTable: sessions,
     verificationTokensTable: verificationTokens,
   }),
+  // OAuth callback URLs will be: {AUTH_URL}/auth/callback/{provider}
+  basePath: '/auth',
+  secret: process.env.AUTH_SECRET,
+  trustHost: true,
   providers: [
     Credentials({
       name: 'credentials',
@@ -23,20 +28,20 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' }
       },
-      async authorize(credentials) {
+      async authorize(credentials: any) {
         if (!credentials?.email || !credentials?.password) {
           return null;
         }
 
         const user = await db.query.users.findFirst({
-          where: (users, { eq }) => eq(users.email, credentials.email)
+          where: eq(users.email, credentials.email as string)
         });
 
         if (!user || !user.password) {
           return null;
         }
 
-        const isPasswordValid = await bcrypt.compare(credentials.password, user.password);
+        const isPasswordValid = await bcrypt.compare(credentials.password as string, user.password as string);
         if (!isPasswordValid) {
           return null;
         }
@@ -53,10 +58,24 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      // Explicitly set redirect URI to match OAuth app configuration
+      authorization: {
+        params: {
+          prompt: "consent",
+          access_type: "offline",
+          response_type: "code"
+        }
+      }
     }),
     GitHub({
       clientId: process.env.GITHUB_CLIENT_ID!,
       clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+      // Explicitly set redirect URI to match OAuth app configuration
+      authorization: {
+        params: {
+          scope: "read:user user:email"
+        }
+      }
     }),
     Email({
       server: {
@@ -85,7 +104,7 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
     async session({ session, user }) {
       if (session.user) {
         session.user.id = user.id;
-        session.user.role = user.role;
+        session.user.role = (user as any).role;
       }
       return session;
     },
@@ -93,7 +112,7 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
       if (account?.provider === 'google' || account?.provider === 'github') {
         // Check if user exists, if not create with OAuth data
         const existingUser = await db.query.users.findFirst({
-          where: (users, { eq }) => eq(users.email, user.email!)
+          where: eq(users.email, user.email!)
         });
 
         if (!existingUser) {
@@ -107,6 +126,12 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
         }
       }
       return true;
+    },
+    async redirect({ url, baseUrl }) {
+      // Handle redirects properly for OAuth
+      if (url.startsWith('/')) return `${baseUrl}${url}`;
+      else if (new URL(url).origin === baseUrl) return url;
+      return baseUrl;
     },
   },
   events: {
