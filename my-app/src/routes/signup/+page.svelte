@@ -11,256 +11,144 @@
   <title>Sign Up</title>
 </svelte:head>
 
-<div class="signup-container">
-  <h1>Sign Up</h1>
-  
-  <form method="POST" action="?/signup">
-    <div class="form-group">
-      <label for="email">Email:</label>
-      <input 
-        type="email" 
-        id="email" 
-        name="email" 
-        required 
-        autocomplete="email"
-        value={form?.email || ''}
-      />
+<div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-md w-full space-y-8">
+    <div>
+      <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+        Create your account
+      </h2>
+      <p class="mt-2 text-center text-sm text-gray-600">
+        Join us! Create your account to get started.
+      </p>
     </div>
     
-    <div class="form-group">
-      <label for="name">Name:</label>
-      <input 
-        type="text" 
-        id="name" 
-        name="name" 
-        autocomplete="name"
-        value={form?.name || ''}
-      />
-    </div>
-    
-    <div class="form-group">
-      <label for="password">Password:</label>
-      <input 
-        type="password" 
-        id="password" 
-        name="password" 
-        required 
-        autocomplete="new-password"
-        minlength="6"
-      />
-    </div>
-    
-    {#if form?.error}
-      <div class="error">
-        {form.error}
-      </div>
-    {/if}
-    
-    {#if error}
-      <div class="error">
-        {#if error === 'oauth_config_missing'}
-          Google OAuth is not configured. Please check your environment variables.
-        {:else if error === 'oauth_error'}
-          Google OAuth error occurred. Please try again.
-        {:else if error === 'no_code'}
-          No authorization code received from Google.
-        {:else if error === 'token_exchange_failed'}
-          Failed to exchange authorization code for token.
-        {:else if error === 'user_info_failed'}
-          Failed to get user information from Google.
-        {:else if error === 'oauth_callback_failed'}
-          OAuth callback failed. Please try again.
-        {:else}
-          An error occurred: {error}
+    <div class="bg-white py-8 px-6 shadow-lg rounded-lg border border-gray-200">
+      <form method="POST" action="?/signup" class="space-y-6">
+        <div>
+          <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+            Email address
+          </label>
+          <input 
+            type="email" 
+            id="email" 
+            name="email" 
+            required 
+            autocomplete="email"
+            value={form?.email || ''}
+            class="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm transition-colors"
+            placeholder="Enter your email"
+          />
+        </div>
+        
+        <div>
+          <label for="name" class="block text-sm font-medium text-gray-700 mb-2">
+            Full name
+          </label>
+          <input 
+            type="text" 
+            id="name" 
+            name="name" 
+            autocomplete="name"
+            value={form?.name || ''}
+            class="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm transition-colors"
+            placeholder="Enter your full name"
+          />
+        </div>
+        
+        <div>
+          <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+            Password
+          </label>
+          <input 
+            type="password" 
+            id="password" 
+            name="password" 
+            required 
+            autocomplete="new-password"
+            minlength="6"
+            class="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm transition-colors"
+            placeholder="Create a password (min 6 characters)"
+          />
+        </div>
+        
+        {#if form?.error}
+          <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
+            {form.error}
+          </div>
         {/if}
+        
+        {#if error}
+          <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
+            {#if error === 'oauth_config_missing'}
+              Google OAuth is not configured. Please check your environment variables.
+            {:else if error === 'oauth_error'}
+              Google OAuth error occurred. Please try again.
+            {:else if error === 'no_code'}
+              No authorization code received from Google.
+            {:else if error === 'token_exchange_failed'}
+              Failed to exchange authorization code for token.
+            {:else if error === 'user_info_failed'}
+              Failed to get user information from Google.
+            {:else if error === 'oauth_callback_failed'}
+              OAuth callback failed. Please try again.
+            {:else}
+              An error occurred: {error}
+            {/if}
+          </div>
+        {/if}
+        
+        <button 
+          type="submit" 
+          class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+        >
+          Create account
+        </button>
+      </form>
+      
+      <div class="mt-6">
+        <div class="relative">
+          <div class="absolute inset-0 flex items-center">
+            <div class="w-full border-t border-gray-300"></div>
+          </div>
+          <div class="relative flex justify-center text-sm">
+            <span class="px-2 bg-white text-gray-500">Or continue with</span>
+          </div>
+        </div>
+        
+        <div class="mt-6 space-y-3">
+          <a 
+            href="/auth/google" 
+            class="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+          >
+            <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            Continue with Google
+          </a>
+          
+          <a 
+            href="/auth/github" 
+            class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm bg-gray-800 text-sm font-medium text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+          >
+            <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+            </svg>
+            Continue with GitHub
+          </a>
+        </div>
       </div>
-    {/if}
-    
-    <button type="submit">Sign Up</button>
-  </form>
-  
-  <div class="divider">
-    <span>or</span>
-  </div>
-  
-  <a href="/auth/google" class="google-btn">
-    <svg class="google-icon" viewBox="0 0 24 24">
-      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-    </svg>
-    Continue with Google
-  </a>
-  
-  <a href="/auth/github" class="github-btn">
-    <svg class="github-icon" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-    </svg>
-    Login with GitHub
-  </a>
-  
-  
-  
-  <div class="login-link">
-    Already have an account? <a href="/login">Login here</a>
+      
+      <div class="mt-6 text-center">
+        <p class="text-sm text-gray-600">
+          Already have an account? 
+          <a href="/login" class="font-medium text-green-600 hover:text-green-500 transition-colors">
+            Sign in here
+          </a>
+        </p>
+      </div>
+    </div>
   </div>
 </div>
-
-<style>
-  .signup-container {
-    max-width: 400px;
-    margin: 2rem auto;
-    padding: 2rem;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-  
-  h1 {
-    text-align: center;
-    margin-bottom: 2rem;
-    color: #333;
-  }
-  
-  .form-group {
-    margin-bottom: 1rem;
-  }
-  
-  label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-  }
-  
-  input {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 1rem;
-  }
-  
-  input:focus {
-    outline: none;
-    border-color: #007bff;
-    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-  }
-  
-  button {
-    width: 100%;
-    padding: 0.75rem;
-    background-color: #28a745;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    font-size: 1rem;
-    cursor: pointer;
-    margin-top: 1rem;
-  }
-  
-  button:hover {
-    background-color: #218838;
-  }
-  
-  .error {
-    color: #dc3545;
-    background-color: #f8d7da;
-    border: 1px solid #f5c6cb;
-    border-radius: 4px;
-    padding: 0.75rem;
-    margin-bottom: 1rem;
-  }
-  
-  .login-link {
-    text-align: center;
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid #eee;
-  }
-  
-  .login-link a {
-    color: #007bff;
-    text-decoration: none;
-  }
-  
-  .login-link a:hover {
-    text-decoration: underline;
-  }
-  
-  .divider {
-    text-align: center;
-    margin: 1.5rem 0;
-    position: relative;
-  }
-  
-  .divider::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: #ddd;
-  }
-  
-  .divider span {
-    background: white;
-    padding: 0 1rem;
-    color: #666;
-    font-size: 0.9rem;
-  }
-  
-  .google-btn {
-    width: 100%;
-    padding: 0.75rem;
-    background-color: white;
-    color: #333;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 1rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    transition: background-color 0.2s;
-  }
-  
-  .google-btn:hover {
-    background-color: #f8f9fa;
-  }
-  
-  .google-icon {
-    width: 18px;
-    height: 18px;
-  }
-  
-  .github-btn {
-    width: 100%;
-    padding: 0.75rem;
-    background-color: #24292e;
-    color: white;
-    border: 1px solid #24292e;
-    border-radius: 4px;
-    font-size: 1rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    transition: background-color 0.2s;
-    margin-top: 0.5rem;
-    text-decoration: none;
-  }
-  
-  .github-btn:hover {
-    background-color: #2f363d;
-    text-decoration: none;
-  }
-  
-  .github-icon {
-    width: 18px;
-    height: 18px;
-  }
-</style>
