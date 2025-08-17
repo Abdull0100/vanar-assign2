@@ -9,6 +9,7 @@ declare global {
 				email: string;
 				name: string | null;
 				verified: boolean;
+				role: string;
 			};
 		}
 		// interface PageData {}

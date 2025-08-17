@@ -3,7 +3,7 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import { page } from '$app/stores';
 
-	let { children } = $props();
+	let { children, data } = $props<{ data: { user: any } }>();
 </script>
 
 <svelte:head>
@@ -34,6 +34,16 @@
 					>
 						Profile
 					</a>
+					{#if data.user?.role === 'admin'}
+						<a 
+							href="/admin" 
+							class="px-3 py-2 rounded-md text-sm font-medium transition-colors {$page.url.pathname === '/admin' 
+								? 'bg-red-100 text-red-700' 
+								: 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'}"
+						>
+							Admin
+						</a>
+					{/if}
 				</div>
 			</div>
 			<div class="flex items-center space-x-4">

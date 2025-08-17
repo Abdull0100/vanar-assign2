@@ -65,6 +65,14 @@
                     {data.user.verified ? 'Verified' : 'Not Verified'}
                   </dd>
                 </div>
+                <div>
+                  <dt class="text-sm font-medium text-gray-500">Role</dt>
+                  <dd class="text-sm text-gray-900">
+                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {data.user.role === 'admin' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}">
+                      {data.user.role === 'admin' ? '🔐 Admin' : '👤 User'}
+                    </span>
+                  </dd>
+                </div>
               </dl>
             </div>
             

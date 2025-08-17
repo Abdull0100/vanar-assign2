@@ -1,95 +1,168 @@
 <script lang="ts">
-  import type { PageData } from './$types';
-
-  export let data: PageData;
+	let { data } = $props<{ data: any }>();
 </script>
 
-<svelte:head>
-  <title>Email Verification</title>
-</svelte:head>
+<div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center px-4">
+	<div class="max-w-md w-full">
+		<div class="bg-white shadow-xl rounded-2xl p-8 border border-gray-100">
+			
+			{#if data.status === 'expired'}
+				<!-- Expired Token -->
+				<div class="text-center">
+					<div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-red-500 to-orange-600 rounded-full shadow-lg mb-6">
+						<span class="text-3xl">⏰</span>
+					</div>
+					<h1 class="text-3xl font-bold text-gray-900 mb-4">Link Expired</h1>
+					<p class="text-gray-600 mb-8">
+						Your verification link has expired. Please request a new verification email.
+					</p>
+					
+					<div class="space-y-4">
+						<a 
+							href="/login" 
+							class="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 flex items-center justify-center space-x-2"
+						>
+							<span>🔐</span>
+							<span>Go to Login</span>
+						</a>
+						
+						<button 
+							onclick="resendVerification()"
+							class="w-full bg-gray-100 text-gray-700 font-semibold py-3 px-6 rounded-xl hover:bg-gray-200 transition-colors flex items-center justify-center space-x-2"
+						>
+							<span>📧</span>
+							<span>Resend Verification Email</span>
+						</button>
+					</div>
+					
+					<script>
+						async function resendVerification() {
+							try {
+								const response = await fetch('/auth/resend-verification', {
+									method: 'POST',
+									headers: { 'Content-Type': 'application/json' },
+									body: JSON.stringify({ email: '${data.userId ? 'user-email' : ''}' })
+								});
+								
+								const result = await response.json();
+								
+								if (result.success) {
+									alert('Verification email sent! Please check your inbox.');
+								} else {
+									alert(result.error || 'Failed to send verification email.');
+								}
+							} catch (error) {
+								alert('An error occurred. Please try again.');
+							}
+						}
+					</script>
+				</div>
 
-<div class="verification-container">
-  {#if data.success}
-    <div class="success-message">
-      <div class="icon">✅</div>
-      <h1>Email Verified!</h1>
-      <p>{data.message}</p>
-      <a href="/" class="home-link">Go to Home</a>
-    </div>
-  {:else}
-    <div class="error-message">
-      <div class="icon">❌</div>
-      <h1>Verification Failed</h1>
-      <p>{data.message}</p>
-      <a href="/signup" class="signup-link">Sign Up Again</a>
-    </div>
-  {/if}
+			{:else if data.status === 'invalid'}
+				<!-- Invalid Token -->
+				<div class="text-center">
+					<div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-red-500 to-red-600 rounded-full shadow-lg mb-6">
+						<span class="text-3xl">❌</span>
+					</div>
+					<h1 class="text-3xl font-bold text-gray-900 mb-4">Invalid Link</h1>
+					<p class="text-gray-600 mb-8">
+						The verification link is invalid or has already been used. Please check your email for the correct link.
+					</p>
+					
+					<div class="space-y-4">
+						<a 
+							href="/login" 
+							class="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 flex items-center justify-center space-x-2"
+						>
+							<span>🔐</span>
+							<span>Go to Login</span>
+						</a>
+						
+						<a 
+							href="/" 
+							class="w-full bg-gray-100 text-gray-700 font-semibold py-3 px-6 rounded-xl hover:bg-gray-200 transition-colors flex items-center justify-center space-x-2"
+						>
+							<span>🏠</span>
+							<span>Back to Home</span>
+						</a>
+					</div>
+				</div>
+
+			{:else if data.status === 'already_verified'}
+				<!-- Already Verified -->
+				<div class="text-center">
+					<div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-green-500 to-green-600 rounded-full shadow-lg mb-6">
+						<span class="text-3xl">✅</span>
+					</div>
+					<h1 class="text-3xl font-bold text-gray-900 mb-4">Already Verified</h1>
+					<p class="text-gray-600 mb-4">
+						Your email address is already verified. You can now log in to your account.
+					</p>
+					
+					{#if data.user}
+						<div class="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
+							<p class="text-green-800 text-sm">
+								<strong>{data.user.name}</strong><br>
+								{data.user.email}
+							</p>
+						</div>
+					{/if}
+					
+					<a 
+						href="/login" 
+						class="w-full bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 flex items-center justify-center space-x-2"
+					>
+						<span>🔐</span>
+						<span>Login Now</span>
+					</a>
+				</div>
+
+			{:else if data.status === 'error'}
+				<!-- Error -->
+				<div class="text-center">
+					<div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-red-500 to-red-600 rounded-full shadow-lg mb-6">
+						<span class="text-3xl">⚠️</span>
+					</div>
+					<h1 class="text-3xl font-bold text-gray-900 mb-4">Verification Error</h1>
+					<p class="text-gray-600 mb-8">
+						{data.message || 'An error occurred during verification. Please try again.'}
+					</p>
+					
+					<div class="space-y-4">
+						<a 
+							href="/login" 
+							class="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 flex items-center justify-center space-x-2"
+						>
+							<span>🔐</span>
+							<span>Go to Login</span>
+						</a>
+						
+						<a 
+							href="/" 
+							class="w-full bg-gray-100 text-gray-700 font-semibold py-3 px-6 rounded-xl hover:bg-gray-200 transition-colors flex items-center justify-center space-x-2"
+						>
+							<span>🏠</span>
+							<span>Back to Home</span>
+						</a>
+					</div>
+				</div>
+
+			{:else}
+				<!-- Loading State -->
+				<div class="text-center">
+					<div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full shadow-lg mb-6">
+						<span class="text-3xl">⏳</span>
+					</div>
+					<h1 class="text-3xl font-bold text-gray-900 mb-4">Verifying Email</h1>
+					<p class="text-gray-600">
+						Please wait while we verify your email address...
+					</p>
+					
+					<div class="mt-6">
+						<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+					</div>
+				</div>
+			{/if}
+		</div>
+	</div>
 </div>
-
-<style>
-  .verification-container {
-    max-width: 500px;
-    margin: 4rem auto;
-    padding: 2rem;
-    text-align: center;
-  }
-
-  .success-message,
-  .error-message {
-    padding: 2rem;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-
-  .success-message {
-    background-color: #d4edda;
-    border: 1px solid #c3e6cb;
-    color: #155724;
-  }
-
-  .error-message {
-    background-color: #f8d7da;
-    border: 1px solid #f5c6cb;
-    color: #721c24;
-  }
-
-  .icon {
-    font-size: 3rem;
-    margin-bottom: 1rem;
-  }
-
-  h1 {
-    margin-bottom: 1rem;
-    font-size: 1.5rem;
-  }
-
-  p {
-    margin-bottom: 2rem;
-    font-size: 1.1rem;
-  }
-
-  .home-link,
-  .signup-link {
-    display: inline-block;
-    padding: 0.75rem 1.5rem;
-    background-color: #007bff;
-    color: white;
-    text-decoration: none;
-    border-radius: 4px;
-    font-weight: 500;
-    transition: background-color 0.2s;
-  }
-
-  .home-link:hover,
-  .signup-link:hover {
-    background-color: #0056b3;
-  }
-
-  .signup-link {
-    background-color: #28a745;
-  }
-
-  .signup-link:hover {
-    background-color: #218838;
-  }
-</style>

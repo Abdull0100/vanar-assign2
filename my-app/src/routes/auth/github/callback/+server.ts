@@ -84,10 +84,21 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 				avatar: userData.avatar_url,
 				provider: 'github',
 				providerId: String(userData.id),
-				verified: true,
+				verified: true, // OAuth users are automatically verified
+				role: 'user', // Default role
+				passwordHash: null // No password for OAuth users
 			}).returning();
 		} else {
-			console.log("✅ Existing user found:", user.email);
+			// Update existing user's OAuth info and ensure they're verified
+			[user] = await db.update(users).set({
+				provider: 'github',
+				providerId: String(userData.id),
+				verified: true, // Ensure OAuth users are verified
+				avatar: userData.avatar_url,
+				name: userData.name ?? user.name
+			}).where(eq(users.id, user.id)).returning();
+			
+			console.log("✅ Existing user updated:", user.email);
 		}
 
 		// 5. Create session

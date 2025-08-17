@@ -1,54 +1,99 @@
-import { error } from '@sveltejs/kit';
+import { redirect, error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { users, emailVerifications } from '$lib/server/db/schema';
 import { eq, and, gt } from 'drizzle-orm';
+import type { PageServerLoad } from './$types';
 
-export const load = async ({ params }) => {
-  const { token } = params;
+export const load: PageServerLoad = async ({ params }) => {
+	const { token } = params;
 
-  if (!token) {
-    throw error(400, 'Invalid verification link');
-  }
+	if (!token) {
+		throw error(400, 'Invalid verification token');
+	}
 
-  try {
-    // Look up the verification token
-    const [verification] = await db
-      .select()
-      .from(emailVerifications)
-      .where(
-        and(
-          eq(emailVerifications.token, token),
-          gt(emailVerifications.expiresAt, new Date())
-        )
-      );
+	try {
+		// Find the verification token
+		const [verification] = await db
+			.select()
+			.from(emailVerifications)
+			.where(
+				and(
+					eq(emailVerifications.token, token),
+					gt(emailVerifications.expiresAt, new Date())
+				)
+			);
 
-    if (!verification) {
-      return {
-        success: false,
-        message: 'Invalid or expired verification link'
-      };
-    }
+		if (!verification) {
+			// Check if token exists but is expired
+			const [expiredVerification] = await db
+				.select()
+				.from(emailVerifications)
+				.where(eq(emailVerifications.token, token));
 
-    // Update user to verified
-    await db
-      .update(users)
-      .set({ verified: true })
-      .where(eq(users.id, verification.userId));
+			if (expiredVerification) {
+				return {
+					status: 'expired',
+					message: 'Verification link has expired. Please request a new one.',
+					userId: expiredVerification.userId
+				};
+			}
 
-    // Delete the verification record
-    await db
-      .delete(emailVerifications)
-      .where(eq(emailVerifications.id, verification.id));
+			return {
+				status: 'invalid',
+				message: 'Invalid verification link. Please check your email and try again.'
+			};
+		}
 
-    return {
-      success: true,
-      message: 'Email verified successfully!'
-    };
-  } catch (err) {
-    console.error('Verification error:', err);
-    return {
-      success: false,
-      message: 'Invalid or expired verification link'
-    };
-  }
+		// Get the user
+		const [user] = await db
+			.select()
+			.from(users)
+			.where(eq(users.id, verification.userId));
+
+		if (!user) {
+			return {
+				status: 'error',
+				message: 'User not found. Please contact support.'
+			};
+		}
+
+		// Check if user is already verified
+		if (user.verified) {
+			return {
+				status: 'already_verified',
+				message: 'Your email is already verified. You can now log in.',
+				user: {
+					name: user.name,
+					email: user.email
+				}
+			};
+		}
+
+		// Mark user as verified
+		await db
+			.update(users)
+			.set({ verified: true })
+			.where(eq(users.id, user.id));
+
+		// Delete the verification token
+		await db
+			.delete(emailVerifications)
+			.where(eq(emailVerifications.token, token));
+
+		console.log('✅ Email verified for user:', user.email);
+
+		// Redirect to login with success message
+		throw redirect(302, '/login?verified=true');
+
+	} catch (err) {
+		if (err instanceof Response) {
+			throw err;
+		}
+		
+		console.error('❌ Error during email verification:', err);
+		return {
+			status: 'error',
+			message: 'An error occurred during verification. Please try again.'
+		};
+	}
 };

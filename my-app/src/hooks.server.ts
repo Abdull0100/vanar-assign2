@@ -41,7 +41,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 			id: user.id,
 			email: user.email,
 			name: user.name,
-			verified: user.verified
+			verified: user.verified,
+			role: user.role
 		};
 
 		return await resolve(event);

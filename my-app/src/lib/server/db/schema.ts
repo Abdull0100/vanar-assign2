@@ -9,6 +9,7 @@ export const users = pgTable('users', {
   passwordHash: text('password_hash'), // Optional for OAuth users
   name: text('name'),
   verified: boolean('verified').default(false).notNull(), // email verification status
+  role: text('role').default('user').notNull(), // 'user' or 'admin'
   provider: text('provider'), // 'google', 'email', etc.
   providerId: text('provider_id'), // Google user ID
   avatar: text('avatar'), // Profile picture URL

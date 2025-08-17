@@ -1,13 +1,12 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { users, sessions, emailVerifications } from '$lib/server/db/schema';
+import { users, emailVerifications } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
-import { sendVerificationEmail } from '$lib/utils/email';
-import { randomUUID } from 'crypto';
+import { sendVerificationEmail, generateVerificationToken } from '$lib/utils/email';
 
 export const actions = {
-  signup: async ({ request, cookies }) => {
+  signup: async ({ request }) => {
     const formData = await request.formData();
     const email = formData.get('email') as string;
     const name = formData.get('name') as string;
@@ -43,18 +42,20 @@ export const actions = {
     // Hash the password
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Create the user
-    const [newUser] = await db.insert(users).values({
-      email,
-      name,
-      passwordHash,
-      verified: false
-    }).returning();
+    	// Create the user (unverified by default)
+	const [newUser] = await db.insert(users).values({
+		email,
+		name,
+		passwordHash,
+		verified: false,
+		role: 'user', // Default role
+		provider: 'email' // Mark as email/password user
+	}).returning();
 
-    // Create verification token
-    const verificationToken = randomUUID();
+    // Generate verification token
+    const verificationToken = generateVerificationToken();
     const verificationExpiresAt = new Date();
-    verificationExpiresAt.setHours(verificationExpiresAt.getHours() + 24);
+    verificationExpiresAt.setHours(verificationExpiresAt.getHours() + 24); // 24 hours
 
     // Insert verification record
     await db.insert(emailVerifications).values({
@@ -64,27 +65,19 @@ export const actions = {
     });
 
     // Send verification email
-    await sendVerificationEmail(email, verificationToken);
+    const emailSent = await sendVerificationEmail(email, name || 'User', verificationToken);
+    
+    if (!emailSent) {
+      // If email fails, clean up the user and token
+      await db.delete(users).where(eq(users.id, newUser.id));
+      return fail(500, { 
+        error: 'Failed to send verification email. Please try again.',
+        email,
+        name
+      });
+    }
 
-    // Create a session for the new user
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
-
-    const [session] = await db.insert(sessions).values({
-      userId: newUser.id,
-      expiresAt
-    }).returning();
-
-    // Set the session cookie
-    cookies.set('session_id', session.id, {
-      path: '/',
-      httpOnly: true,
-      sameSite: 'strict',
-      secure: false,
-      maxAge: 7 * 24 * 60 * 60 // 7 days in seconds
-    });
-
-    // Redirect to home page
-    throw redirect(302, '/');
+    // Redirect to verification pending page
+    throw redirect(302, '/signup/success');
   }
 };

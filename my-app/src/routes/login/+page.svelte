@@ -1,8 +1,9 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
-  import type { ActionData } from './$types';
+  import type { ActionData, PageData } from './$types';
 
   export let form: ActionData;
+  export let data: PageData;
 </script>
 
 <svelte:head>
@@ -18,6 +19,17 @@
       <p class="mt-2 text-center text-sm text-gray-600">
         Welcome back! Please sign in to continue.
       </p>
+      
+      {#if data.verified}
+        <div class="mt-4 bg-green-50 border border-green-200 rounded-lg p-4">
+          <div class="flex items-center">
+            <span class="text-green-500 text-lg mr-2">✅</span>
+            <p class="text-green-800 text-sm font-medium">
+              Email verified successfully! You can now log in to your account.
+            </p>
+          </div>
+        </div>
+      {/if}
     </div>
     
     <div class="bg-white py-8 px-6 shadow-lg rounded-lg border border-gray-200">
