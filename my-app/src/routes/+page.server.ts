@@ -1,10 +1,5 @@
-import { redirect } from '@sveltejs/kit';
-
 export const load = async ({ locals }) => {
-  if (!locals.user) {
-    throw redirect(302, '/login');
-  }
-
+  // Just return user info if present, but do not redirect
   return {
     user: locals.user
   };

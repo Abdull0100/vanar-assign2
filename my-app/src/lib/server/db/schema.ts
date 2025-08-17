@@ -6,9 +6,12 @@ import { pgTable, uuid, text, timestamp, boolean } from 'drizzle-orm/pg-core';
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: text('email').notNull().unique(),
-  passwordHash: text('password_hash').notNull(),
+  passwordHash: text('password_hash'), // Optional for OAuth users
   name: text('name'),
   verified: boolean('verified').default(false).notNull(), // email verification status
+  provider: text('provider'), // 'google', 'email', etc.
+  providerId: text('provider_id'), // Google user ID
+  avatar: text('avatar'), // Profile picture URL
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull()
 });
