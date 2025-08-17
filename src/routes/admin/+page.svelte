@@ -107,6 +107,17 @@
 			error = 'An error occurred while updating user status';
 		}
 	}
+
+	async function handleSignOut() {
+		try {
+			await fetch('/api/auth/signout', { method: 'POST' });
+			window.location.href = '/';
+		} catch (error) {
+			console.error('Sign out error:', error);
+			// Fallback: force redirect anyway
+			window.location.href = '/';
+		}
+	}
 </script>
 
 <svelte:head>
@@ -154,7 +165,7 @@
 						<div class="flex items-center space-x-4">
 							<span class="text-sm text-gray-700">Admin: {user?.name || user?.email}</span>
 							<button
-								on:click={() => import('@auth/sveltekit/client').then(({ signOut }) => signOut({ redirectTo: '/' }))}
+								on:click={handleSignOut}
 								class="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
 							>
 								Sign Out

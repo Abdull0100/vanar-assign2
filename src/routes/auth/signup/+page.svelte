@@ -34,10 +34,10 @@
 
 			const data = await response.json();
 
-			if (response.ok) {
+			if (response.ok && data.success) {
 				success = true;
 				setTimeout(() => {
-					goto('/auth/verify-request');
+					goto('/auth/signin');
 				}, 2000);
 			} else {
 				error = data.error || 'An error occurred';
@@ -75,7 +75,7 @@
 
 			{#if success}
 				<div class="mb-4 rounded border border-green-200 bg-green-50 px-4 py-3 text-green-700">
-					Account created successfully! Please check your email for verification.
+					Account created successfully! Verification email sent. Redirecting to sign in...
 				</div>
 			{/if}
 

@@ -7,6 +7,7 @@
 	let loading = false;
 	let messages: Array<{ message: string; response: string; createdAt: string; id?: number }> = [];
 	let error = '';
+	let messagesContainer: HTMLElement;
 
 	$: user = $page.data.session?.user;
 
@@ -66,20 +67,72 @@
 				body: JSON.stringify({ message: userMessage })
 			});
 
-			if (response.ok) {
-				const data = await response.json();
-				// Update the message with the AI response
-				messages = messages.map((msg) =>
-					msg.id === tempId ? { ...msg, response: data.response, id: undefined } : msg
-				);
+			if (response.ok && response.headers.get('content-type')?.includes('text/event-stream')) {
+				// Handle streaming response
+				const reader = response.body?.getReader();
+				const decoder = new TextDecoder();
+				let streamedResponse = '';
+
+				if (reader) {
+					while (true) {
+						const { done, value } = await reader.read();
+						if (done) break;
+
+						const chunk = decoder.decode(value);
+						const lines = chunk.split('\n');
+
+						for (const line of lines) {
+							if (line.startsWith('data: ')) {
+								try {
+									const data = JSON.parse(line.slice(6));
+									
+									if (data.error) {
+										error = data.error;
+										messages = messages.filter((msg) => msg.id !== tempId);
+										break;
+									}
+									
+									if (data.chunk) {
+										streamedResponse += data.chunk;
+										// Update the message with the streaming response
+										messages = messages.map((msg) =>
+											msg.id === tempId ? { ...msg, response: streamedResponse } : msg
+										);
+										// Auto-scroll to bottom during streaming
+										setTimeout(() => {
+											if (messagesContainer) {
+												messagesContainer.scrollTop = messagesContainer.scrollHeight;
+											}
+										}, 10);
+									}
+									
+									if (data.done) {
+										// Finalize the message
+										messages = messages.map((msg) =>
+											msg.id === tempId ? { ...msg, id: undefined } : msg
+										);
+									}
+								} catch (parseError) {
+									console.error('Error parsing streaming data:', parseError);
+								}
+							}
+						}
+					}
+				}
 			} else {
-				error = 'Failed to get response from AI';
-				// Remove the temporary message
-				messages = messages.filter((msg) => msg.id !== tempId);
+				// Fallback to regular JSON response
+				const data = await response.json();
+				if (response.ok) {
+					messages = messages.map((msg) =>
+						msg.id === tempId ? { ...msg, response: data.response, id: undefined } : msg
+					);
+				} else {
+					error = data.error || 'Failed to get response from AI';
+					messages = messages.filter((msg) => msg.id !== tempId);
+				}
 			}
 		} catch (err) {
 			error = 'An error occurred while sending message';
-			// Remove the temporary message
 			messages = messages.filter((msg) => msg.id !== tempId);
 		} finally {
 			loading = false;
@@ -95,7 +148,7 @@
 </script>
 
 <svelte:head>
-	<title>AI Chat - Auth App</title>
+	<title>Vanar AI Assistant - The Chain That Thinks</title>
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50">
@@ -114,12 +167,12 @@
 						>
 							Dashboard
 						</button>
-						<button
-							on:click={() => goto('/chat')}
-							class="inline-flex items-center border-b-2 border-indigo-500 px-1 pt-1 text-sm font-medium text-gray-900"
-						>
-							AI Chat
-						</button>
+													<button
+								on:click={() => goto('/chat')}
+								class="inline-flex items-center border-b-2 border-indigo-500 px-1 pt-1 text-sm font-medium text-gray-900"
+							>
+								Vanar AI
+							</button>
 						<button
 							on:click={() => goto('/profile')}
 							class="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
@@ -188,11 +241,11 @@
 						<div class="flex items-center justify-between">
 							<div class="flex items-center">
 								<div class="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center mr-3">
-									<span class="text-xl">🤖</span>
+									<img src="/src/lib/assets/images-removebg-preview.png" alt="Vanar Chain" class="w-8 h-8" />
 								</div>
 								<div>
-									<h2 class="text-lg font-semibold text-white">AI Assistant</h2>
-									<p class="text-sm text-indigo-200">Powered by Google Gemini</p>
+									<h2 class="text-lg font-semibold text-white">Vanar AI Assistant</h2>
+									<p class="text-sm text-indigo-200">The Chain That Thinks • Powered by Vanar</p>
 								</div>
 							</div>
 							<div class="flex items-center space-x-2">
@@ -203,40 +256,40 @@
 					</div>
 
 					<!-- Messages Container -->
-					<div class="h-96 overflow-y-auto p-6 bg-gradient-to-b from-gray-50 to-white">
+					<div bind:this={messagesContainer} class="h-96 overflow-y-auto p-6 bg-gradient-to-b from-gray-50 to-white scroll-smooth">
 						{#if messages.length === 0}
 							<div class="flex flex-col items-center justify-center h-full text-center">
 								<div class="h-24 w-24 rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 flex items-center justify-center mb-4">
 									<span class="text-4xl">💬</span>
 								</div>
-								<h3 class="text-xl font-semibold text-gray-900 mb-2">Start a conversation</h3>
+								<h3 class="text-xl font-semibold text-gray-900 mb-2">Welcome to Vanar AI</h3>
 								<p class="text-gray-500 max-w-md">
-									Ask me anything! I can help with questions, creative writing, problem-solving, and more.
+									Hi! I'm Vanar, your AI assistant from Vanar Chain. Ask me about blockchain, AI-native technology, PayFi, RWAs, or anything else!
 								</p>
 								<div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-md">
 									<button 
-										on:click={() => { message = "What can you help me with?"; sendMessage(); }}
+										on:click={() => { message = "What is Vanar Chain?"; sendMessage(); }}
 										class="p-3 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors text-sm"
 									>
-										💡 What can you do?
+										🔗 About Vanar Chain
 									</button>
 									<button 
-										on:click={() => { message = "Help me write a creative story"; sendMessage(); }}
+										on:click={() => { message = "Explain Neutron and Kayon technology"; sendMessage(); }}
 										class="p-3 rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors text-sm"
 									>
-										✨ Creative writing
+										🧠 AI Technology
 									</button>
 									<button 
-										on:click={() => { message = "Explain a complex topic simply"; sendMessage(); }}
+										on:click={() => { message = "How does PayFi work on Vanar?"; sendMessage(); }}
 										class="p-3 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors text-sm"
 									>
-										🧠 Explain concepts
+										💰 PayFi Solutions
 									</button>
 									<button 
-										on:click={() => { message = "Help me solve a problem"; sendMessage(); }}
+										on:click={() => { message = "Tell me about $VANRY token"; sendMessage(); }}
 										class="p-3 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 transition-colors text-sm"
 									>
-										🔧 Problem solving
+										🪙 $VANRY Token
 									</button>
 								</div>
 							</div>
@@ -255,17 +308,41 @@
 								</div>
 
 								<!-- AI Response -->
-								{#if messageItem.response}
+								{#if messageItem.response || messageItem.id}
 									<div class="flex justify-start mb-6">
 										<div class="flex items-end space-x-2 max-w-xl">
 											<div class="h-8 w-8 rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 flex items-center justify-center flex-shrink-0">
-												<span class="text-sm">🤖</span>
+												<img src="/src/lib/assets/images-removebg-preview.png" alt="Vanar Chain" class="w-5 h-5" />
 											</div>
 											<div class="rounded-2xl rounded-bl-sm bg-white px-4 py-3 shadow-lg border border-gray-100">
-												<p class="text-sm leading-relaxed text-gray-800">{messageItem.response}</p>
-												<p class="mt-2 text-xs text-gray-400">
-													{new Date(messageItem.createdAt).toLocaleTimeString()}
-												</p>
+												{#if messageItem.response}
+													<p class="text-sm leading-relaxed text-gray-800">{messageItem.response}</p>
+													{#if messageItem.id}
+														<!-- Streaming indicator -->
+														<div class="flex items-center mt-2 space-x-1">
+															<span class="text-xs text-indigo-600 font-medium"> Vanar AI Assistant</span>
+															<div class="flex space-x-1">
+																<div class="h-1 w-1 rounded-full bg-indigo-400 animate-pulse"></div>
+																<div class="h-1 w-1 rounded-full bg-indigo-400 animate-pulse" style="animation-delay: 0.2s"></div>
+																<div class="h-1 w-1 rounded-full bg-indigo-400 animate-pulse" style="animation-delay: 0.4s"></div>
+															</div>
+														</div>
+													{:else}
+														<p class="mt-2 text-xs text-gray-400">
+															{new Date(messageItem.createdAt).toLocaleTimeString()}
+														</p>
+													{/if}
+												{:else}
+													<!-- Initial response placeholder -->
+													<div class="flex items-center space-x-2">
+														<div class="flex space-x-1">
+															<div class="h-2 w-2 rounded-full bg-indigo-400 animate-bounce"></div>
+															<div class="h-2 w-2 rounded-full bg-indigo-400 animate-bounce" style="animation-delay: 0.1s"></div>
+															<div class="h-2 w-2 rounded-full bg-indigo-400 animate-bounce" style="animation-delay: 0.2s"></div>
+														</div>
+														<span class="text-sm text-gray-600">AI is responding...</span>
+													</div>
+												{/if}
 											</div>
 										</div>
 									</div>
@@ -276,7 +353,7 @@
 								<div class="flex justify-start mb-4">
 									<div class="flex items-end space-x-2">
 										<div class="h-8 w-8 rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 flex items-center justify-center">
-											<span class="text-sm">🤖</span>
+											<img src="/src/lib/assets/images-removebg-preview.png" alt="Vanar Chain" class="w-5 h-5" />
 										</div>
 										<div class="rounded-2xl rounded-bl-sm bg-white px-4 py-3 shadow-lg border border-gray-100">
 											<div class="flex items-center space-x-2">

@@ -50,6 +50,14 @@ export const verificationTokens = pgTable(
 	})
 );
 
+export const passwordResetTokens = pgTable('passwordResetTokens', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	email: text('email').notNull(),
+	token: text('token').notNull().unique(),
+	expires: timestamp('expires', { mode: 'date' }).notNull(),
+	createdAt: timestamp('createdAt').defaultNow().notNull()
+});
+
 export const chatMessages = pgTable('chatMessages', {
 	id: uuid('id').primaryKey().defaultRandom(),
 	userId: uuid('userId')

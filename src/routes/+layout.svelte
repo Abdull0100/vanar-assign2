@@ -2,7 +2,7 @@
 	import '../app.css';
 	import type { LayoutData } from './$types';
 
-	export let data: LayoutData;
+	export const data: LayoutData = {} as LayoutData;
 </script>
 
 <svelte:head>

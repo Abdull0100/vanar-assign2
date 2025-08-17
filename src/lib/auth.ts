@@ -10,7 +10,7 @@ import Email from '@auth/sveltekit/providers/email';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { eq } from 'drizzle-orm';
-
+import { AUTH_SECRET, GMAIL_USER, GMAIL_APP_PASSWORD,GOOGLE_SECRET,GOOGLE_ID,GITHUB_ID,GITHUB_SECRET } from '$env/static/private';
 import { db } from './db';
 import { users, accounts, sessions, verificationTokens } from './db/schema';
 import { sendVerificationEmail } from '$lib/email';
@@ -38,7 +38,7 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 		verificationTokensTable: verificationTokens
 	}),
 
-	secret: process.env.AUTH_SECRET,
+	secret: AUTH_SECRET,
 	trustHost: true,
 
 	session: {
@@ -52,7 +52,30 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 	},
 
 	providers: [
-		// Temporarily disabled all providers to eliminate __data.json error
+		// Temporarily disabled EmailProvider to use only custom verification
+		// Email({
+		// 	server: {
+		// 		host: GMAIL_USER ? 'smtp.gmail.com' : undefined,
+		// 		port: GMAIL_USER ? 587 : undefined,
+		// 		auth: GMAIL_USER ? {
+		// 			user: GMAIL_USER,
+		// 			pass: GMAIL_APP_PASSWORD
+		// 		} : undefined
+		// 	},
+		// 	from: GMAIL_USER ? `"Vanar Chain" <${GMAIL_USER}>` : 'noreply@vanarchain.com',
+		// 	sendVerificationRequest: async ({ identifier, url, provider }) => {
+		// 		console.log('Auth.js EmailProvider sendVerificationRequest called with:', { identifier, url, provider });
+		// 		if (GMAIL_USER && GMAIL_APP_PASSWORD) {
+		// 			// Use our custom email function
+		// 			await sendVerificationEmail(identifier, url);
+		// 			}
+		// 		} else {
+		// 			console.log('Verification email would be sent to:', identifier);
+		// 			console.log('Verification URL:', url);
+		// 		}
+		// 	}
+		// }),
+		// Temporarily disabled OAuth providers to eliminate __data.json error
 		// Using custom login API for credentials authentication
 		// OAuth will be re-enabled once core functionality works
 	],
@@ -67,21 +90,8 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 		},
 
 		async signIn({ user, account }) {
-			if (account?.provider === 'google' || account?.provider === 'github') {
-				const existingUser = await db.query.users.findFirst({
-					where: eq(users.email, user.email!)
-				});
-
-				if (!existingUser) {
-					await db.insert(users).values({
-						email: user.email!,
-						name: user.name,
-						image: user.image,
-						emailVerified: new Date(),
-						role: 'user'
-					});
-				}
-			}
+			// OAuth providers are disabled for now
+			// This callback will be updated when OAuth is re-enabled
 			return true;
 		},
 
@@ -95,9 +105,11 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 	events: {
 		async createUser({ user }) {
 			if (user.email) {
+				console.log('Creating verification token for user:', user.email);
 				const token = await generateVerificationToken(user.email);
 				// Use relative URL since we're not using basePath
 				const url = `/auth/verify?token=${token}`;
+				console.log('Generated verification URL:', url);
 				await sendVerificationEmail(user.email, url);
 			}
 		}

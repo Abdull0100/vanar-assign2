@@ -11,13 +11,30 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ error: 'Token is required' }, { status: 400 });
 		}
 
+		console.log('Verification attempt with token:', token);
+
 		// Find the verification token
-		const verificationToken = await db.query.verificationTokens.findFirst({
-			where: and(eq(verificationTokens.token, token), gt(verificationTokens.expires, new Date()))
-		});
+		const verificationTokenResult = await db.select().from(verificationTokens).where(
+			and(eq(verificationTokens.token, token), gt(verificationTokens.expires, new Date()))
+		).limit(1);
+
+		const verificationToken = verificationTokenResult[0];
+		console.log('Found verification token:', verificationToken);
 
 		if (!verificationToken) {
-			return json({ error: 'Invalid or expired token' }, { status: 400 });
+			// Check if token exists but is expired
+			const expiredTokenResult = await db.select().from(verificationTokens).where(
+				eq(verificationTokens.token, token)
+			).limit(1);
+			
+			const expiredToken = expiredTokenResult[0];
+			if (expiredToken) {
+				console.log('Token found but expired:', expiredToken);
+				return json({ error: 'Token has expired. Please request a new verification email.' }, { status: 400 });
+			}
+			
+			console.log('No token found in database');
+			return json({ error: 'Invalid token' }, { status: 400 });
 		}
 
 		// Update user's emailVerified field

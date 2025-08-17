@@ -74,6 +74,10 @@
 				if (user) {
 					user.name = name;
 				}
+				// Clear success message after 3 seconds
+				setTimeout(() => {
+					success = '';
+				}, 3000);
 			} else {
 				const data = await response.json();
 				error = data.error || 'Failed to update profile';
@@ -96,6 +100,19 @@
 
 	function closeChangePasswordModal() {
 		showChangePasswordModal = false;
+	}
+
+	function handleBackdropClick(event: MouseEvent | KeyboardEvent) {
+		if (event.target === event.currentTarget) {
+			closeChangePasswordModal();
+		}
+	}
+
+	function handleBackdropKeydown(event: KeyboardEvent) {
+		if (event.key === 'Enter' || event.key === ' ') {
+			event.preventDefault();
+			closeChangePasswordModal();
+		}
 	}
 
 	async function changePassword() {
@@ -127,7 +144,7 @@
 
 			if (response.ok) {
 				passwordSuccess = 'Password changed successfully!';
-				setTimeout(() => closeChangePasswordModal(), 2000);
+				setTimeout(() => closeChangePasswordModal(), 3000);
 			} else {
 				const data = await response.json();
 				passwordError = data.error || 'Failed to change password';
@@ -148,6 +165,19 @@
 
 	function closeDeleteAccountModal() {
 		showDeleteAccountModal = false;
+	}
+
+	function handleDeleteBackdropClick(event: MouseEvent | KeyboardEvent) {
+		if (event.target === event.currentTarget) {
+			closeDeleteAccountModal();
+		}
+	}
+
+	function handleDeleteBackdropKeydown(event: KeyboardEvent) {
+		if (event.key === 'Enter' || event.key === ' ') {
+			event.preventDefault();
+			closeDeleteAccountModal();
+		}
 	}
 
 	async function deleteAccount() {
@@ -192,36 +222,49 @@
 
 <div class="min-h-screen bg-gray-50">
 	<!-- Navigation -->
-	<nav class="bg-white shadow">
+	<nav class="bg-white shadow" aria-label="Main navigation">
 		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 			<div class="flex h-16 justify-between">
 				<div class="flex">
 					<div class="flex flex-shrink-0 items-center">
 						<h1 class="text-xl font-bold text-gray-900">Auth App</h1>
 					</div>
-					<div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+					<div class="hidden sm:ml-6 sm:flex sm:space-x-8" role="menubar">
 						<button
 							on:click={() => goto('/dashboard')}
+							on:keydown={(e) => e.key === 'Enter' && goto('/dashboard')}
 							class="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
+							role="menuitem"
+							aria-label="Navigate to Dashboard"
 						>
 							Dashboard
 						</button>
 						<button
 							on:click={() => goto('/chat')}
+							on:keydown={(e) => e.key === 'Enter' && goto('/chat')}
 							class="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
+							role="menuitem"
+							aria-label="Navigate to AI Chat"
 						>
 							AI Chat
 						</button>
 						<button
 							on:click={() => goto('/profile')}
+							on:keydown={(e) => e.key === 'Enter' && goto('/profile')}
 							class="inline-flex items-center border-b-2 border-indigo-500 px-1 pt-1 text-sm font-medium text-gray-900"
+							role="menuitem"
+							aria-label="Navigate to Profile (current page)"
+							aria-current="page"
 						>
 							Profile
 						</button>
 						{#if user?.role === 'admin'}
 							<button
 								on:click={() => goto('/admin')}
+								on:keydown={(e) => e.key === 'Enter' && goto('/admin')}
 								class="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
+								role="menuitem"
+								aria-label="Navigate to Admin Panel"
 							>
 								Admin Panel
 							</button>
@@ -231,10 +274,12 @@
 				<div class="flex items-center">
 					<div class="ml-3">
 						<div class="flex items-center space-x-4">
-							<span class="text-sm text-gray-700">Welcome, {user?.name || user?.email}</span>
+							<span class="text-sm text-gray-700" role="status" aria-live="polite">Welcome, {user?.name || user?.email}</span>
 							<button
 								on:click={handleSignOut}
+								on:keydown={(e) => e.key === 'Enter' && handleSignOut()}
 								class="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+								aria-label="Sign out of your account"
 							>
 								Sign Out
 							</button>
@@ -246,33 +291,33 @@
 	</nav>
 
 	<!-- Main Content -->
-	<div class="mx-auto max-w-7xl py-6 sm:px-6 lg:px-8">
+	<main class="mx-auto max-w-7xl py-6 sm:px-6 lg:px-8">
 		<div class="px-4 py-6 sm:px-0">
 			<!-- Hero Section -->
-			<div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-600 via-emerald-600 to-teal-700 px-8 py-12 text-white shadow-2xl mb-8">
+			<section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-600 via-emerald-600 to-teal-700 px-8 py-12 text-white shadow-2xl mb-8" role="banner" aria-labelledby="profile-settings-title">
 				<div class="absolute inset-0 bg-black/20"></div>
 				<div class="relative z-10">
 					<div class="flex items-center justify-between">
 						<div>
-							<h1 class="text-4xl font-bold mb-2">Profile Settings</h1>
+							<h1 id="profile-settings-title" class="text-4xl font-bold mb-2">Profile Settings</h1>
 							<p class="text-xl text-green-100">
 								Manage your account and preferences
 							</p>
-							<div class="mt-4 inline-flex items-center rounded-full bg-white/20 backdrop-blur-sm px-4 py-2">
-								<div class="h-2 w-2 rounded-full bg-green-400 mr-2"></div>
+							<div class="mt-4 inline-flex items-center rounded-full bg-white/20 backdrop-blur-sm px-4 py-2" role="status" aria-live="polite">
+								<div class="h-2 w-2 rounded-full bg-green-400 mr-2" aria-hidden="true"></div>
 								<span class="text-sm font-medium">
 									{user?.role === 'admin' ? '👑 Administrator Account' : '👤 User Account'}
 								</span>
 							</div>
 						</div>
 						<div class="hidden md:block">
-							<div class="h-32 w-32 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center">
+							<div class="h-32 w-32 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center" aria-hidden="true">
 								<span class="text-5xl">⚙️</span>
 							</div>
 						</div>
 					</div>
 				</div>
-			</div>
+			</section>
 
 			<div class="mx-auto max-w-4xl">
 				{#if loading}
@@ -360,10 +405,10 @@
 									</div>
 
 									<div class="sm:col-span-4">
-										<label class="block text-sm font-medium text-gray-700 mb-2">
+										<div class="block text-sm font-medium text-gray-700 mb-2">
 											<span class="mr-2">📊</span>
 											Account Status
-										</label>
+										</div>
 										<div class="mt-1">
 											<div class="flex items-center p-3 rounded-lg {user?.emailVerified ? 'bg-green-50 border border-green-200' : 'bg-yellow-50 border border-yellow-200'}">
 												<span class="mr-2 text-lg">
@@ -382,10 +427,10 @@
 									</div>
 
 									<div class="sm:col-span-4">
-										<label class="block text-sm font-medium text-gray-700 mb-2">
+										<div class="block text-sm font-medium text-gray-700 mb-2">
 											<span class="mr-2">🎭</span>
 											Account Role
-										</label>
+										</div>
 										<div class="mt-1">
 											<div class="flex items-center p-3 rounded-lg {user?.role === 'admin' ? 'bg-purple-50 border border-purple-200' : 'bg-blue-50 border border-blue-200'}">
 												<span class="mr-2 text-lg">
@@ -413,6 +458,7 @@
 												error = '';
 												success = '';
 											}}
+											on:keydown={(e) => e.key === 'Enter' && (name = user?.name || '', error = '', success = '')}
 											class="inline-flex items-center rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
 										>
 											<span class="mr-2">↩️</span>
@@ -483,6 +529,7 @@
 							<div class="p-6 space-y-3">
 								<button
 									on:click={openChangePasswordModal}
+									on:keydown={(e) => e.key === 'Enter' && openChangePasswordModal()}
 									class="w-full flex items-center justify-between p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors group"
 								>
 									<div class="flex items-center">
@@ -494,6 +541,7 @@
 								
 								<button
 									on:click={() => goto('/chat')}
+									on:keydown={(e) => e.key === 'Enter' && goto('/chat')}
 									class="w-full flex items-center justify-between p-3 rounded-lg bg-indigo-50 hover:bg-indigo-100 transition-colors group"
 								>
 									<div class="flex items-center">
@@ -506,6 +554,7 @@
 								{#if user?.role === 'admin'}
 									<button
 										on:click={() => goto('/admin')}
+										on:keydown={(e) => e.key === 'Enter' && goto('/admin')}
 										class="w-full flex items-center justify-between p-3 rounded-lg bg-purple-50 hover:bg-purple-100 transition-colors group"
 									>
 										<div class="flex items-center">
@@ -534,6 +583,7 @@
 									</p>
 									<button
 										on:click={openDeleteAccountModal}
+										on:keydown={(e) => e.key === 'Enter' && openDeleteAccountModal()}
 										class="w-full rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"
 									>
 										Delete Account
@@ -545,20 +595,24 @@
 				{/if}
 			</div>
 		</div>
-	</div>
+	</main>
 </div>
 
 <!-- Change Password Modal -->
 {#if showChangePasswordModal}
 	<div
 		class="bg-opacity-50 fixed inset-0 z-50 h-full w-full overflow-y-auto bg-gray-600"
-		on:click={closeChangePasswordModal}
-		on:keydown={(e) => e.key === 'Escape' && closeChangePasswordModal()}
-		role="dialog"
-		aria-modal="true"
-		tabindex="-1"
+		on:click={handleBackdropClick}
+		on:keydown={(e) => {
+			if (e.key === 'Escape') {
+				closeChangePasswordModal();
+			} else {
+				handleBackdropKeydown(e);
+			}
+		}}
+		role="presentation"
 	>
-		<div class="relative top-20 mx-auto w-96 rounded-md border bg-white p-5 shadow-lg">
+		<div class="relative top-20 mx-auto w-96 rounded-md border bg-white p-5 shadow-lg" on:click|stopPropagation on:keydown|stopPropagation role="dialog" aria-modal="true" tabindex="-1">
 			<div class="mt-3">
 				<h3 class="mb-4 text-lg font-medium text-gray-900">Change Password</h3>
 
@@ -620,6 +674,7 @@
 						<button
 							type="button"
 							on:click={closeChangePasswordModal}
+							on:keydown={(e) => e.key === 'Enter' && closeChangePasswordModal()}
 							class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
 						>
 							Cancel
@@ -636,19 +691,24 @@
 			</div>
 		</div>
 	</div>
+
 {/if}
 
 <!-- Delete Account Modal -->
 {#if showDeleteAccountModal}
 	<div
 		class="bg-opacity-50 fixed inset-0 z-50 h-full w-full overflow-y-auto bg-gray-600"
-		on:click={closeDeleteAccountModal}
-		on:keydown={(e) => e.key === 'Escape' && closeDeleteAccountModal()}
-		role="dialog"
-		aria-modal="true"
-		tabindex="-1"
+		on:click={handleDeleteBackdropClick}
+		on:keydown={(e) => {
+			if (e.key === 'Escape') {
+				closeDeleteAccountModal();
+			} else {
+				handleDeleteBackdropKeydown(e);
+			}
+		}}
+		role="presentation"
 	>
-		<div class="relative top-20 mx-auto w-96 rounded-md border bg-white p-5 shadow-lg">
+		<div class="relative top-20 mx-auto w-96 rounded-md border bg-white p-5 shadow-lg" on:click|stopPropagation on:keydown|stopPropagation role="dialog" aria-modal="true" tabindex="-1">
 			<div class="mt-3">
 				<h3 class="mb-4 text-lg font-medium text-gray-900">Delete Account</h3>
 
@@ -697,6 +757,7 @@
 						<button
 							type="button"
 							on:click={closeDeleteAccountModal}
+							on:keydown={(e) => e.key === 'Enter' && closeDeleteAccountModal()}
 							class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
 						>
 							Cancel

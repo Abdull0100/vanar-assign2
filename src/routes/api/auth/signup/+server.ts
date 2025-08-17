@@ -4,6 +4,7 @@ import { users, verificationTokens } from '$lib/db/schema';
 import bcrypt from 'bcryptjs';
 import { sendVerificationEmail } from '$lib/email';
 import { eq } from 'drizzle-orm';
+import crypto from 'crypto';
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
@@ -51,11 +52,12 @@ export const POST: RequestHandler = async ({ request }) => {
 		});
 
 		// Send verification email
-		const url = `${process.env.AUTH_URL || 'http://localhost:5173'}/auth/verify?token=${token}`;
+		const url = `http://localhost:5173/auth/verify?token=${token}`;
 		await sendVerificationEmail(email, url);
 
 		return json({
-			message: 'User created successfully. Please check your email for verification.',
+			success: true,
+			message: 'User created successfully. Verification email sent.',
 			userId: newUser.id
 		});
 	} catch (error) {

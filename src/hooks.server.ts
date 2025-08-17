@@ -53,7 +53,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 			if (sessionData.length > 0 && sessionData[0].expires > new Date()) {
 				session = {
-					user: sessionData[0].user
+					user: sessionData[0].user,
+					expires: sessionData[0].expires.toISOString()
 				};
 			}
 		} catch (error) {
@@ -81,7 +82,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	// Set session in locals for pages to use
-	event.locals.getSession = async () => session;
+	event.locals.getSession = async () => session as any;
 
 	// Continue with the request
 	return resolve(event);
@@ -102,7 +103,7 @@ export const handleError: HandleServerError = async ({ error, event }) => {
 	
 	// In development, show more details
 	return {
-		message: error.message || 'An unexpected error occurred',
-		code: error.code || 'UNKNOWN_ERROR'
+		message: (error as Error)?.message || 'An unexpected error occurred',
+		code: (error as any)?.code || 'UNKNOWN_ERROR'
 	};
 };

@@ -79,20 +79,20 @@
 			</p>
 			
 			<!-- Development Details (only show in dev) -->
-			{#if error && import.meta.env.DEV}
-				<details class="mt-6 text-left">
-					<summary class="cursor-pointer text-sm text-gray-500 hover:text-gray-700 mb-2">
-						🔧 Developer Information
-					</summary>
-					<div class="bg-gray-100 rounded-lg p-4 text-sm font-mono text-gray-800 overflow-auto">
-						<strong>Error:</strong> {error.message || 'Unknown error'}<br>
-						{#if error.stack}
-							<strong>Stack:</strong><br>
-							<pre class="whitespace-pre-wrap text-xs mt-2">{error.stack}</pre>
-						{/if}
-					</div>
-				</details>
-			{/if}
+					{#if error && import.meta.env.DEV}
+			<details class="mt-6 text-left">
+				<summary class="cursor-pointer text-sm text-gray-500 hover:text-gray-700 mb-2">
+					🔧 Developer Information
+				</summary>
+				<div class="bg-gray-100 rounded-lg p-4 text-sm font-mono text-gray-800 overflow-auto">
+					<strong>Error:</strong> {error.message || 'Unknown error'}<br>
+					{#if (error as any).stack}
+						<strong>Stack:</strong><br>
+						<pre class="whitespace-pre-wrap text-xs mt-2">{(error as any).stack}</pre>
+					{/if}
+				</div>
+			</details>
+		{/if}
 		</div>
 
 		<!-- Action Buttons -->
@@ -169,9 +169,5 @@
 	@keyframes float {
 		0%, 100% { transform: translateY(0px); }
 		50% { transform: translateY(-10px); }
-	}
-	
-	.animate-float {
-		animation: float 3s ease-in-out infinite;
 	}
 </style>
