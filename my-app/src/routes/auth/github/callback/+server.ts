@@ -108,11 +108,14 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 			expires: expiresAt,
 		});
 
-		console.log("🎉 GitHub OAuth login successful -> redirecting to /");
-		return redirect(302, '/');
+		console.log("🎉 GitHub OAuth login successful -> redirecting to /dashboard");
+		return redirect(302, '/dashboard');
 
 	} catch (err) {
-		console.error('❌ OAuth callback exception (GitHub):', err);
+		if (err instanceof Response || (err as any)?.status === 302) {
+			throw err;
+		}
+		console.error("❌ OAuth callback exception:", err);
 		return redirect(302, '/login?error=oauth_error');
 	}
 };

@@ -109,15 +109,13 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 		});
 
 		console.log('🎉 Google login successful, session created:', session.id);
-		throw redirect(302, '/');
+		throw redirect(302, '/dashboard');
 
 	} catch (err) {
-		// ✅ If it's a redirect, just rethrow it (not an error)
-		if (err instanceof Response && err.status === 302) {
+		if (err instanceof Response || (err as any)?.status === 302) {
 			throw err;
 		}
-
-		console.error('❌ OAuth callback exception:', err);
+		console.error("❌ OAuth callback exception:", err);
 		throw redirect(302, '/login?error=oauth_callback_failed');
 	}
 }
