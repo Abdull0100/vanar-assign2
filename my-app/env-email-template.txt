@@ -1,0 +1,19 @@
+# Add these lines to your .env file for real email sending:
+
+# For Gmail (recommended):
+EMAIL_USER=your-gmail@gmail.com
+EMAIL_PASS=your-16-character-app-password
+
+# For Outlook/Hotmail:
+# EMAIL_USER=your-email@outlook.com
+# EMAIL_PASS=your-password
+
+# For Yahoo:
+# EMAIL_USER=your-email@yahoo.com
+# EMAIL_PASS=your-app-password
+
+# For your university email (l215653@lhr.nu.edu.pk):
+# You'll need to check with your university IT department for SMTP settings
+# EMAIL_USER=l215653@lhr.nu.edu.pk
+# EMAIL_PASS=your-password
+# You might also need to change the SMTP host in src/lib/utils/email.ts

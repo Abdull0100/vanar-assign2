@@ -3,12 +3,12 @@ import { randomBytes } from 'crypto';
 
 // Email configuration
 const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com', // You can change this to your email provider
-  port: 587,
+  host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  port: parseInt(process.env.SMTP_PORT || '587'),
   secure: false, // true for 465, false for other ports
   auth: {
-    user: process.env.EMAIL_USER || 'your-email@gmail.com',
-    pass: process.env.EMAIL_PASS || 'your-app-password'
+    user: process.env.SMTP_USER || 'your-email@gmail.com',
+    pass: process.env.SMTP_PASS || 'your-app-password'
   }
 });
 
@@ -28,7 +28,7 @@ export async function sendVerificationEmail(
     const verificationUrl = `${baseUrl}/verify/${token}`;
     
     const mailOptions = {
-      from: `"MyApp" <${process.env.EMAIL_USER || 'noreply@myapp.com'}>`,
+      from: `"MyApp" <${process.env.SMTP_USER || 'noreply@myapp.com'}>`,
       to: email,
       subject: 'Verify your email address',
       html: `
@@ -75,17 +75,7 @@ export async function sendVerificationEmail(
       `
     };
 
-    // For development, log the email instead of sending
-    if (process.env.NODE_ENV === 'development') {
-      console.log('📧 [DEV] Verification email would be sent:');
-      console.log('   To:', email);
-      console.log('   Subject:', mailOptions.subject);
-      console.log('   Verification URL:', verificationUrl);
-      console.log('   Email HTML:', mailOptions.html);
-      return true;
-    }
-
-    // Send the actual email in production
+    // Send the actual email
     await transporter.sendMail(mailOptions);
     console.log('✅ Verification email sent to:', email);
     return true;
@@ -107,7 +97,7 @@ export async function sendPasswordResetEmail(
     const resetUrl = `${baseUrl}/reset/${token}`;
     
     const mailOptions = {
-      from: `"MyApp" <${process.env.EMAIL_USER || 'noreply@myapp.com'}>`,
+      from: `"MyApp" <${process.env.SMTP_USER || 'noreply@myapp.com'}>`,
       to: email,
       subject: 'Reset your password',
       html: `
@@ -149,16 +139,7 @@ export async function sendPasswordResetEmail(
       `
     };
 
-    // For development, log the email instead of sending
-    if (process.env.NODE_ENV === 'development') {
-      console.log('📧 [DEV] Password reset email would be sent:');
-      console.log('   To:', email);
-      console.log('   Subject:', mailOptions.subject);
-      console.log('   Reset URL:', resetUrl);
-      return true;
-    }
-
-    // Send the actual email in production
+    // Send the actual email
     await transporter.sendMail(mailOptions);
     console.log('✅ Password reset email sent to:', email);
     return true;

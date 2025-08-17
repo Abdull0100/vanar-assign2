@@ -1,63 +1,145 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { redirect, error, fail } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { users, passwordResets } from '$lib/server/db/schema';
 import { eq, and, gt } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
+import type { PageServerLoad } from './$types';
 
-export const load = async ({ params }) => {
-  const { token } = params;
-  if (!token) {
-    return { error: 'Invalid or expired reset link' };
-  }
+export const load: PageServerLoad = async ({ params }) => {
+	const { token } = params;
 
-  const [reset] = await db
-    .select()
-    .from(passwordResets)
-    .where(and(eq(passwordResets.token, token), gt(passwordResets.expiresAt, new Date())));
+	if (!token) {
+		throw error(400, 'Invalid reset token');
+	}
 
-  if (!reset) {
-    return { error: 'Invalid or expired reset link' };
-  }
+	try {
+		// Find the reset token
+		const [resetRecord] = await db
+			.select()
+			.from(passwordResets)
+			.where(
+				and(
+					eq(passwordResets.token, token),
+					gt(passwordResets.expiresAt, new Date())
+				)
+			);
 
-  return { token };
+		if (!resetRecord) {
+			// Check if token exists but is expired
+			const [expiredReset] = await db
+				.select()
+				.from(passwordResets)
+				.where(eq(passwordResets.token, token));
+
+			if (expiredReset) {
+				return {
+					status: 'expired',
+					message: 'Password reset link has expired. Please request a new one.'
+				};
+			}
+
+			return {
+				status: 'invalid',
+				message: 'Invalid reset link. Please check your email and try again.'
+			};
+		}
+
+		// Get the user
+		const [user] = await db
+			.select()
+			.from(users)
+			.where(eq(users.id, resetRecord.userId));
+
+		if (!user) {
+			return {
+				status: 'error',
+				message: 'User not found. Please contact support.'
+			};
+		}
+
+		return {
+			status: 'valid',
+			token,
+			user: {
+				email: user.email,
+				name: user.name
+			}
+		};
+
+	} catch (err) {
+		console.error('❌ Error during password reset validation:', err);
+		return {
+			status: 'error',
+			message: 'An error occurred. Please try again.'
+		};
+	}
 };
 
 export const actions = {
-  default: async ({ request, params }) => {
-    const { token } = params;
-    const formData = await request.formData();
-    const password = formData.get('password') as string;
-    const confirmPassword = formData.get('confirmPassword') as string;
+	reset: async ({ request, params }) => {
+		const formData = await request.formData();
+		const password = formData.get('password') as string;
+		const confirmPassword = formData.get('confirmPassword') as string;
+		const { token } = params;
 
-    // Validate token
-    const [reset] = await db
-      .select()
-      .from(passwordResets)
-      .where(and(eq(passwordResets.token, token), gt(passwordResets.expiresAt, new Date())));
+		if (!token) {
+			return fail(400, { error: 'Invalid reset token' });
+		}
 
-    if (!reset) {
-      return fail(400, { error: 'Invalid or expired reset link' });
-    }
+		if (!password || !confirmPassword) {
+			return fail(400, { error: 'Password and confirmation are required' });
+		}
 
-    if (!password || password.length < 8) {
-      return fail(400, { error: 'Password must be at least 8 characters long' });
-    }
+		if (password.length < 6) {
+			return fail(400, { error: 'Password must be at least 6 characters long' });
+		}
 
-    if (password !== confirmPassword) {
-      return fail(400, { error: 'Passwords do not match' });
-    }
+		if (password !== confirmPassword) {
+			return fail(400, { error: 'Passwords do not match' });
+		}
 
-    // Hash password and update user
-    const passwordHash = await bcrypt.hash(password, 10);
-    await db
-      .update(users)
-      .set({ passwordHash })
-      .where(eq(users.id, reset.userId));
+		try {
+			// Find the reset token
+			const [resetRecord] = await db
+				.select()
+				.from(passwordResets)
+				.where(
+					and(
+						eq(passwordResets.token, token),
+						gt(passwordResets.expiresAt, new Date())
+					)
+				);
 
-    // Delete password reset token
-    await db.delete(passwordResets).where(eq(passwordResets.id, reset.id));
+			if (!resetRecord) {
+				return fail(400, { error: 'Invalid or expired reset token' });
+			}
 
-    // Redirect to login with success message
-    throw redirect(302, '/login?reset=success');
-  }
+			// Hash the new password
+			const passwordHash = await bcrypt.hash(password, 10);
+
+			// Update user's password
+			await db
+				.update(users)
+				.set({ passwordHash })
+				.where(eq(users.id, resetRecord.userId));
+
+			// Delete the reset token
+			await db
+				.delete(passwordResets)
+				.where(eq(passwordResets.token, token));
+
+			console.log('✅ Password reset successful for user:', resetRecord.userId);
+
+			// Redirect to login with success message
+			throw redirect(302, '/login?reset=success');
+
+		} catch (err) {
+			if (err instanceof Response) {
+				throw err;
+			}
+			
+			console.error('❌ Error during password reset:', err);
+			return fail(500, { error: 'An error occurred. Please try again.' });
+		}
+	}
 };

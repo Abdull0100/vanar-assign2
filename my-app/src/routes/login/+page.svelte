@@ -30,6 +30,17 @@
           </div>
         </div>
       {/if}
+      
+      {#if data.reset}
+        <div class="mt-4 bg-green-50 border border-green-200 rounded-lg p-4">
+          <div class="flex items-center">
+            <span class="text-green-500 text-lg mr-2">🔑</span>
+            <p class="text-green-800 text-sm font-medium">
+              Password reset successfully! You can now log in with your new password.
+            </p>
+          </div>
+        </div>
+      {/if}
     </div>
     
     <div class="bg-white py-8 px-6 shadow-lg rounded-lg border border-gray-200">
@@ -50,9 +61,14 @@
         </div>
         
         <div>
-          <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
-            Password
-          </label>
+          <div class="flex items-center justify-between mb-2">
+            <label for="password" class="block text-sm font-medium text-gray-700">
+              Password
+            </label>
+            <a href="/forgot" class="text-sm text-blue-600 hover:text-blue-500 transition-colors">
+              Forgot password?
+            </a>
+          </div>
           <input 
             type="password" 
             id="password" 

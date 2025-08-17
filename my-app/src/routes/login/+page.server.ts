@@ -7,7 +7,8 @@ import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ url }) => {
 	const verified = url.searchParams.get('verified') === 'true';
-	return { verified };
+	const reset = url.searchParams.get('reset') === 'success';
+	return { verified, reset };
 };
 
 export const actions = {
