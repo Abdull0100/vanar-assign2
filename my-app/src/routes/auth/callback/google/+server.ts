@@ -1,6 +1,7 @@
 // src/routes/auth/callback/google/+server.ts
 import { env } from '$env/dynamic/private';
 import { redirect } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
 import { db } from '$lib/server/db';
 import { users, sessions } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
@@ -12,7 +13,7 @@ function sessionExpiry() {
 	return expires;
 }
 
-export async function GET({ url, cookies }) {
+export const GET: RequestHandler = async ({ url, cookies }) => {
 	console.log('🟢 [/auth/callback/google] Callback route accessed');
 	console.log('🔹 Full callback URL:', url.toString());
 
@@ -115,10 +116,8 @@ export async function GET({ url, cookies }) {
 		if (err instanceof Response && err.status === 302) {
 			throw err;
 		}
-			console.log("✅ Successful redirect to:", err.headers.get('location'));
-	
+
 		console.error('❌ OAuth callback exception:', err);
 		throw redirect(302, '/login?error=oauth_callback_failed');
-		// ❌ This is an actual error
-		console.error('❌ Google OAuth error:', err);
+	}
 }
