@@ -3,14 +3,12 @@ import { DrizzleAdapter } from '@auth/drizzle-adapter';
 
 // ✅ Use SvelteKit provider imports
 import Credentials from '@auth/sveltekit/providers/credentials';
-import Google from '@auth/sveltekit/providers/google';
-import GitHub from '@auth/sveltekit/providers/github';
 import Email from '@auth/sveltekit/providers/email';
 
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { eq } from 'drizzle-orm';
-import { AUTH_SECRET, GMAIL_USER, GMAIL_APP_PASSWORD,baseUrl} from '$env/static/private';
+import { AUTH_SECRET, GMAIL_USER, GMAIL_APP_PASSWORD,GOOGLE_SECRET,GOOGLE_ID,GITHUB_ID,GITHUB_SECRET } from '$env/static/private';
 import { db } from './db';
 import { users, accounts, sessions, verificationTokens } from './db/schema';
 import { sendVerificationEmail } from '$lib/email';
@@ -75,9 +73,8 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 		// 		}
 		// 	}
 		// }),
-		// Temporarily disabled OAuth providers to eliminate __data.json error
-		// Using custom login API for credentials authentication
-		// OAuth will be re-enabled once core functionality works
+		
+		// OAuth providers are disabled - using custom OAuth handlers instead
 	],
 
 	callbacks: {
@@ -90,8 +87,7 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 		},
 
 		async signIn({ user, account }) {
-			// OAuth providers are disabled for now
-			// This callback will be updated when OAuth is re-enabled
+			// OAuth providers are disabled - using custom OAuth handlers instead
 			return true;
 		},
 
