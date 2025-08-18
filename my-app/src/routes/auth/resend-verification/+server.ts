@@ -1,5 +1,5 @@
 import { json, fail } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
+import { dbClient } from '$lib/server/db';
 import { users, emailVerifications } from '$lib/server/db/schema';
 import { eq, and, gt } from 'drizzle-orm';
 import { sendVerificationEmail, generateVerificationToken } from '$lib/utils/email';
@@ -14,7 +14,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		// Find the user
-		const [user] = await db
+		const [user] = await dbClient
 			.select()
 			.from(users)
 			.where(eq(users.email, email));
@@ -34,7 +34,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		// Check if there's already a valid verification token
-		const [existingVerification] = await db
+		const [existingVerification] = await dbClient
 			.select()
 			.from(emailVerifications)
 			.where(
@@ -56,12 +56,12 @@ export const POST: RequestHandler = async ({ request }) => {
 		verificationExpiresAt.setHours(verificationExpiresAt.getHours() + 24); // 24 hours
 
 		// Delete any expired tokens for this user
-		await db
+		await dbClient
 			.delete(emailVerifications)
 			.where(eq(emailVerifications.userId, user.id));
 
 		// Insert new verification record
-		await db.insert(emailVerifications).values({
+		await dbClient.insert(emailVerifications).values({
 			userId: user.id,
 			token: verificationToken,
 			expiresAt: verificationExpiresAt

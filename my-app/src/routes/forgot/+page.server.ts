@@ -1,8 +1,8 @@
 import { fail } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
+import { dbClient } from '$lib/server/db';
 import { users, passwordResets } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
-import { sendPasswordResetEmail, generateVerificationToken } from '$lib/utils/email';
+import { sendPasswordResetOTP, generateOTP } from '$lib/utils/email';
 
 export const actions = {
   default: async ({ request }) => {
@@ -14,36 +14,42 @@ export const actions = {
     }
 
     // Find user by email
-    const [user] = await db.select().from(users).where(eq(users.email, email));
+    		const [user] = await dbClient.select().from(users).where(eq(users.email, email));
 
     if (user) {
-      // Generate secure token
-      const token = generateVerificationToken();
+      // Generate 6-digit OTP
+      const otp = generateOTP();
       const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 1); // 1 hour expiration
+      expiresAt.setHours(expiresAt.getHours() + 24); // 24 hours expiration
 
-      // Delete any existing reset tokens for this user
-      await db.delete(passwordResets).where(eq(passwordResets.userId, user.id));
+      // Delete any existing reset OTPs for this user
+      		await dbClient.delete(passwordResets).where(eq(passwordResets.userId, user.id));
 
       // Insert password reset record
-      await db.insert(passwordResets).values({
+      		await dbClient.insert(passwordResets).values({
         userId: user.id,
-        token,
+        otp,
         expiresAt
       });
 
       // Send email
-      const emailSent = await sendPasswordResetEmail(
+      console.log('📧 About to send OTP email...');
+      console.log('📧 User email:', user.email);
+      console.log('📧 Generated OTP:', otp);
+      
+      const emailSent = await sendPasswordResetOTP(
         user.email, 
         user.name || 'User', 
-        token
+        otp
       );
 
       if (!emailSent) {
-        return fail(500, { error: 'Failed to send reset email. Please try again.' });
+        console.log('❌ Email sending failed');
+        return fail(500, { error: 'Failed to send OTP email. Please try again.' });
       }
 
-      console.log('✅ Password reset email sent to:', user.email);
+      console.log('✅ Password reset OTP sent to:', user.email);
+      console.log('✅ Email sending completed successfully');
     }
 
     // Always return success (security: don't reveal if email exists)

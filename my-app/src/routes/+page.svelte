@@ -34,7 +34,7 @@
 			
 			<!-- Tagline -->
 			<p class="text-xl md:text-2xl text-gray-600 mb-12 max-w-3xl mx-auto leading-relaxed">
-				Your modern authentication platform with OAuth, role-based access, and secure sessions
+				Your modern platform with AI-powered chat, OAuth authentication, role-based access, and secure sessions
 			</p>
 			
 			<!-- Welcome Message for Logged-in Users -->
@@ -81,17 +81,18 @@
 					</a>
 				{:else}
 					<!-- Logged in - Show App Actions -->
+					
 					<a 
-						href="/dashboard" 
-						class="group relative px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 flex items-center space-x-2"
+						href="/chat" 
+						class="group relative px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 flex items-center space-x-2"
 					>
-						<span>📊</span>
-						<span>Dashboard</span>
+						<span>🤖</span>
+						<span>AI Chat</span>
 					</a>
 					
 					<a 
 						href="/profile" 
-						class="group relative px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 flex items-center space-x-2"
+						class="group relative px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 flex items-center space-x-2"
 					>
 						<span>👤</span>
 						<span>Profile</span>
@@ -121,7 +122,7 @@
 	
 	<!-- Feature Highlights -->
 	<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
-		<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
 			<div class="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-white/20 text-center hover:scale-105 transition-transform duration-300 animate-fade-in-up" style="animation-delay: 0.1s;">
 				<div class="text-4xl mb-4 animate-bounce">🔐</div>
 				<h3 class="text-xl font-bold text-gray-900 mb-3">Secure Authentication</h3>
@@ -129,12 +130,18 @@
 			</div>
 			
 			<div class="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-white/20 text-center hover:scale-105 transition-transform duration-300 animate-fade-in-up" style="animation-delay: 0.2s;">
+				<div class="text-4xl mb-4 animate-bounce" style="animation-delay: 0.5s;">🤖</div>
+				<h3 class="text-xl font-bold text-gray-900 mb-3">AI Chat Assistant</h3>
+				<p class="text-gray-600">Powered by Google Gemini AI with real-time streaming responses</p>
+			</div>
+			
+			<div class="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-white/20 text-center hover:scale-105 transition-transform duration-300 animate-fade-in-up" style="animation-delay: 0.3s;">
 				<div class="text-4xl mb-4 animate-bounce" style="animation-delay: 0.5s;">👥</div>
 				<h3 class="text-xl font-bold text-gray-900 mb-3">Role-Based Access</h3>
 				<p class="text-gray-600">Admin and user roles with protected routes and permissions</p>
 			</div>
 			
-			<div class="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-white/20 text-center hover:scale-105 transition-transform duration-300 animate-fade-in-up" style="animation-delay: 0.3s;">
+			<div class="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-white/20 text-center hover:scale-105 transition-transform duration-300 animate-fade-in-up" style="animation-delay: 0.4s;">
 				<div class="text-4xl mb-4 animate-bounce" style="animation-delay: 1s;">⚡</div>
 				<h3 class="text-xl font-bold text-gray-900 mb-3">Modern Stack</h3>
 				<p class="text-gray-600">Built with SvelteKit, PostgreSQL, and TailwindCSS</p>

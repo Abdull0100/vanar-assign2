@@ -14,7 +14,7 @@
         Forgot your password?
       </h2>
       <p class="mt-2 text-center text-sm text-gray-600">
-        Enter your email address and we'll send you a link to reset your password.
+        Enter your email address and we'll send you an OTP code to reset your password.
       </p>
     </div>
     
@@ -26,13 +26,13 @@
           </div>
           <h3 class="text-lg font-medium text-gray-900 mb-2">Check your email</h3>
           <p class="text-sm text-gray-600 mb-6">
-            If an account with that email exists, we've sent a password reset link.
+            If an account with that email exists, we've sent an OTP code. Check your email and enter the code below.
           </p>
           <a 
-            href="/login" 
+            href="/reset-otp" 
             class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
           >
-            Back to Login
+            Enter OTP Code
           </a>
         </div>
       {:else}
@@ -62,7 +62,7 @@
             type="submit" 
             class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
           >
-            Send Reset Link
+            Send OTP Code
           </button>
         </form>
       {/if}

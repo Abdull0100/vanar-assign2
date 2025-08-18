@@ -1,5 +1,5 @@
 import { redirect, error, fail } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
+import { dbClient } from '$lib/server/db';
 import { users, passwordResets } from '$lib/server/db/schema';
 import { eq, and, gt } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
@@ -14,7 +14,7 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	try {
 		// Find the reset token
-		const [resetRecord] = await db
+		const [resetRecord] = await dbClient
 			.select()
 			.from(passwordResets)
 			.where(
@@ -26,7 +26,7 @@ export const load: PageServerLoad = async ({ params }) => {
 
 		if (!resetRecord) {
 			// Check if token exists but is expired
-			const [expiredReset] = await db
+			const [expiredReset] = await dbClient
 				.select()
 				.from(passwordResets)
 				.where(eq(passwordResets.token, token));
@@ -45,7 +45,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		}
 
 		// Get the user
-		const [user] = await db
+		const [user] = await dbClient
 			.select()
 			.from(users)
 			.where(eq(users.id, resetRecord.userId));
@@ -100,7 +100,7 @@ export const actions = {
 
 		try {
 			// Find the reset token
-			const [resetRecord] = await db
+			const [resetRecord] = await dbClient
 				.select()
 				.from(passwordResets)
 				.where(
@@ -118,13 +118,13 @@ export const actions = {
 			const passwordHash = await bcrypt.hash(password, 10);
 
 			// Update user's password
-			await db
+			await dbClient
 				.update(users)
 				.set({ passwordHash })
 				.where(eq(users.id, resetRecord.userId));
 
 			// Delete the reset token
-			await db
+			await dbClient
 				.delete(passwordResets)
 				.where(eq(passwordResets.token, token));
 

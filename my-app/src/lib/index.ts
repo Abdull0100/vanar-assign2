@@ -1,3 +1,4 @@
 // place files you want to import through the `$lib` alias in this folder.
 
 export { default as GitHubLoginButton } from './GitHubLoginButton.svelte';
+export { default as ChatInterface } from './components/ChatInterface.svelte';

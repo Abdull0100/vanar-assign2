@@ -12,6 +12,7 @@
 				</div>
 				<h1 class="text-3xl font-bold text-gray-900 mb-2">Account Created!</h1>
 				<p class="text-gray-600">Your account has been successfully created</p>
+				<p class="text-purple-600 font-medium mt-2">🎉 Welcome! You can now try our AI Chat feature!</p>
 			</div>
 
 			<!-- Email Verification Notice -->
@@ -58,6 +59,14 @@
 
 			<!-- Action Buttons -->
 			<div class="space-y-4">
+				<a 
+					href="/chat" 
+					class="w-full bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 flex items-center justify-center space-x-2"
+				>
+					<span>🤖</span>
+					<span>Try AI Chat Now</span>
+				</a>
+				
 				<a 
 					href="/login" 
 					class="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 flex items-center justify-center space-x-2"

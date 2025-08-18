@@ -1,38 +1,98 @@
-# sv
+# AI Chat Application
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+A modern web application built with SvelteKit, featuring AI-powered chat functionality using Google Gemini API.
 
-## Creating a project
+## Features
 
-If you're seeing this, you've probably already done this step. Congrats!
+- 🤖 **AI Chat Interface**: Powered by Google Gemini AI
+- 🔐 **Authentication**: Complete auth system with email verification
+- 📧 **Email Integration**: Support for Gmail, Outlook, Yahoo, and university emails
+- 🎨 **Modern UI**: Built with TailwindCSS for responsive design
+- ⚡ **Real-time Streaming**: Live chat responses with streaming
+- 🛡️ **Type Safety**: Full TypeScript support
 
-```sh
-# create a new project in the current directory
-npx sv create
+## AI Chat Setup
 
-# create a new project in my-app
-npx sv create my-app
+### 1. Get Google Gemini API Key
+
+1. Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Create a new API key
+3. Copy the API key
+
+### 2. Configure Environment Variables
+
+Create a `.env` file in the root directory and add:
+
+```env
+API_KEY=your-gemini-api-key-here
 ```
 
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+### 3. Install Dependencies
 
 ```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+pnpm install
 ```
 
-## Building
-
-To create a production version of your app:
+### 4. Start Development Server
 
 ```sh
-npm run build
+pnpm dev
 ```
 
-You can preview the production build with `npm run preview`.
+### 5. Access Chat Interface
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+Navigate to `/chat` in your browser to use the AI chat interface.
+
+## Chat Features
+
+- **Real-time Streaming**: Responses stream in real-time as the AI generates them
+- **Message History**: View conversation history with timestamps
+- **Error Handling**: Graceful error display and recovery
+- **Loading States**: Visual feedback during AI processing
+- **Responsive Design**: Works on desktop and mobile devices
+- **Keyboard Shortcuts**: Press Enter to send, Shift+Enter for new line
+
+## API Endpoints
+
+- `POST /api/chat` - Chat endpoint that accepts `{ messages }` and streams responses
+
+## Tech Stack
+
+- **Frontend**: SvelteKit + TypeScript + TailwindCSS
+- **AI**: Google Gemini API via Vercel AI SDK
+- **Styling**: TailwindCSS
+- **Authentication**: SvelteKit Auth
+- **Database**: PostgreSQL with Drizzle ORM
+
+## Development
+
+```sh
+# Install dependencies
+pnpm install
+
+# Start development server
+pnpm dev
+
+# Build for production
+pnpm build
+
+# Preview production build
+pnpm preview
+```
+
+## Project Structure
+
+```
+src/
+├── lib/
+│   ├── components/
+│   │   └── ChatInterface.svelte    # Main chat component
+│   └── ...
+├── routes/
+│   ├── api/
+│   │   └── chat/
+│   │       └── +server.ts          # Chat API endpoint
+│   └── chat/
+│       └── +page.svelte            # Chat page
+└── ...
+```

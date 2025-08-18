@@ -1,7 +1,7 @@
 // src/routes/auth/github/callback/+server.ts
 import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { db } from '$lib/server/db';
+import { getDb } from '$lib/server/db';
 import { users, sessions } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
@@ -72,6 +72,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 		}
 
 		// 4. Upsert user
+		const db = getDb();
 		let user = await db.query.users.findFirst({
 			where: eq(users.email, primaryEmail),
 		});
@@ -119,8 +120,8 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 			expires: expiresAt,
 		});
 
-		console.log("🎉 GitHub OAuth login successful -> redirecting to /dashboard");
-		return redirect(302, '/dashboard');
+		console.log("🎉 GitHub OAuth login successful -> redirecting to /chat");
+		return redirect(302, '/chat');
 
 	} catch (err) {
 		if (err instanceof Response || (err as any)?.status === 302) {

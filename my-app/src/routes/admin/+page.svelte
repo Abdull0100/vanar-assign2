@@ -6,7 +6,7 @@
   <div class="bg-white shadow-lg rounded-lg border border-gray-200 p-8">
     <div class="text-center">
       <h1 class="text-4xl font-bold text-gray-900 mb-4">
-        Admin Dashboard 🔐
+        		Admin Panel 🔐
       </h1>
       <p class="text-lg text-gray-600 mb-8">
         Welcome, {data.user.name}! You have administrative privileges.
