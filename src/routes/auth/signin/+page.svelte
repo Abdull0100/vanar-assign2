@@ -85,6 +85,19 @@
 
 <div class="flex min-h-screen flex-col justify-center bg-gray-50 py-12 sm:px-6 lg:px-8">
 	<div class="sm:mx-auto sm:w-full sm:max-w-md">
+		<!-- Back Button -->
+		<div class="mb-4">
+			<button
+				on:click={() => goto('/')}
+				class="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 transition-colors"
+			>
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+				</svg>
+				Back to Home
+			</button>
+		</div>
+		
 		<h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">Sign in to your account</h2>
 		<p class="mt-2 text-center text-sm text-gray-600">
 			Or
