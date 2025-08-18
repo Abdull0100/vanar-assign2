@@ -302,6 +302,91 @@ export async function sendPasswordResetEmail(
   }
 }
 
+// Send OTP for email verification
+export async function sendVerificationOTP(
+  email: string, 
+  name: string, 
+  otp: string,
+  baseUrl: string = 'http://localhost:5173'
+): Promise<boolean> {
+  try {
+    const mailOptions = {
+      from: process.env.SMTP_FROM || `"MyApp" <${process.env.SMTP_USER || 'noreply@myapp.com'}>`,
+      to: email,
+      subject: 'Email Verification OTP Code',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px; text-align: center; margin-bottom: 30px;">
+            <h1 style="color: white; margin: 0; font-size: 28px;">Email Verification OTP 🚀</h1>
+          </div>
+          
+          <div style="background: #f8f9fa; padding: 30px; border-radius: 10px; margin-bottom: 20px;">
+            <h2 style="color: #333; margin-top: 0;">Hi ${name},</h2>
+            <p style="color: #666; line-height: 1.6; font-size: 16px;">
+              Welcome to MyApp! To complete your registration and verify your email address, 
+              please use the OTP code below.
+            </p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <div style="background: #fff; border: 3px solid #667eea; border-radius: 10px; padding: 20px; display: inline-block;">
+                <h3 style="color: #333; margin: 0 0 10px 0; font-size: 18px;">Your Verification OTP</h3>
+                <div style="font-size: 32px; font-weight: bold; color: #667eea; letter-spacing: 5px; font-family: monospace;">
+                  ${otp}
+                </div>
+              </div>
+            </div>
+            
+            <p style="color: #666; font-size: 14px; margin-top: 20px;">
+              Enter this code on the verification page to complete your registration. This OTP will expire in 1 hour.
+            </p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${baseUrl}/verify-otp" 
+                 style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                        color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; 
+                        font-weight: bold; font-size: 16px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
+                ✅ Verify Email Address
+              </a>
+            </div>
+          </div>
+          
+          <div style="background: #e9ecef; padding: 20px; border-radius: 8px; text-align: center;">
+            <p style="color: #6c757d; margin: 0; font-size: 14px;">
+              If you didn't create an account, you can safely ignore this email.
+            </p>
+          </div>
+        </div>
+      `
+    };
+
+    // Send the actual email
+    console.log('📧 Attempting to send verification OTP email...');
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✅ Verification OTP sent to:', email);
+    console.log('📧 Full response:', JSON.stringify(info, null, 2));
+    
+    // If using test service, show preview URL
+    if (info.messageId) {
+      console.log('📧 Message ID:', info.messageId);
+      if (info.previewURL) {
+        console.log('📧 Preview URL:', info.previewURL);
+      } else {
+        // Generate preview URL for Ethereal Email
+        const previewURL = `https://ethereal.email/message/${info.messageId}`;
+        console.log('📧 Preview URL:', previewURL);
+      }
+    } else {
+      console.log('❌ No messageId received from email service');
+    }
+    
+    return true;
+    
+  } catch (error) {
+    console.error('❌ Failed to send verification OTP:', error);
+    return false;
+  }
+}
+
 export async function sendSignupOtpEmail(email: string, otp: string) {
 	// Only run on server
 	if (typeof process !== 'undefined' && process.versions?.node) {

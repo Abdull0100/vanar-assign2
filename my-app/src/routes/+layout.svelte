@@ -2,6 +2,7 @@
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import { page } from '$app/stores';
+	import ThemeSwitcher from '$lib/components/ThemeSwitcher.svelte';
 
 	let { children, data } = $props<{ data: { user: any } }>();
 </script>
@@ -13,68 +14,65 @@
 <nav class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
 	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 		<div class="flex justify-between h-16">
-			<div class="flex items-center space-x-8">
-				<a href="/" class="text-xl font-bold text-gray-900 hover:text-gray-700 transition-colors">
-					MyApp
+			<div class="flex items-center">
+				<a href="/" class="flex items-center space-x-2">
+					<span class="text-2xl">🚀</span>
+					<span class="text-xl font-bold text-gray-900">MyApp</span>
 				</a>
-				<div class="hidden md:flex space-x-6">
+			</div>
+			
+			<div class="flex items-center space-x-4">
+				{#if data.user}
 					<a 
 						href="/chat" 
-						class="px-3 py-2 rounded-md text-sm font-medium transition-colors {$page.url.pathname === '/chat' 
-							? 'bg-purple-100 text-purple-700' 
-							: 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'}"
+						class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors"
 					>
-						🤖 AI Chat
+						🤖 Chat
 					</a>
-
 					<a 
 						href="/profile" 
-						class="px-3 py-2 rounded-md text-sm font-medium transition-colors {$page.url.pathname === '/profile' 
-							? 'bg-blue-100 text-blue-700' 
-							: 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'}"
+						class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors"
 					>
-						Profile
+						👤 Profile
 					</a>
-					{#if data.user?.role === 'admin'}
+					{#if data.user.role === 'admin'}
 						<a 
 							href="/admin" 
-							class="px-3 py-2 rounded-md text-sm font-medium transition-colors {$page.url.pathname === '/admin' 
-								? 'bg-red-100 text-red-700' 
-								: 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'}"
+							class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors"
 						>
-							🔐 Admin Dashboard
+							🔐 Admin
 						</a>
 					{/if}
-				</div>
-			</div>
-			<div class="flex items-center space-x-4">
-				<!-- Admin Badge -->
-				{#if data.user?.role === 'admin'}
-					<span class="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
-						✅ Admin
-					</span>
-				{/if}
-				
-				<!-- Mobile AI Chat Link -->
-				<a 
-					href="/chat" 
-					class="md:hidden px-3 py-2 text-sm font-medium text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded-md transition-colors"
-				>
-					🤖 Chat
-				</a>
-				<form method="POST" action="/logout" class="inline">
-					<button
-						type="submit"
-						class="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors"
+					<form method="POST" action="/logout" class="inline">
+						<button 
+							type="submit" 
+							class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+						>
+							🚪 Logout
+						</button>
+					</form>
+				{:else}
+					<a 
+						href="/login" 
+						class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors"
 					>
-						Logout
-					</button>
-				</form>
+						🔐 Login
+					</a>
+					<a 
+						href="/signup" 
+						class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+					>
+						📝 Sign Up
+					</a>
+				{/if}
 			</div>
 		</div>
 	</div>
 </nav>
 
-<main class="min-h-screen bg-gray-50">
-	{@render children?.()}
+<main>
+	{@render children()}
 </main>
+
+<!-- Theme Switcher for testing -->
+<ThemeSwitcher />

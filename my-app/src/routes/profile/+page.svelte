@@ -1,5 +1,5 @@
 <script lang="ts">
-	let { data } = $props<{ data: { user: any } }>();
+	let { data } = $props<{ data: { user: any; reset?: boolean } }>();
 	
 	let isMakingAdmin = $state(false);
 	let adminMessage = $state<string | null>(null);
@@ -37,6 +37,19 @@
 
 <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
   <div class="bg-white shadow-lg rounded-lg border border-gray-200 p-8">
+    <!-- Password Reset Success Message -->
+    {#if data.reset}
+      <div class="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
+        <div class="flex items-center">
+          <span class="text-green-500 text-lg mr-2">✅</span>
+          <div>
+            <h3 class="text-green-800 font-medium">Password Reset Successful!</h3>
+            <p class="text-green-700 text-sm">Your password has been updated and you are now logged in.</p>
+          </div>
+        </div>
+      </div>
+    {/if}
+
     <div class="text-center mb-8">
       <h1 class="text-3xl font-bold text-gray-900 mb-2">Your Profile</h1>
       <p class="text-gray-600">Manage your account information</p>

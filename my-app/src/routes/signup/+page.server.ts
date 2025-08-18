@@ -3,7 +3,7 @@ import { getDb } from '$lib/server/db';
 import { users, emailVerifications } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
-import { sendVerificationEmail, generateVerificationToken } from '$lib/utils/email';
+import { sendVerificationOTP, generateOTP } from '$lib/utils/email';
 
 export const actions = {
   signup: async ({ request }) => {
@@ -46,36 +46,39 @@ export const actions = {
     // Hash the password
     const passwordHash = await bcrypt.hash(password, 10);
 
-    	// Create the user (unverified by default)
-			const [newUser] = await db.insert(users).values({
-		email,
-		name,
-		passwordHash,
-		verified: false,
-		role: 'user', // Default role
-		provider: 'email' // Mark as email/password user
-	}).returning();
+    // Create the user (unverified by default)
+    const [newUser] = await db.insert(users).values({
+      email,
+      name,
+      passwordHash,
+      verified: false,
+      role: 'user', // Default role
+      provider: 'email' // Mark as email/password user
+    }).returning();
 
-    // Generate verification token
-    const verificationToken = generateVerificationToken();
+    // Generate 6-digit OTP
+    const otp = generateOTP();
     const verificationExpiresAt = new Date();
-    verificationExpiresAt.setHours(verificationExpiresAt.getHours() + 24); // 24 hours
+    verificationExpiresAt.setHours(verificationExpiresAt.getHours() + 1); // 1 hour expiration
 
-    // Insert verification record
-    		await db.insert(emailVerifications).values({
+    // Delete any existing verification tokens for this user
+    await db.delete(emailVerifications).where(eq(emailVerifications.userId, newUser.id));
+
+    // Insert verification record with OTP as token
+    await db.insert(emailVerifications).values({
       userId: newUser.id,
-      token: verificationToken,
+      token: otp, // Store OTP as token
       expiresAt: verificationExpiresAt
     });
 
-    // Send verification email
-    const emailSent = await sendVerificationEmail(email, name || 'User', verificationToken);
+    // Send verification OTP email
+    const emailSent = await sendVerificationOTP(email, name || 'User', otp);
     
     if (!emailSent) {
       // If email fails, clean up the user and token
       await db.delete(users).where(eq(users.id, newUser.id));
       return fail(500, { 
-        error: 'Failed to send verification email. Please try again.',
+        error: 'Failed to send verification OTP. Please try again.',
         email,
         name
       });

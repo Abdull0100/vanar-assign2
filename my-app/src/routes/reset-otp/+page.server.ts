@@ -1,11 +1,12 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db';
-import { users, passwordResets } from '$lib/server/db/schema';
+import { users, passwordResets, sessions } from '$lib/server/db/schema';
 import { eq, and, lt } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
+import { randomUUID } from 'crypto';
 
 export const actions = {
-	default: async ({ request }) => {
+	default: async ({ request, cookies }) => {
 		const formData = await request.formData();
 		const email = formData.get('email') as string;
 		const otp = formData.get('otp') as string;
@@ -109,14 +110,35 @@ export const actions = {
 				.where(eq(passwordResets.token, otp));
 			console.log('✅ OTP deleted successfully');
 
-			console.log('✅ Password reset completed successfully, redirecting...');
+			// Create a new session for automatic login
+			const sessionId = randomUUID();
+			const sessionExpiresAt = new Date();
+			sessionExpiresAt.setDate(sessionExpiresAt.getDate() + 30); // 30 days
+
+			await db.insert(sessions).values({
+				id: sessionId,
+				userId: user.id,
+				expiresAt: sessionExpiresAt
+			});
+
+			// Set session cookie
+			cookies.set('session', sessionId, {
+				path: '/',
+				httpOnly: true,
+				secure: process.env.NODE_ENV === 'production',
+				sameSite: 'lax',
+				maxAge: 30 * 24 * 60 * 60 // 30 days
+			});
+
+			console.log('✅ Session created and user logged in automatically');
+			console.log('✅ Password reset and auto-login completed successfully, redirecting to profile...');
 			
 		} catch (error) {
 			console.error('❌ Error resetting password with OTP:', error);
 			return fail(500, { error: 'An error occurred while resetting your password' });
 		}
 
-		// Redirect after successful password reset (outside try-catch)
-		return redirect(302, '/login?reset=success');
+		// Redirect to profile page after successful password reset and auto-login
+		return redirect(302, '/profile?reset=success');
 	}
 };

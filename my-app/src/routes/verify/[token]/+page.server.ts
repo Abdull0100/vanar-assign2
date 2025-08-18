@@ -1,5 +1,5 @@
 import { redirect, error } from '@sveltejs/kit';
-import { dbClient } from '$lib/server/db';
+import { getDb } from '$lib/server/db';
 import { users, emailVerifications } from '$lib/server/db/schema';
 import { eq, and, gt } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
@@ -13,7 +13,7 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	try {
 		// Find the verification token
-		const [verification] = await dbClient
+		const [verification] = await getDb()
 			.select()
 			.from(emailVerifications)
 			.where(
@@ -25,7 +25,7 @@ export const load: PageServerLoad = async ({ params }) => {
 
 		if (!verification) {
 			// Check if token exists but is expired
-			const [expiredVerification] = await dbClient
+			const [expiredVerification] = await getDb()
 				.select()
 				.from(emailVerifications)
 				.where(eq(emailVerifications.token, token));
@@ -45,7 +45,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		}
 
 		// Get the user
-		const [user] = await dbClient
+		const [user] = await getDb()
 			.select()
 			.from(users)
 			.where(eq(users.id, verification.userId));
@@ -70,13 +70,13 @@ export const load: PageServerLoad = async ({ params }) => {
 		}
 
 		// Mark user as verified
-		await dbClient
+		await getDb()
 			.update(users)
 			.set({ verified: true })
 			.where(eq(users.id, user.id));
 
 		// Delete the verification token
-		await dbClient
+		await getDb()
 			.delete(emailVerifications)
 			.where(eq(emailVerifications.token, token));
 

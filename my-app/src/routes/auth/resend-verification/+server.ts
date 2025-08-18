@@ -1,8 +1,8 @@
 import { json, fail } from '@sveltejs/kit';
-import { dbClient } from '$lib/server/db';
+import { getDb } from '$lib/server/db';
 import { users, emailVerifications } from '$lib/server/db/schema';
 import { eq, and, gt } from 'drizzle-orm';
-import { sendVerificationEmail, generateVerificationToken } from '$lib/utils/email';
+import { sendVerificationOTP, generateOTP } from '$lib/utils/email';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ request }) => {
@@ -14,7 +14,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		// Find the user
-		const [user] = await dbClient
+		const [user] = await getDb()
 			.select()
 			.from(users)
 			.where(eq(users.email, email));
@@ -33,8 +33,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			return fail(400, { error: 'OAuth users do not need email verification' });
 		}
 
-		// Check if there's already a valid verification token
-		const [existingVerification] = await dbClient
+		// Check if there's already a valid verification OTP
+		const [existingVerification] = await getDb()
 			.select()
 			.from(emailVerifications)
 			.where(
@@ -46,47 +46,47 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		if (existingVerification) {
 			return fail(400, { 
-				error: 'A verification email was recently sent. Please check your inbox or wait a few minutes before requesting another.' 
+				error: 'A verification OTP was recently sent. Please check your inbox or wait a few minutes before requesting another.' 
 			});
 		}
 
-		// Generate new verification token
-		const verificationToken = generateVerificationToken();
+		// Generate new verification OTP
+		const otp = generateOTP();
 		const verificationExpiresAt = new Date();
-		verificationExpiresAt.setHours(verificationExpiresAt.getHours() + 24); // 24 hours
+		verificationExpiresAt.setHours(verificationExpiresAt.getHours() + 1); // 1 hour
 
 		// Delete any expired tokens for this user
-		await dbClient
+		await getDb()
 			.delete(emailVerifications)
 			.where(eq(emailVerifications.userId, user.id));
 
-		// Insert new verification record
-		await dbClient.insert(emailVerifications).values({
+		// Insert new verification record with OTP
+		await getDb().insert(emailVerifications).values({
 			userId: user.id,
-			token: verificationToken,
+			token: otp, // Store OTP as token
 			expiresAt: verificationExpiresAt
 		});
 
-		// Send verification email
-		const emailSent = await sendVerificationEmail(
+		// Send verification OTP email
+		const emailSent = await sendVerificationOTP(
 			user.email, 
 			user.name || 'User', 
-			verificationToken
+			otp
 		);
 
 		if (!emailSent) {
-			return fail(500, { error: 'Failed to send verification email. Please try again.' });
+			return fail(500, { error: 'Failed to send verification OTP. Please try again.' });
 		}
 
-		console.log('✅ Verification email resent to:', user.email);
+		console.log('✅ Verification OTP resent to:', user.email);
 
 		return json({ 
 			success: true, 
-			message: 'Verification email sent successfully. Please check your inbox.' 
+			message: 'Verification OTP sent successfully. Please check your inbox.' 
 		});
 
 	} catch (error) {
-		console.error('❌ Error resending verification email:', error);
+		console.error('❌ Error resending verification OTP:', error);
 		return fail(500, { error: 'An error occurred. Please try again.' });
 	}
 };

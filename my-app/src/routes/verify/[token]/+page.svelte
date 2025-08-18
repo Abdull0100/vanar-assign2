@@ -1,5 +1,25 @@
 <script lang="ts">
 	let { data } = $props<{ data: any }>();
+
+	async function resendVerification() {
+		try {
+			const response = await fetch('/auth/resend-verification', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ email: data.userId ? 'user-email' : '' })
+			});
+			
+			const result = await response.json();
+			
+			if (result.success) {
+				alert('Verification email sent! Please check your inbox.');
+			} else {
+				alert(result.error || 'Failed to send verification email.');
+			}
+		} catch (error) {
+			alert('An error occurred. Please try again.');
+		}
+	}
 </script>
 
 <div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center px-4">
@@ -27,35 +47,13 @@
 						</a>
 						
 						<button 
-							onclick="resendVerification()"
+							on:click={resendVerification}
 							class="w-full bg-gray-100 text-gray-700 font-semibold py-3 px-6 rounded-xl hover:bg-gray-200 transition-colors flex items-center justify-center space-x-2"
 						>
 							<span>📧</span>
 							<span>Resend Verification Email</span>
 						</button>
 					</div>
-					
-					<script>
-						async function resendVerification() {
-							try {
-								const response = await fetch('/auth/resend-verification', {
-									method: 'POST',
-									headers: { 'Content-Type': 'application/json' },
-									body: JSON.stringify({ email: '${data.userId ? 'user-email' : ''}' })
-								});
-								
-								const result = await response.json();
-								
-								if (result.success) {
-									alert('Verification email sent! Please check your inbox.');
-								} else {
-									alert(result.error || 'Failed to send verification email.');
-								}
-							} catch (error) {
-								alert('An error occurred. Please try again.');
-							}
-						}
-					</script>
 				</div>
 
 			{:else if data.status === 'invalid'}

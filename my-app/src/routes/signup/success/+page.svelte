@@ -24,7 +24,7 @@
 					<div>
 						<h3 class="text-lg font-semibold text-blue-900 mb-2">Check Your Email</h3>
 						<p class="text-blue-800 text-sm leading-relaxed">
-							We've sent a verification email to your inbox. Please click the verification link to activate your account.
+							We've sent a verification OTP to your inbox. Please enter the 6-digit code to activate your account.
 						</p>
 					</div>
 				</div>
@@ -43,8 +43,8 @@
 				<div class="flex items-start space-x-3">
 					<span class="text-blue-500 text-lg">⏰</span>
 					<div>
-						<h4 class="font-semibold text-gray-900 text-sm">Link Expires</h4>
-						<p class="text-gray-600 text-sm">The verification link will expire in 24 hours.</p>
+						<h4 class="font-semibold text-gray-900 text-sm">OTP Expires</h4>
+						<p class="text-gray-600 text-sm">The verification OTP will expire in 1 hour.</p>
 					</div>
 				</div>
 
@@ -59,6 +59,14 @@
 
 			<!-- Action Buttons -->
 			<div class="space-y-4">
+				<a 
+					href="/verify-otp" 
+					class="w-full bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 flex items-center justify-center space-x-2"
+				>
+					<span>🔢</span>
+					<span>Enter Verification OTP</span>
+				</a>
+				
 				<a 
 					href="/chat" 
 					class="w-full bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 flex items-center justify-center space-x-2"
@@ -89,8 +97,8 @@
 				<div class="mt-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
 					<h4 class="font-semibold text-yellow-800 text-sm mb-2">Development Mode</h4>
 					<p class="text-yellow-700 text-xs">
-						In development, verification emails are logged to the console instead of being sent. 
-						Check your terminal for the verification link.
+						In development, verification OTP emails are logged to the console instead of being sent. 
+						Check your terminal for the verification OTP code.
 					</p>
 				</div>
 			{/if}
