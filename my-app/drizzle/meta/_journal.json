@@ -15,6 +15,13 @@
       "when": 1755497719701,
       "tag": "0001_fancy_mathemanic",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1755506485710,
+      "tag": "0002_cooing_wolfpack",
+      "breakpoints": true
     }
   ]
 }

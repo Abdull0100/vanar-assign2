@@ -1,5 +1,5 @@
 import { redirect } from '@sveltejs/kit';
-import { dbClient } from '$lib/server/db';
+import { getDb } from '$lib/server/db';
 import { sessions } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 
@@ -14,12 +14,14 @@ export const load = async ({ locals }) => {
 };
 
 export const actions = {
-	logout: async ({ cookies }) => {
-		const sessionId = cookies.get('session_id');
+	default: async ({ cookies }) => {
+		const sessionId = cookies.get('session');
 		if (sessionId) {
-			await dbClient.delete(sessions).where(eq(sessions.id, sessionId));
+			const db = getDb();
+			await db.delete(sessions).where(eq(sessions.id, sessionId));
 		}
-		cookies.delete('session_id', { path: '/' });
-		throw redirect(302, '/login');
+		cookies.delete('session', { path: '/' });
+		// Redirect directly to login with success message
+		throw redirect(302, '/login?logout=success');
 	}
 };

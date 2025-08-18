@@ -1,5 +1,5 @@
 import { fail } from '@sveltejs/kit';
-import { dbClient } from '$lib/server/db';
+import { getDb } from '$lib/server/db';
 import { users, passwordResets } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { sendPasswordResetOTP, generateOTP } from '$lib/utils/email';
@@ -13,26 +13,30 @@ export const actions = {
       return fail(400, { error: 'Email is required' });
     }
 
+    const db = getDb();
+    
     // Find user by email
-    		const [user] = await dbClient.select().from(users).where(eq(users.email, email));
+    const user = await db.query.users.findFirst({
+      where: eq(users.email, email)
+    });
 
     if (user) {
       // Generate 6-digit OTP
       const otp = generateOTP();
       const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 24); // 24 hours expiration
+      expiresAt.setHours(expiresAt.getHours() + 1); // 1 hour expiration
 
-      // Delete any existing reset OTPs for this user
-      		await dbClient.delete(passwordResets).where(eq(passwordResets.userId, user.id));
+      // Delete any existing reset tokens for this user
+      await db.delete(passwordResets).where(eq(passwordResets.userId, user.id));
 
-      // Insert password reset record
-      		await dbClient.insert(passwordResets).values({
+      // Insert password reset record with OTP as token
+      await db.insert(passwordResets).values({
         userId: user.id,
-        otp,
+        token: otp, // Store OTP as token
         expiresAt
       });
 
-      // Send email
+      // Send OTP email
       console.log('📧 About to send OTP email...');
       console.log('📧 User email:', user.email);
       console.log('📧 Generated OTP:', otp);

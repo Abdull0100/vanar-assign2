@@ -41,6 +41,17 @@
           </div>
         </div>
       {/if}
+      
+      {#if data.logout}
+        <div class="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div class="flex items-center">
+            <span class="text-blue-500 text-lg mr-2">✅</span>
+            <p class="text-blue-800 text-sm font-medium">
+              You have been successfully logged out.
+            </p>
+          </div>
+        </div>
+      {/if}
     </div>
     
     <div class="bg-white py-8 px-6 shadow-lg rounded-lg border border-gray-200">

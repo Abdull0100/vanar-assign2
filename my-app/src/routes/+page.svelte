@@ -130,13 +130,15 @@
 						</a>
 					{/if}
 					
-					<a 
-						href="/auth/logout" 
-						class="group relative px-6 py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 flex items-center space-x-2"
-					>
-						<span>🚪</span>
-						<span>Logout</span>
-					</a>
+					<form method="POST" action="/logout" class="inline">
+						<button
+							type="submit"
+							class="group relative px-6 py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 flex items-center space-x-2"
+						>
+							<span>🚪</span>
+							<span>Logout</span>
+						</button>
+					</form>
 				{/if}
 			</div>
 		</div>

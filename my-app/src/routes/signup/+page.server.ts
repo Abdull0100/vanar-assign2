@@ -1,5 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { dbClient } from '$lib/server/db';
+import { getDb } from '$lib/server/db';
 import { users, emailVerifications } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
@@ -29,9 +29,13 @@ export const actions = {
       });
     }
 
+    const db = getDb();
+    
     // Check if email already exists
-    		const existingUser = await dbClient.select().from(users).where(eq(users.email, email));
-    if (existingUser.length > 0) {
+    const existingUser = await db.query.users.findFirst({
+      where: eq(users.email, email)
+    });
+    if (existingUser) {
       return fail(400, { 
         error: 'Email already in use',
         email,
@@ -43,7 +47,7 @@ export const actions = {
     const passwordHash = await bcrypt.hash(password, 10);
 
     	// Create the user (unverified by default)
-			const [newUser] = await dbClient.insert(users).values({
+			const [newUser] = await db.insert(users).values({
 		email,
 		name,
 		passwordHash,
@@ -58,7 +62,7 @@ export const actions = {
     verificationExpiresAt.setHours(verificationExpiresAt.getHours() + 24); // 24 hours
 
     // Insert verification record
-    		await dbClient.insert(emailVerifications).values({
+    		await db.insert(emailVerifications).values({
       userId: newUser.id,
       token: verificationToken,
       expiresAt: verificationExpiresAt
@@ -69,7 +73,7 @@ export const actions = {
     
     if (!emailSent) {
       // If email fails, clean up the user and token
-      await dbClient.delete(users).where(eq(users.id, newUser.id));
+      await db.delete(users).where(eq(users.id, newUser.id));
       return fail(500, { 
         error: 'Failed to send verification email. Please try again.',
         email,

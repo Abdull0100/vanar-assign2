@@ -28,8 +28,14 @@
           <p class="text-sm text-gray-600 mb-6">
             If an account with that email exists, we've sent an OTP code. Check your email and enter the code below.
           </p>
-          <a 
-            href="/reset-otp" 
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p class="text-blue-800 text-sm">
+              <strong>📧 Email sent!</strong><br>
+              Please check your inbox (and spam folder) for the OTP code. The code will expire in 1 hour.
+            </p>
+          </div>
+          <a
+            href="/reset-otp"
             class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
           >
             Enter OTP Code

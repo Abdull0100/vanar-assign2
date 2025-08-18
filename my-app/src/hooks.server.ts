@@ -2,6 +2,10 @@ import type { Handle } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db';
 import { users, sessions } from '$lib/server/db/schema';
 import { eq, and, gt } from 'drizzle-orm';
+import { config } from 'dotenv';
+
+// Load environment variables
+config();
 
 // helper to detect redirect objects
 function isRedirect(e: unknown): e is { status: number; location: string } {

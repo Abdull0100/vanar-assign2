@@ -1,5 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { dbClient } from '$lib/server/db';
+import { getDb } from '$lib/server/db';
 import { users, sessions } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
@@ -8,7 +8,8 @@ import type { PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ url }) => {
 	const verified = url.searchParams.get('verified') === 'true';
 	const reset = url.searchParams.get('reset') === 'success';
-	return { verified, reset };
+	const logout = url.searchParams.get('logout') === 'success';
+	return { verified, reset, logout };
 };
 
 export const actions = {
@@ -21,7 +22,10 @@ export const actions = {
 			return fail(400, { error: 'Email and password are required' });
 		}
 
-		const [user] = await dbClient.select().from(users).where(eq(users.email, email));
+		const db = getDb();
+		const user = await db.query.users.findFirst({
+			where: eq(users.email, email)
+		});
 
 		if (!user) {
 			return fail(400, { error: 'Invalid email or password' });
@@ -51,7 +55,7 @@ export const actions = {
 		const expiresAt = new Date();
 		expiresAt.setDate(expiresAt.getDate() + 7);
 
-		const [session] = await dbClient.insert(sessions).values({
+		const [session] = await db.insert(sessions).values({
 			userId: user.id,
 			expiresAt
 		}).returning();

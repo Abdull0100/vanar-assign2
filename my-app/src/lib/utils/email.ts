@@ -6,6 +6,12 @@ let transporter: nodemailer.Transporter;
 
 // Initialize email transporter
 async function initializeTransporter() {
+  console.log('🔍 Checking SMTP configuration...');
+  console.log('🔍 SMTP_USER:', process.env.SMTP_USER);
+  console.log('🔍 SMTP_HOST:', process.env.SMTP_HOST);
+  console.log('🔍 SMTP_PORT:', process.env.SMTP_PORT);
+  console.log('🔍 SMTP_FROM:', process.env.SMTP_FROM);
+  
   try {
     // Try to use configured SMTP settings
     if (process.env.SMTP_USER) {
@@ -15,7 +21,7 @@ async function initializeTransporter() {
         secure: process.env.SMTP_SECURE === 'true', // true for 465, false for 587
         auth: {
           user: process.env.SMTP_USER,
-          pass: 'fpit cvqh oqai jgkd'
+          pass: process.env.SMTP_PASS
         },
         connectionTimeout: 60000,
         greetingTimeout: 30000,
@@ -25,10 +31,13 @@ async function initializeTransporter() {
       // Test the connection
       await transporter.verify();
       console.log('✅ Email server configured successfully');
+      console.log('📧 Using SMTP:', process.env.SMTP_HOST);
+      console.log('📧 User:', process.env.SMTP_USER);
       return;
     }
   } catch (error) {
     console.log('⚠️ SMTP configuration failed, using test email service');
+    console.error('❌ SMTP Error:', error);
   }
 
   // Fallback to Ethereal Email (test service)
@@ -72,7 +81,7 @@ export async function sendPasswordResetOTP(
 ): Promise<boolean> {
   try {
     const mailOptions = {
-      from: `"MyApp" <${process.env.SMTP_USER || 'noreply@myapp.com'}>`,
+      from: process.env.SMTP_FROM || `"MyApp" <${process.env.SMTP_USER || 'noreply@myapp.com'}>`,
       to: email,
       subject: 'Password Reset OTP Code',
       html: `
@@ -96,9 +105,9 @@ export async function sendPasswordResetOTP(
               </div>
             </div>
             
-                         <p style="color: #666; font-size: 14px; margin-top: 20px;">
-               Enter this code on the password reset page to continue. This OTP will expire in 24 hours.
-             </p>
+            <p style="color: #666; font-size: 14px; margin-top: 20px;">
+              Enter this code on the password reset page to continue. This OTP will expire in 24 hours.
+            </p>
           </div>
           
           <div style="background: #e9ecef; padding: 20px; border-radius: 8px; text-align: center;">
@@ -149,7 +158,7 @@ export async function sendVerificationEmail(
     const verificationUrl = `${baseUrl}/verify/${token}`;
     
     const mailOptions = {
-      from: `"MyApp" <${process.env.SMTP_USER || 'noreply@myapp.com'}>`,
+      from: process.env.SMTP_FROM || `"MyApp" <${process.env.SMTP_USER || 'noreply@myapp.com'}>`,
       to: email,
       subject: 'Verify your email address',
       html: `
@@ -229,7 +238,7 @@ export async function sendPasswordResetEmail(
     const resetUrl = `${baseUrl}/reset/${token}`;
     
     const mailOptions = {
-      from: `"MyApp" <${process.env.SMTP_USER || 'noreply@myapp.com'}>`,
+      from: process.env.SMTP_FROM || `"MyApp" <${process.env.SMTP_USER || 'noreply@myapp.com'}>`,
       to: email,
       subject: 'Reset your password',
       html: `

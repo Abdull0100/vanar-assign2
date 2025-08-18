@@ -22,16 +22,19 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const db = getDb();
 
 	// Fetch all users
-	const allUsers = await db.select({
-		id: users.id,
-		name: users.name,
-		email: users.email,
-		role: users.role,
-		verified: users.verified,
-		disabled: users.disabled,
-		provider: users.provider,
-		createdAt: users.createdAt
-	}).from(users).orderBy(users.createdAt);
+	const allUsers = await db.query.users.findMany({
+		columns: {
+			id: true,
+			name: true,
+			email: true,
+			role: true,
+			verified: true,
+			disabled: true,
+			provider: true,
+			createdAt: true
+		},
+		orderBy: users.createdAt
+	});
 
 	// Calculate statistics
 	const totalUsers = allUsers.length;

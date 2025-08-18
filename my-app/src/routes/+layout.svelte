@@ -62,12 +62,14 @@
 				>
 					🤖 Chat
 				</a>
-				<a 
-					href="/auth/logout" 
-					class="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors"
-				>
-					Logout
-				</a>
+				<form method="POST" action="/logout" class="inline">
+					<button
+						type="submit"
+						class="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors"
+					>
+						Logout
+					</button>
+				</form>
 			</div>
 		</div>
 	</div>
