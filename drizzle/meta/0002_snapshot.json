@@ -1,0 +1,416 @@
+{
+  "id": "0002_restructure_chat_schema",
+  "prevId": "0001_add_conversations_table",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "accounts": {
+      "name": "accounts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "hasDefault": true,
+          "default": "gen_random_uuid()"
+        },
+        "userId": {
+          "name": "userId",
+          "type": "uuid",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "providerAccountId": {
+          "name": "providerAccountId",
+          "type": "text",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "refresh_token": {
+          "name": "refresh_token",
+          "type": "text",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "access_token": {
+          "name": "access_token",
+          "type": "text",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "integer",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "token_type": {
+          "name": "token_type",
+          "type": "text",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "scope": {
+          "name": "scope",
+          "type": "text",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "id_token": {
+          "name": "id_token",
+          "type": "text",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "session_state": {
+          "name": "session_state",
+          "type": "text",
+          "primaryKey": false,
+          "hasDefault": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "accounts_userId_users_id_fk": {
+          "name": "accounts_userId_users_id_fk",
+          "tableName": "accounts",
+          "columns": ["userId"],
+          "foreignTableName": "users",
+          "foreignColumns": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      }
+    },
+    "chatMessages": {
+      "name": "chatMessages",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "hasDefault": true,
+          "default": "gen_random_uuid()"
+        },
+        "conversationId": {
+          "name": "conversationId",
+          "type": "uuid",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "userId": {
+          "name": "userId",
+          "type": "uuid",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "sender": {
+          "name": "sender",
+          "type": "text",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "aiResponse": {
+          "name": "aiResponse",
+          "type": "text",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "hasDefault": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_chatMessages_conversationId": {
+          "name": "idx_chatMessages_conversationId",
+          "isUnique": false,
+          "isPrimary": false,
+          "columns": ["conversationId"]
+        },
+        "idx_chatMessages_userId": {
+          "name": "idx_chatMessages_userId",
+          "isUnique": false,
+          "isPrimary": false,
+          "columns": ["userId"]
+        }
+      },
+      "foreignKeys": {
+        "chatMessages_conversationId_conversations_id_fk": {
+          "name": "chatMessages_conversationId_conversations_id_fk",
+          "tableName": "chatMessages",
+          "columns": ["conversationId"],
+          "foreignTableName": "conversations",
+          "foreignColumns": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "chatMessages_userId_users_id_fk": {
+          "name": "chatMessages_userId_users_id_fk",
+          "tableName": "chatMessages",
+          "columns": ["userId"],
+          "foreignTableName": "users",
+          "foreignColumns": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      }
+    },
+    "conversations": {
+      "name": "conversations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "hasDefault": true,
+          "default": "gen_random_uuid()"
+        },
+        "userId": {
+          "name": "userId",
+          "type": "uuid",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "roomName": {
+          "name": "roomName",
+          "type": "text",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "hasDefault": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "hasDefault": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_conversations_userId": {
+          "name": "idx_conversations_userId",
+          "isUnique": false,
+          "isPrimary": false,
+          "columns": ["userId"]
+        }
+      },
+      "foreignKeys": {
+        "conversations_userId_users_id_fk": {
+          "name": "conversations_userId_users_id_fk",
+          "tableName": "conversations",
+          "columns": ["userId"],
+          "foreignTableName": "users",
+          "foreignColumns": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      }
+    },
+    "passwordResetTokens": {
+      "name": "passwordResetTokens",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "hasDefault": true,
+          "default": "gen_random_uuid()"
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "token": {
+          "name": "token",
+          "type": "text",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "expires": {
+          "name": "expires",
+          "type": "timestamp",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "hasDefault": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {}
+    },
+    "sessions": {
+      "name": "sessions",
+      "schema": "",
+      "columns": {
+        "sessionToken": {
+          "name": "sessionToken",
+          "type": "text",
+          "primaryKey": true,
+          "hasDefault": false
+        },
+        "userId": {
+          "name": "userId",
+          "type": "uuid",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "expires": {
+          "name": "expires",
+          "type": "timestamp",
+          "primaryKey": false,
+          "hasDefault": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "sessions_userId_users_id_fk": {
+          "name": "sessions_userId_users_id_fk",
+          "tableName": "sessions",
+          "columns": ["userId"],
+          "foreignTableName": "users",
+          "foreignColumns": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      }
+    },
+    "users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "hasDefault": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "emailVerified": {
+          "name": "emailVerified",
+          "type": "timestamp",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "image": {
+          "name": "image",
+          "type": "text",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "password": {
+          "name": "password",
+          "type": "text",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "hasDefault": true,
+          "default": "'user'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "hasDefault": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "hasDefault": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {}
+    },
+    "verificationToken": {
+      "name": "verificationToken",
+      "schema": "",
+      "columns": {
+        "identifier": {
+          "name": "identifier",
+          "type": "text",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "token": {
+          "name": "token",
+          "type": "text",
+          "primaryKey": false,
+          "hasDefault": false
+        },
+        "expires": {
+          "name": "expires",
+          "type": "timestamp",
+          "primaryKey": false,
+          "hasDefault": false
+        }
+      },
+      "indexes": {
+        "verificationToken_compoundKey": {
+          "name": "verificationToken_compoundKey",
+          "isUnique": true,
+          "isPrimary": true,
+          "columns": ["identifier", "token"]
+        }
+      },
+      "foreignKeys": {}
+    }
+  }
+}

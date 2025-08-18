@@ -31,7 +31,7 @@ export const accounts = pgTable('accounts', {
 });
 
 export const sessions = pgTable('sessions', {
-	sessionToken: text('sessionToken').primaryKey(), // Make this the primary key
+	sessionToken: text('sessionToken').primaryKey(),
 	userId: uuid('userId')
 		.notNull()
 		.references(() => users.id),
@@ -58,27 +58,30 @@ export const passwordResetTokens = pgTable('passwordResetTokens', {
 	createdAt: timestamp('createdAt').defaultNow().notNull()
 });
 
+// Conversations table - represents chat rooms
 export const conversations = pgTable('conversations', {
 	id: uuid('id').primaryKey().defaultRandom(),
 	userId: uuid('userId')
 		.notNull()
 		.references(() => users.id, { onDelete: 'cascade' }),
-	title: text('title').notNull(),
+	roomName: text('roomName').notNull(), // Changed from 'title' to 'roomName'
 	createdAt: timestamp('createdAt').defaultNow().notNull(),
 	updatedAt: timestamp('updatedAt').defaultNow().notNull()
 });
 
+// Chat messages table - each message is separate and linked to a conversation
 export const chatMessages = pgTable('chatMessages', {
-	id: uuid('id').primaryKey().defaultRandom(),
+	id: uuid('id').primaryKey().defaultRandom(), // This is messageId
 	conversationId: uuid('conversationId')
 		.notNull()
 		.references(() => conversations.id, { onDelete: 'cascade' }),
 	userId: uuid('userId')
 		.notNull()
 		.references(() => users.id, { onDelete: 'cascade' }),
-	message: text('message').notNull(),
-	response: text('response').notNull(),
-	createdAt: timestamp('createdAt').defaultNow().notNull()
+	content: text('content').notNull(), // User query or empty string for AI
+	sender: text('sender').notNull(), // 'user' or 'ai'
+	aiResponse: text('aiResponse'), // AI response text (null for user messages, text for AI)
+	createdAt: timestamp('createdAt').defaultNow().notNull() // This is timestamp
 });
 
 // Relations

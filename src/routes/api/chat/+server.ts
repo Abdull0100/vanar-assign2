@@ -60,22 +60,32 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			// Create new conversation
 			const [newConversation] = await db.insert(conversations).values({
 				userId: session.user.id,
-				title: message.length > 40 ? message.slice(0, 40) + '…' : message
+				roomName: message.length > 40 ? message.slice(0, 40) + '…' : message
 			}).returning();
 			
 			conversation = newConversation;
 		}
 
+		// Save user message first
+		const [userMessage] = await db.insert(chatMessages).values({
+			conversationId: conversation.id,
+			userId: session.user.id,
+			content: message,
+			sender: 'user',
+			aiResponse: null
+		}).returning();
+
 		// Check if Gemini API is available
 		if (!genAI) {
 			const fallbackResponse = "I apologize, but the AI chat service is currently unavailable. The Gemini API key is not configured. Please contact your administrator to set up the GEMINI_API_KEY environment variable.";
 			
-			// Save fallback response to database
+			// Save AI fallback response to database
 			await db.insert(chatMessages).values({
 				conversationId: conversation.id,
 				userId: session.user.id,
-				message,
-				response: fallbackResponse
+				content: '', // Empty content for AI messages
+				sender: 'ai',
+				aiResponse: fallbackResponse // Store AI response in aiResponse field
 			});
 
 			return json({ 
@@ -143,12 +153,13 @@ Capabilities:
 							fullResponse 
 						});
 						controller.enqueue(new TextEncoder().encode(`data: ${endData}\n\n`));
-						// Save complete response to database
+						// Save complete AI response to database
 						await db.insert(chatMessages).values({
 							conversationId: conversation.id,
 							userId: session.user!.id,
-							message,
-							response: fullResponse
+							content: '', // Empty content for AI messages
+							sender: 'ai',
+							aiResponse: fullResponse // Store AI response in aiResponse field
 						});
 						controller.close();
 					} catch (error) {
@@ -199,8 +210,9 @@ Capabilities:
 					await db.insert(chatMessages).values({
 						conversationId: conversation.id,
 						userId: session.user.id,
-						message,
-						response: errorMessage
+						content: '', // Empty content for AI messages
+						sender: 'ai',
+						aiResponse: errorMessage // Store AI response in aiResponse field
 					});
 				} catch (dbError) {
 					console.error('Failed to save error response to database:', dbError);
@@ -235,7 +247,7 @@ Capabilities:
 	}
 }
 
-export const GET: RequestHandler = async ({ locals }) => {
+export const GET: RequestHandler = async ({ locals, url }) => {
 	try {
 		const session = await locals.getSession?.();
 
@@ -243,18 +255,55 @@ export const GET: RequestHandler = async ({ locals }) => {
 			throw new AuthError('Please sign in to view chat history');
 		}
 
-		// Get conversations with their messages for the user
-		const userConversations = await db.query.conversations.findMany({
-			where: eq(conversations.userId, session.user.id),
-			orderBy: (conversations, { desc }) => [desc(conversations.updatedAt)],
-			with: {
-				messages: {
-					orderBy: (chatMessages, { asc }) => [asc(chatMessages.createdAt)]
-				}
-			}
-		});
+		const conversationId = url.searchParams.get('conversationId');
 
-		return json({ conversations: userConversations });
+		if (conversationId) {
+			// Get messages for a specific conversation
+			const conversation = await db.query.conversations.findFirst({
+				where: eq(conversations.id, conversationId),
+				with: {
+					messages: {
+						orderBy: (chatMessages, { asc }) => [asc(chatMessages.createdAt)]
+					}
+				}
+			});
+
+			if (!conversation || conversation.userId !== session.user.id) {
+				throw new AuthError('Conversation not found or access denied');
+			}
+
+			return json({ messages: conversation.messages });
+		} else {
+			// Get all conversations with message counts, filtering out empty ones
+			const userConversations = await db.query.conversations.findMany({
+				where: eq(conversations.userId, session.user.id),
+				orderBy: (conversations, { desc }) => [desc(conversations.updatedAt)],
+				columns: {
+					id: true,
+					roomName: true,
+					createdAt: true,
+					updatedAt: true
+				},
+				with: {
+					messages: {
+						columns: { id: true } // Only get message IDs for counting
+					}
+				}
+			});
+
+			// Filter out conversations with no messages
+			const nonEmptyConversations = userConversations
+				.filter(conv => conv.messages.length > 0)
+				.map(conv => ({
+					id: conv.id,
+					roomName: conv.roomName,
+					createdAt: conv.createdAt,
+					updatedAt: conv.updatedAt,
+					messageCount: conv.messages.length
+				}));
+
+			return json({ conversations: nonEmptyConversations });
+		}
 	} catch (error) {
 		return handleApiError(error);
 	}
@@ -269,7 +318,7 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 		}
 
 		const body = await request.json();
-		const { conversationId, title, messages } = body;
+		const { conversationId, roomName, messages } = body;
 
 		if (!conversationId) {
 			throw new ValidationError('Conversation ID is required');
@@ -287,11 +336,11 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 			throw new AuthError('Conversation not found or access denied');
 		}
 
-		// Update conversation title
-		if (title) {
+		// Update conversation room name
+		if (roomName) {
 			await db.update(conversations)
 				.set({ 
-					title,
+					roomName,
 					updatedAt: new Date()
 				})
 				.where(eq(conversations.id, conversationId));

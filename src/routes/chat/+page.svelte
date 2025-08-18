@@ -2,23 +2,24 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { writable } from 'svelte/store';
+	import { writable, derived } from 'svelte/store';
 
 	// Types
 	type ChatMessage = {
 		id: string;
-		message: string;
-		response: string;
+		content: string;
+		sender: 'user' | 'ai';
+		aiResponse: string | null;
 		createdAt: string;
-		isUser: boolean;
 		isStreaming?: boolean;
 	};
 
 	type Conversation = {
 		id: string;
-		title: string;
+		roomName: string;
 		createdAt: string;
 		updatedAt: string;
+		messageCount?: number;
 		messages: ChatMessage[];
 	};
 
@@ -32,8 +33,13 @@
 	// Local variable for input binding
 	let messageText = '';
 
-	// Derived stores
-	$: currentConversation = $conversations.find(c => c.id === $currentConversationId);
+	// Derived store for current conversation - this ensures reactivity
+	const currentConversation = derived(
+		[conversations, currentConversationId],
+		([$conversations, $currentConversationId]) => 
+			$conversations.find(c => c.id === $currentConversationId) || null
+	);
+
 	$: user = $page.data.session?.user;
 
 	// Error handling state
@@ -43,7 +49,7 @@
 	let messagesContainer: HTMLElement;
 
 	const storageKey = () => `vanar_conversations_${user?.id || 'anon'}`;
-	const generateId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+	const generateId = () => crypto.randomUUID();
 
 	onMount(() => {
 		if ($page.data.session === null) {
@@ -52,9 +58,22 @@
 		}
 		loadConversationsFromStorage();
 		loadChatHistory();
+		
+		// Add scroll event listener for better scroll tracking
+		if (messagesContainer) {
+			messagesContainer.addEventListener('scroll', () => {
+				// Trigger reactivity to update scroll indicators
+				messagesContainer = messagesContainer;
+			});
+		}
 	});
 
 	onDestroy(() => {
+		// Clean up timeouts to prevent memory leaks
+		clearTimeout(syncTimeout);
+		clearTimeout(saveTimeout);
+		
+		// Clean up retry timer
 		if (retryTimer) {
 			clearInterval(retryTimer);
 			retryTimer = null;
@@ -63,12 +82,14 @@
 
 	function saveConversationsToStorage() {
 		try {
-			localStorage.setItem(storageKey(), JSON.stringify({ 
-				conversations: $conversations, 
-				currentConversationId: $currentConversationId 
-			}));
+			// Only save current conversation ID to storage
+			// Conversations are loaded from database to ensure they have messages
+			const currentData = {
+				currentConversationId: $currentConversationId
+			};
+			localStorage.setItem(storageKey(), JSON.stringify(currentData));
 		} catch (e) {
-			console.warn('Failed to save conversations:', e);
+			console.warn('Failed to save conversation ID to storage:', e);
 		}
 	}
 
@@ -77,51 +98,105 @@
 			const raw = localStorage.getItem(storageKey());
 			if (raw) {
 				const parsed = JSON.parse(raw);
-				conversations.set(parsed.conversations || []);
+				// Only load current conversation ID from storage, not conversations
+				// Conversations will be loaded from database to ensure they have messages
 				currentConversationId.set(parsed.currentConversationId || null);
+				
+				// Don't load messages from local storage - they'll be loaded from database when needed
+				messages.set([]);
 			}
 		} catch (e) {
-			console.warn('Failed to load conversations:', e);
+			console.warn('Failed to load conversations from storage:', e);
 		}
 	}
 
 	function newConversation() {
-		const id = generateId();
-		const conv: Conversation = {
-			id,
-			title: 'New Chat',
-			createdAt: new Date().toISOString(),
-			updatedAt: new Date().toISOString(),
-			messages: []
-		};
-		
-		// Use proper Svelte store updates
-		conversations.update(convs => [conv, ...convs]);
-		currentConversationId.set(id);
+		// Clear current conversation and messages
+		currentConversationId.set(null);
 		messages.set([]);
-		saveConversationsToStorage();
+		
+		// Debounced save to avoid excessive localStorage writes
+		debouncedSaveToStorage();
 	}
 
-	function selectConversation(id: string) {
+	async function selectConversation(id: string) {
 		currentConversationId.set(id);
-		const conv = $conversations.find(c => c.id === id);
-		if (conv) {
-			messages.set([...conv.messages]);
+		
+		// Load messages for this conversation from the database
+		try {
+			const response = await fetch(`/api/chat?conversationId=${id}`);
+			if (response.ok) {
+				const data = await response.json();
+				if (data.messages && Array.isArray(data.messages)) {
+					messages.set(data.messages);
+				} else {
+					messages.set([]);
+				}
+			} else {
+				messages.set([]);
+			}
+		} catch (err) {
+			console.error('Error loading conversation messages:', err);
+			messages.set([]);
 		}
-		saveConversationsToStorage();
+		
+		// Debounced save to avoid excessive localStorage writes
+		debouncedSaveToStorage();
 	}
 
-	function updateConversationTitle(title: string) {
+	function updateConversationRoomName(roomName: string) {
 		if (!$currentConversationId) return;
 		
 		conversations.update(convs => 
 			convs.map(conv => 
 				conv.id === $currentConversationId 
-					? { ...conv, title, updatedAt: new Date().toISOString() }
+					? { ...conv, roomName, updatedAt: new Date().toISOString() }
 					: conv
 			)
 		);
-		saveConversationsToStorage();
+		
+		// Debounced save to avoid excessive localStorage writes
+		debouncedSaveToStorage();
+	}
+
+	// Debounced function to sync messages with conversations
+	let syncTimeout: NodeJS.Timeout;
+	function debouncedSyncMessages() {
+		clearTimeout(syncTimeout);
+		syncTimeout = setTimeout(() => {
+			if (!$currentConversationId || !$messages) return;
+			
+			conversations.update(convs => 
+				convs.map(conv => 
+					conv.id === $currentConversationId 
+						? { ...conv, messages: [...$messages], updatedAt: new Date().toISOString() }
+						: conv
+				)
+			);
+		}, 300); // Debounce to 300ms
+	}
+
+	// Debounced function to save to localStorage
+	let saveTimeout: NodeJS.Timeout;
+	function debouncedSaveToStorage() {
+		clearTimeout(saveTimeout);
+		saveTimeout = setTimeout(() => {
+			saveConversationsToStorage();
+		}, 500); // Debounce to 500ms
+	}
+
+	// Memoized conversations for better performance
+	$: memoizedConversations = $conversations.map(conv => ({
+		...conv,
+		// Pre-compute formatted date to avoid recalculation on every render
+		formattedDate: new Date(conv.updatedAt || conv.createdAt).toLocaleDateString(),
+		// Pre-compute message count display
+		messageCountDisplay: conv.messages.length === 1 ? '1 message' : `${conv.messages.length} messages`
+	}));
+
+	// Watch for message changes and sync to conversation (debounced)
+	$: if ($currentConversationId && $messages) {
+		debouncedSyncMessages();
 	}
 
 	async function sendMessage() {
@@ -136,42 +211,45 @@
 		// Create new conversation immediately if needed (non-blocking)
 		if (!$currentConversationId) {
 			newConversation();
+			// Wait a tick for the new conversation to be set
+			await new Promise(resolve => setTimeout(resolve, 0));
 		}
 
 		// Create user message
 		const userMessage: ChatMessage = {
 			id: generateId(),
-			message: messageContent,
-			response: '',
-			createdAt: new Date().toISOString(),
-			isUser: true
+			content: messageContent,
+			sender: 'user',
+			aiResponse: '',
+			createdAt: new Date().toISOString()
 		};
 
 		// Create AI message placeholder
 		const aiMessage: ChatMessage = {
 			id: generateId(),
-			message: '',
-			response: '',
+			content: '',
+			sender: 'ai',
+			aiResponse: '',
 			createdAt: new Date().toISOString(),
-			isUser: false,
 			isStreaming: true
 		};
 
 		// Optimistic update - add both messages immediately
 		messages.update(msgs => [...msgs, userMessage, aiMessage]);
 
-		// Update conversation title if it's the first message
-		if ($messages.length === 2) { // Just added user + AI messages
-			updateConversationTitle(messageContent.length > 40 ? messageContent.slice(0, 40) + '…' : messageContent);
-		}
+		// Auto-scroll immediately after adding messages
+		setTimeout(scrollToBottom, 50);
 
-		// Save to local storage
-		saveConversationsToStorage();
+		// Update conversation room name if it's the first message
+		if ($messages.length === 2) { // Just added user + AI messages
+			updateConversationRoomName(messageContent.length > 40 ? messageContent.slice(0, 40) + '…' : messageContent);
+		}
 
 		try {
 			const history = $messages
-				.filter(m => !m.isUser || m.response) // Only completed message pairs
-				.map(m => ({ message: m.message, response: m.response }));
+				.filter(m => m.sender === 'user' && m.aiResponse) // Only completed message pairs
+				.slice(0, -2) // Exclude the current pair we just added
+				.map(m => ({ message: m.content, response: m.aiResponse }));
 
 			const response = await fetch('/api/chat', {
 				method: 'POST',
@@ -179,7 +257,7 @@
 				body: JSON.stringify({
 					message: messageContent,
 					history,
-					conversationId: $currentConversationId && $currentConversationId.length > 20 ? $currentConversationId : undefined
+					conversationId: $currentConversationId || undefined
 				})
 			});
 
@@ -218,17 +296,13 @@
 										messages.update(msgs => 
 											msgs.map(msg => 
 												msg.id === aiMessage.id 
-													? { ...msg, response: streamedResponse }
+													? { ...msg, aiResponse: streamedResponse }
 													: msg
 											)
 										);
 										
-										// Auto-scroll
-										setTimeout(() => {
-											if (messagesContainer) {
-												messagesContainer.scrollTop = messagesContainer.scrollHeight;
-											}
-										}, 10);
+										// Auto-scroll during streaming
+										setTimeout(smartScrollToBottom, 50);
 									}
 									
 									if (data.done) {
@@ -243,20 +317,22 @@
 
 										// Update conversation ID if it's new
 										if (data.conversationId && $currentConversationId !== data.conversationId) {
+											if ($currentConversationId) {
+												// Update existing conversation in the list
+												conversations.update(convs => 
+													convs.map(conv => 
+														conv.id === $currentConversationId 
+															? { ...conv, id: data.conversationId }
+															: conv
+													)
+												);
+											}
+											
 											currentConversationId.set(data.conversationId);
 											
-											// Update conversation ID in conversations list
-											conversations.update(convs => 
-												convs.map(conv => 
-													conv.id === userMessage.id 
-														? { ...conv, id: data.conversationId }
-														: conv
-												)
-											);
+											// Refresh conversations list to show the new conversation
+											setTimeout(() => loadChatHistory(), 100);
 										}
-										
-										// Save to storage
-										saveConversationsToStorage();
 									}
 								} catch (parseError) {
 									console.error('Error parsing streaming data:', parseError);
@@ -273,25 +349,29 @@
 					messages.update(msgs => 
 						msgs.map(msg => 
 							msg.id === aiMessage.id 
-								? { ...msg, response: data.response, isStreaming: false }
+								? { ...msg, aiResponse: data.response, isStreaming: false }
 								: msg
 						)
 					);
 
 					// Update conversation ID if it's new
 					if (data.conversationId && $currentConversationId !== data.conversationId) {
+						if ($currentConversationId) {
+							// Update existing conversation in the list
+							conversations.update(convs => 
+								convs.map(conv => 
+									conv.id === $currentConversationId 
+										? { ...conv, id: data.conversationId }
+										: conv
+								)
+							);
+						}
+						
 						currentConversationId.set(data.conversationId);
 						
-						conversations.update(convs => 
-							convs.map(conv => 
-								conv.id === userMessage.id 
-									? { ...conv, id: data.conversationId }
-									: conv
-							)
-						);
+						// Refresh conversations list to show the new conversation
+						setTimeout(() => loadChatHistory(), 100);
 					}
-					
-					saveConversationsToStorage();
 				} else {
 					error.set(data.error || 'Failed to get response from AI');
 					// Remove AI message on error
@@ -347,68 +427,67 @@
 		const messageToDelete = $messages[messageIndex];
 		if (!messageToDelete) return;
 		
-		const messageText = messageToDelete.message.length > 30 ? messageToDelete.message.slice(0, 30) + '…' : messageToDelete.message;
+		const messageText = messageToDelete.content.length > 30 ? messageToDelete.content.slice(0, 30) + '…' : messageToDelete.content;
 		
 		if (!confirm(`Are you sure you want to delete this message?\n\n"${messageText}"\n\n⚠️  PERMANENT DELETION: This message will be permanently erased from:\n• Your local chat history\n• The database\n• All backup systems\n\nThis action cannot be undone and provides guaranteed permanent erasure from all systems.`)) {
 			return;
 		}
 
-		// Remove the message
+		// Remove the message - this will trigger reactive updates
 		messages.update(msgs => msgs.filter((_, index) => index !== messageIndex));
 		
-		// Update conversation title if needed
+		// Update conversation room name if needed
 		if (messageIndex === 0 && $messages.length > 0) {
-			const firstUserMessage = $messages.find(m => m.isUser);
+			const firstUserMessage = $messages.find(m => m.sender === 'user');
 			if (firstUserMessage) {
-				updateConversationTitle(firstUserMessage.message.length > 40 ? firstUserMessage.message.slice(0, 40) + '…' : firstUserMessage.message);
+				updateConversationRoomName(firstUserMessage.content.length > 40 ? firstUserMessage.content.slice(0, 40) + '…' : firstUserMessage.content);
 			}
 		}
 		
-		// If no messages left, reset title
+		// If no messages left, reset room name
 		if ($messages.length === 0) {
-			updateConversationTitle('New Chat');
+			updateConversationRoomName('New Chat');
 		}
-		
-		saveConversationsToStorage();
 	}
 
 	async function deleteConversation(id: string) {
 		const conv = $conversations.find(c => c.id === id);
 		if (!conv) return;
 		
-		const convTitle = conv.title || 'this conversation';
+		const convTitle = conv.roomName || 'this conversation';
 		if (!confirm(`Are you sure you want to delete "${convTitle}"?\n\n⚠️  PERMANENT DELETION: This entire conversation will be permanently erased from:\n• Your local chat history\n• The database\n• All backup systems\n\nThis action cannot be undone and provides guaranteed permanent erasure from all systems.`)) {
 			return;
 		}
 		
-		// Delete from database if it's a real conversation
-		if (id.length > 20) {
-			try {
-				await fetch('/api/chat', {
-					method: 'DELETE',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ conversationIds: [id] })
-				});
-			} catch (error) {
-				console.error('Failed to delete conversation from database:', error);
-			}
+		// Delete from database (all conversations now have proper UUIDs)
+		try {
+			await fetch('/api/chat', {
+				method: 'DELETE',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ conversationIds: [id] })
+			});
+		} catch (error) {
+			console.error('Failed to delete conversation from database:', error);
 		}
 		
-		// Remove from conversations
+		// Remove from conversations first
 		conversations.update(convs => convs.filter(c => c.id !== id));
 		
-		// Update current conversation if needed
+		// Update current conversation if needed - use the updated conversations list
 		if ($currentConversationId === id) {
-			if ($conversations.length > 0) {
-				currentConversationId.set($conversations[0].id);
-				messages.set([...$conversations[0].messages]);
+			const remainingConversations = $conversations;
+			if (remainingConversations.length > 0) {
+				const nextConv = remainingConversations[0];
+				currentConversationId.set(nextConv.id);
+				messages.set([...nextConv.messages]);
 			} else {
 				currentConversationId.set(null);
 				messages.set([]);
 			}
 		}
 		
-		saveConversationsToStorage();
+		// Debounced save to avoid excessive localStorage writes
+		debouncedSaveToStorage();
 	}
 
 	async function clearAllChatHistory() {
@@ -429,10 +508,17 @@
 			console.error('Failed to clear chat history from database:', error);
 		}
 
-		// Clear local storage
+		// Clear all state
 		conversations.set([]);
+		messages.set([]);
 		currentConversationId.set(null);
-		saveConversationsToStorage();
+		
+		// Clear local storage
+		try {
+			localStorage.removeItem(storageKey());
+		} catch (e) {
+			console.warn('Failed to clear local storage:', e);
+		}
 	}
 
 	async function handleSignOut() {
@@ -451,32 +537,41 @@
 			if (response.ok) {
 				const data = await response.json();
 				if (data.conversations && Array.isArray(data.conversations)) {
-					const dbConversations = data.conversations.map((conv: any) => ({
+					const dbConversations = data.conversations.map((conv: { id: string; roomName?: string; title?: string; createdAt: string; updatedAt: string; messageCount?: number }) => ({
 						id: conv.id,
-						title: conv.title,
+						roomName: conv.roomName || conv.title || 'Untitled Room',
 						createdAt: conv.createdAt,
 						updatedAt: conv.updatedAt,
-						messages: conv.messages || []
+						messageCount: conv.messageCount || 0,
+						messages: [] // Don't load messages here - just room info
 					}));
 					
-					// Merge with local conversations
-					const localConversations = $conversations.filter(conv => conv.id.length <= 20);
-					conversations.set([...dbConversations, ...localConversations]);
+					// Filter out empty conversations from database
+					const nonEmptyDbConversations = dbConversations.filter((conv: { messageCount: number }) => conv.messageCount > 0);
 					
-					// Update current conversation if needed
-					if ($currentConversationId && !$conversations.find(c => c.id === $currentConversationId)) {
-						currentConversationId.set($conversations[0]?.id || null);
-					}
+					// Only use database conversations - no local ones needed since we generate proper UUIDs
+					const mergedConversations = [...nonEmptyDbConversations];
 					
-					// Update messages if we have a current conversation
-					if ($currentConversationId) {
-						const conv = $conversations.find(c => c.id === $currentConversationId);
-						if (conv) {
-							messages.set([...conv.messages]);
+					conversations.set(mergedConversations);
+					
+					// Set current conversation if none is selected
+					if (!$currentConversationId && mergedConversations.length > 0) {
+						const firstConv = mergedConversations[0];
+						currentConversationId.set(firstConv.id);
+						// Don't set messages here - they'll be loaded separately when needed
+						messages.set([]);
+					} else if ($currentConversationId) {
+						// Check if current conversation still exists and has messages
+						const currentConv = mergedConversations.find((c: { id: string; messageCount: number }) => c.id === $currentConversationId);
+						if (!currentConv || currentConv.messageCount === 0) {
+							// Current conversation is empty or doesn't exist, clear it
+							currentConversationId.set(null);
+							messages.set([]);
 						}
 					}
 					
-					saveConversationsToStorage();
+					// Debounced save to avoid excessive localStorage writes
+					debouncedSaveToStorage();
 				}
 			}
 		} catch (err) {
@@ -489,6 +584,36 @@
 			event.preventDefault();
 			sendMessage();
 		}
+	}
+
+	// Improved auto-scroll function
+	function scrollToBottom() {
+		if (messagesContainer) {
+			// Use requestAnimationFrame for better timing
+			requestAnimationFrame(() => {
+				messagesContainer.scrollTop = messagesContainer.scrollHeight;
+			});
+		}
+	}
+
+	// Check if user is at bottom of messages
+	function isAtBottom() {
+		if (!messagesContainer) return true;
+		const { scrollTop, scrollHeight, clientHeight } = messagesContainer;
+		return scrollTop + clientHeight >= scrollHeight - 10; // 10px tolerance
+	}
+
+	// Auto-scroll only if user is already at bottom
+	function smartScrollToBottom() {
+		if (isAtBottom()) {
+			scrollToBottom();
+		}
+	}
+
+	// Auto-scroll when messages change
+	$: if ($messages && messagesContainer) {
+		// Delay scroll to ensure DOM is updated
+		setTimeout(smartScrollToBottom, 100);
 	}
 </script>
 
@@ -512,12 +637,12 @@
 						>
 							Dashboard
 						</button>
-									<button
-								on:click={() => goto('/chat')}
-								class="inline-flex items-center border-b-2 border-indigo-500 px-1 pt-1 text-sm font-medium text-gray-900"
-							>
-								Vanar AI
-							</button>
+						<button
+							on:click={() => goto('/chat')}
+							class="inline-flex items-center border-b-2 border-indigo-500 px-1 pt-1 text-sm font-medium text-gray-900"
+						>
+							Vanar AI
+						</button>
 						<button
 							on:click={() => goto('/profile')}
 							class="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
@@ -559,24 +684,24 @@
 				<div class="rounded-xl bg-white shadow-lg h-full">
 					<div class="p-4 border-b border-gray-200 flex items-center justify-between">
 						<div>
-							<h3 class="text-lg font-semibold text-gray-900">Conversations</h3>
+							<h3 class="text-lg font-semibold text-gray-900">Chat Rooms</h3>
 							<p class="text-sm text-gray-500">Start new chats and revisit old ones</p>
 						</div>
 						<div class="flex space-x-2">
 							<button 
 								on:click={newConversation} 
 								class="group relative inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ease-out hover:scale-105 hover:from-indigo-700 hover:via-purple-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-white" 
-								aria-label="Start a new conversation"
+								aria-label="Start a new conversation room"
 							>
 								<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2 transition-transform duration-300 group-hover:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
 								</svg>
-								New Chat
+								New Room
 								<div class="absolute inset-0 rounded-xl bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 							</button>
 						</div>
 					</div>
-					<div class="p-4 max-h-96 overflow-y-auto">
+					<div class="p-4 max-h-96 overflow-y-auto" style="contain: layout style paint;">
 						{#if $error && ($error.includes('rate limit') || $error.includes('quota') || $error.includes('high demand'))}
 							<div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
 								<div class="flex items-start text-yellow-800">
@@ -596,48 +721,37 @@
 							</div>
 						{/if}
 						
-						<!-- Data Deletion Notice -->
-						<div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-							<div class="flex items-start text-blue-800">
-								<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 mt-0.5 flex-shrink-0">
-									<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-								</svg>
-								<div class="text-xs">
-									<strong>Data Privacy Notice:</strong> When you delete chats or messages, they are permanently erased from all systems including local storage, database, and backup systems. This provides guaranteed permanent erasure with no data retention.
-								</div>
-							</div>
-						</div>
-						
-						{#if $conversations.length === 0}
+						{#if memoizedConversations.length === 0}
 							<div class="text-center py-12">
 								<div class="h-16 w-16 rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 flex items-center justify-center mx-auto mb-4">
 									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-500"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
 								</div>
-								<h3 class="text-lg font-semibold text-gray-900 mb-2">No conversations yet</h3>
-								<p class="text-sm text-gray-500 mb-4">Start your first chat to begin exploring Vanar AI</p>
-								<button on:click={newConversation} class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-medium rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg" aria-label="Start your first chat conversation">
+								<h3 class="text-lg font-semibold text-gray-900 mb-2">No chat rooms yet</h3>
+								<p class="text-sm text-gray-500 mb-4">Create your first room to start chatting with Vanar AI</p>
+								<button on:click={newConversation} class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-medium rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg" aria-label="Create your first chat room">
 									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-									Start New Chat
+									Create Room
 								</button>
 							</div>
 						{:else}
-							{#each $conversations as conv}
+							{#each memoizedConversations as conv (conv.id)}
+								{#key conv.id}
 								<div 
 									class="w-full mb-3 p-4 rounded-lg transition-all duration-200 cursor-pointer border {$currentConversationId === conv.id ? 'bg-indigo-50 border-indigo-200 shadow-md' : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm'}" 
 									on:click={() => selectConversation(conv.id)}
 									on:keydown={(e) => e.key === 'Enter' && selectConversation(conv.id)}
 									role="button"
 									tabindex="0"
-									aria-label="Select conversation: {conv.title}"
+									aria-label="Select conversation: {conv.roomName}"
 									aria-pressed={$currentConversationId === conv.id}
 								>
 									<div class="flex items-center justify-between">
-										<p class="text-sm font-medium text-gray-800 truncate flex-1 mr-3">{conv.title}</p>
+										<p class="text-sm font-medium text-gray-800 truncate flex-1 mr-3">{conv.roomName}</p>
 										<button 
 											on:click={(e) => { e.stopPropagation(); deleteConversation(conv.id).catch(console.error); }} 
 											class="group relative text-red-500 hover:text-red-700 text-xs p-2 rounded-lg hover:bg-red-50 transition-all duration-300 flex-shrink-0 border border-red-200 hover:border-red-300 hover:shadow-md hover:scale-110"
 											title="Delete conversation"
-											aria-label="Delete conversation: {conv.title}"
+											aria-label="Delete conversation: {conv.roomName}"
 										>
 											<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-300 group-hover:rotate-12" aria-hidden="true">
 												<path d="M3 6h18"/>
@@ -647,14 +761,29 @@
 											<div class="absolute inset-0 rounded-lg bg-gradient-to-r from-red-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 										</button>
 									</div>
-									<div class="flex items-center justify-between mt-2">
-										<p class="text-xs text-gray-500">{new Date(conv.updatedAt || conv.createdAt).toLocaleDateString()}</p>
-										<span class="text-xs text-gray-400">{conv.messages.length} messages</span>
-									</div>
 								</div>
+								{/key}
 							{/each}
 						{/if}
 					</div>
+					
+					<!-- Clear All History Button -->
+					{#if memoizedConversations.length > 0}
+						<div class="p-4 border-t border-gray-200">
+							<button
+								on:click={clearAllChatHistory}
+								class="w-full group relative inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 hover:border-red-300 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+								aria-label="Clear all chat history"
+							>
+								<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2">
+									<path d="M3 6h18"/>
+									<path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+									<path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+								</svg>
+								Clear All History
+							</button>
+						</div>
+					{/if}
 				</div>
 			</div>
 
@@ -691,15 +820,17 @@
 					</div>
 
 					<!-- Messages Container -->
-					<div bind:this={messagesContainer} class="h-96 overflow-y-auto p-6 bg-gradient-to-b from-gray-50 to-white scroll-smooth">
+					<div class="relative">
+						<div bind:this={messagesContainer} class="min-h-[400px] max-h-[70vh] overflow-y-auto p-6 bg-gradient-to-b from-gray-50 to-white scroll-smooth">
 						{#if $messages.length === 0}
 							<div class="flex flex-col items-center justify-center h-full text-center">
 								<div class="h-24 w-24 rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 flex items-center justify-center mb-4">
 									<span class="text-4xl">💬</span>
 								</div>
-								<h3 class="text-xl font-semibold text-gray-900 mb-2">Welcome to Vanar AI</h3>
+								<br>
+								<h3 class="text-xl font-semibold text-gray-900 mb-2">Welcome to Vanar AI Assistant</h3>
 								<p class="text-gray-500 max-w-md">
-									Hi! I'm Vanar, your AI assistant from Vanar Chain. Ask me about blockchain, AI-native technology, PayFi, RWAs, or anything else!
+									Hi! I'm Vanar, your AI assistant from Vanar Chain. Ask me about anything!
 								</p>
 								{#if $error && ($error.includes('rate limit') || $error.includes('quota') || $error.includes('high demand'))}
 									<div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -758,14 +889,8 @@
 											<h4 class="text-sm font-semibold text-blue-800">Data Privacy & Deletion Policy</h4>
 										</div>
 										<div class="text-xs text-blue-700 space-y-1">
-											<p><strong>Guaranteed Permanent Erasure:</strong> When you delete chats or messages, they are permanently erased from:</p>
-											<ul class="text-left list-disc list-inside space-y-0.5 ml-2">
-												<li>Your local device storage</li>
-												<li>Our secure database</li>
-												<li>All backup and archival systems</li>
-												<li>Any cached or temporary data</li>
-											</ul>
-											<p class="mt-2 font-medium">This provides complete data privacy with no data retention - your deleted content is gone forever.</p>
+											<p><strong>Guaranteed Permanent Erasure:</strong> When you delete chats or messages, they are permanently erased from all systems including local storage, database, and backup systems. This provides guaranteed permanent erasure with no data retention.</p>
+											
 										</div>
 									</div>
 								</div>
@@ -775,79 +900,92 @@
 							<div class="mb-4 text-center">
 								<p class="text-xs text-gray-400 italic">💡 Hover over messages to delete individual ones • All deletions provide guaranteed permanent erasure from all systems</p>
 							</div>
-							{#each $messages as messageItem, idx (messageItem.createdAt)}
+							{#each $messages as messageItem, idx (messageItem.id)}
 								<!-- User Message -->
-								<div class="flex justify-end mb-2 group hover:bg-gray-50 rounded-lg p-1 -m-1 transition-colors duration-200">
-									<div class="flex items-end space-x-2 max-w-xl relative">
-										<div class="rounded-2xl rounded-br-sm bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 text-white shadow-lg">
-											<p class="text-sm leading-relaxed">{messageItem.message}</p>
-										</div>
-										<div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
-											<span class="text-sm">👤</span>
-										</div>
-										<!-- Delete button for user message -->
-										<button
-											on:click={() => deleteMessage(idx)}
-											class="group absolute -top-2 -left-2 opacity-0 group-hover:opacity-100 transition-all duration-300 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-lg hover:shadow-xl hover:scale-125 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-											aria-label="Delete message"
-											title="Delete message"
-										>
-											<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-300 group-hover:rotate-90">
-												<path d="M18 6L6 18M6 6l12 12"/>
-											</svg>
-											<div class="absolute inset-0 rounded-full bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-										</button>
-									</div>
-								</div>
-
-								<!-- AI Response -->
-								{#if messageItem.response || messageItem.id}
-									<div class="flex justify-start mb-6 group hover:bg-gray-50 rounded-lg p-1 -m-1 transition-colors duration-200">
+								{#if messageItem.sender === 'user'}
+									<div class="flex justify-end mb-2 group hover:bg-gray-50 rounded-lg p-1 -m-1 transition-colors duration-200">
 										<div class="flex items-end space-x-2 max-w-xl relative">
-											<div class="h-8 w-8 rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 flex items-center justify-center flex-shrink-0">
-												<img src="/src/lib/assets/images-removebg-preview.png" alt="Vanar Chain" class="w-5 h-5" />
+											<div class="rounded-2xl rounded-br-sm bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 text-white shadow-lg">
+												<p class="text-sm leading-relaxed">{messageItem.content}</p>
 											</div>
-											<div class="rounded-2xl rounded-bl-sm bg-white px-4 py-3 shadow-lg border border-gray-100">
-												{#if messageItem.response}
-													<p class="text-sm leading-relaxed text-gray-800">{messageItem.response}</p>
-													{#if messageItem.id}
-														<!-- Streaming indicator -->
-														<div class="flex items-center mt-2 space-x-1">
-															<span class="text-xs text-indigo-600 font-medium"> Vanar AI Assistant</span>
-															<div class="flex space-x-1">
-																<div class="h-1 w-1 rounded-full bg-indigo-400 animate-pulse"></div>
-																<div class="h-1 w-1 rounded-full bg-indigo-400 animate-pulse" style="animation-delay: 0.2s"></div>
-																<div class="h-1 w-1 rounded-full bg-indigo-400 animate-pulse" style="animation-delay: 0.4s"></div>
-															</div>
-														</div>
-													{:else}
-														<p class="mt-2 text-xs text-gray-400">
-															{new Date(messageItem.createdAt).toLocaleTimeString()}
-														</p>
-													{/if}
-												{:else}
-													<!-- Initial response placeholder -->
-													<div class="flex items-center space-x-2">
-														<div class="flex space-x-1">
-															<div class="h-2 w-2 rounded-full bg-indigo-400 animate-bounce"></div>
-															<div class="h-2 w-2 rounded-full bg-indigo-400 animate-bounce" style="animation-delay: 0.1s"></div>
-															<div class="h-2 w-2 rounded-full bg-indigo-400 animate-bounce" style="animation-delay: 0.2s"></div>
-														</div>
-														<span class="text-sm text-gray-600">AI is responding...</span>
-													</div>
-												{/if}
+											<div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+												<span class="text-sm">👤</span>
 											</div>
-											<!-- Delete button for AI response -->
+											<!-- Delete button for user message -->
 											<button
 												on:click={() => deleteMessage(idx)}
-												class="group absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-all duration-300 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-lg hover:shadow-xl hover:scale-125 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+												class="absolute -top-2 -left-2 opacity-0 group-hover:opacity-100 transition-all duration-300 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-lg hover:shadow-xl hover:scale-125 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
 												aria-label="Delete message"
 												title="Delete message"
 											>
 												<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-300 group-hover:rotate-90">
 													<path d="M18 6L6 18M6 6l12 12"/>
 												</svg>
-												<div class="absolute inset-0 rounded-full bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+											</button>
+										</div>
+									</div>
+								{:else}
+									<!-- AI Response -->
+									<div class="flex justify-start mb-6 group hover:bg-gray-50 rounded-lg p-1 -m-1 transition-colors duration-200">
+										<div class="flex items-end space-x-2 max-w-xl relative">
+											<div class="h-8 w-8 rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 flex items-center justify-center flex-shrink-0">
+												<img src="/src/lib/assets/images-removebg-preview.png" alt="Vanar Chain" class="w-5 h-5" />
+											</div>
+											<div class="rounded-2xl rounded-bl-sm bg-white px-4 py-3 shadow-lg border border-gray-100">
+												{#if messageItem.sender === 'ai'}
+													{#if messageItem.isStreaming}
+														<!-- Streaming AI Response -->
+														<div class="text-sm leading-relaxed text-gray-800">
+															{#if messageItem.aiResponse && messageItem.aiResponse.length > 0}
+																<!-- Show partial response with cursor -->
+																<span>{messageItem.aiResponse}</span>
+																<span class="inline-block w-0.5 h-4 bg-indigo-500 animate-pulse ml-1"></span>
+															{:else}
+																<!-- Show placeholder while waiting for first chunk -->
+																
+																<span class="inline-block w-0.5 h-4 bg-indigo-500 animate-pulse ml-1"></span>
+															{/if}
+														</div>
+														
+														<!-- Streaming status indicator -->
+														<div class="flex items-center mt-2 space-x-2">
+															<div class="flex items-center space-x-1">
+																<div class="h-2 w-2 rounded-full bg-indigo-400 animate-pulse"></div>
+																<div class="h-2 w-2 rounded-full bg-indigo-400 animate-pulse" style="animation-delay: 0.2s"></div>
+																<div class="h-2 w-2 rounded-full bg-indigo-400 animate-pulse" style="animation-delay: 0.4s"></div>
+															</div>
+															<span class="text-xs text-indigo-600 font-medium">Vanar AI is typing...</span>
+														</div>
+													{:else if messageItem.aiResponse && messageItem.aiResponse.length > 0}
+														<!-- Final AI Response -->
+														<div class="text-sm leading-relaxed text-gray-800">
+															<span>{messageItem.aiResponse}</span>
+														</div>
+														
+														<!-- Timestamp -->
+														<p class="mt-2 text-xs text-gray-400">
+															{new Date(messageItem.createdAt).toLocaleTimeString()}
+														</p>
+													{:else}
+														<!-- No response yet -->
+														<div class="text-sm text-gray-400 italic">
+															No response received
+														</div>
+													{/if}
+												{:else}
+													<!-- User message content is handled elsewhere -->
+												{/if}
+											</div>
+											<!-- Delete button for AI response -->
+											<button
+												on:click={() => deleteMessage(idx)}
+												class="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-all duration-300 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-lg hover:shadow-xl hover:scale-125 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+												aria-label="Delete message"
+												title="Delete message"
+											>
+												<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-300 group-hover:rotate-90">
+													<path d="M18 6L6 18M6 6l12 12"/>
+												</svg>
 											</button>
 										</div>
 									</div>
@@ -855,8 +993,23 @@
 							{/each}
 						{/if}
 					</div>
+					
+					<!-- Scroll to Bottom Button -->
+					{#if $messages.length > 2 && !isAtBottom()}
+						<button
+							on:click={scrollToBottom}
+							class="absolute bottom-4 right-4 p-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full shadow-lg border border-indigo-400 hover:border-indigo-500 transition-all duration-200 animate-bounce"
+							aria-label="Scroll to bottom"
+						>
+							<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<path d="M7 13l5 5 5-5"/>
+								<path d="M7 6l5 5 5-5"/>
+							</svg>
+						</button>
+					{/if}
+				</div>
 
-					<!-- Error Display -->
+				<!-- Error Display -->
 					{#if $error}
 						<div class="px-6 pb-4">
 							<div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
@@ -959,12 +1112,25 @@
 								<div class="relative">
 									<textarea
 										bind:value={messageText}
-										on:input={(e) => messageText = (e.target as HTMLTextAreaElement).value}
-										on:keypress={handleKeyPress}
+										on:keydown={handleKeyPress}
 										placeholder="Type your message here... (Press Enter to send, Shift+Enter for new line)"
 										rows="2"
-										class="block w-full resize-none rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 pr-12 bg-gray-50 focus:bg-white transition-colors"
+										maxlength="2000"
+										class="
+											block w-full resize-none rounded-xl border-gray-300 shadow-sm
+											focus:border-indigo-500 focus:ring-indigo-500 pr-12 bg-gray-50
+											focus:bg-white transition-all duration-200 ease-in-out
+											disabled:opacity-75 disabled:cursor-not-allowed
+											px-4 py-3
+											leading-normal
+											text-gray-800
+											placeholder-gray-400
+											scroll-pb-3 scroll-pt-3
+											whitespace-pre-wrap
+										"
 										aria-label="Type your message to Vanar AI"
+										aria-disabled={$loading}
+										disabled={$loading}
 									></textarea>
 									<div class="absolute right-3 bottom-3 text-xs text-gray-400">
 										{messageText.length}/2000
