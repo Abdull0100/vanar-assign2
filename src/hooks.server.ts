@@ -13,12 +13,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 		return resolve(event);
 	}
 
-	// Only use Auth.js for actual auth routes
+	// Use Auth.js for API auth routes
 	if (event.url.pathname.startsWith('/api/auth/')) {
-		const response = await authHandle({ event, resolve });
-		if (response) {
-			return response;
-		}
+		return authHandle({ event, resolve });
 	}
 
 	// Manual session handling for protected routes

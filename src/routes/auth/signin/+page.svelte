@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { signIn } from '@auth/sveltekit/client';
+
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { browser } from '$app/environment';
@@ -57,11 +57,23 @@
 
 	async function handleOAuthSignIn(provider: string) {
 		try {
-			await signIn(provider, {
-				callbackUrl: '/dashboard',
-				redirect: true
-			});
+			if (provider === 'google') {
+				const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+					`client_id=${encodeURIComponent('156713893636-plvjsv7m8qf6f1aha036j7t87udesvom.apps.googleusercontent.com')}&` +
+					`redirect_uri=${encodeURIComponent('http://localhost:5173/auth/callback/google')}&` +
+					`response_type=code&` +
+					`scope=${encodeURIComponent('openid email profile')}&` +
+					`access_type=offline`;
+				window.location.href = googleAuthUrl;
+			} else if (provider === 'github') {
+				const githubAuthUrl = `https://github.com/login/oauth/authorize?` +
+					`client_id=${encodeURIComponent('Ov23lisZHgi7Nzi3SycW')}&` +
+					`redirect_uri=${encodeURIComponent('http://localhost:5173/auth/github/callback')}&` +
+					`scope=${encodeURIComponent('user:email')}`;
+				window.location.href = githubAuthUrl;
+			}
 		} catch (err) {
+			console.error(`OAuth sign in error for ${provider}:`, err);
 			error = `Failed to sign in with ${provider}`;
 		}
 	}
