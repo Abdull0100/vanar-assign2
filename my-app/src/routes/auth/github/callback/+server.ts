@@ -87,9 +87,16 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 				providerId: String(userData.id),
 				verified: true, // OAuth users are automatically verified
 				role: 'user', // Default role
+				disabled: false, // Default status
 				passwordHash: null // No password for OAuth users
 			}).returning();
 		} else {
+			// Check if user is disabled
+			if (user.disabled) {
+				console.error('❌ Disabled user attempted to login:', user.email);
+				return redirect(302, '/login?error=account_disabled');
+			}
+
 			// Update existing user's OAuth info and ensure they're verified
 			[user] = await db.update(users).set({
 				provider: 'github',

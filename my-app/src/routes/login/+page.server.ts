@@ -27,6 +27,14 @@ export const actions = {
 			return fail(400, { error: 'Invalid email or password' });
 		}
 
+		// Check if user is disabled
+		if (user.disabled) {
+			return fail(400, { 
+				error: 'Your account has been disabled. Please contact an administrator.',
+				email 
+			});
+		}
+
 		// Check if user is verified (only for email/password users, not OAuth)
 		if (user.provider === 'email' && !user.verified) {
 			return fail(400, { 
@@ -48,7 +56,8 @@ export const actions = {
 			expiresAt
 		}).returning();
 
-		cookies.set('session_id', session.id, {
+		// Store session with unified cookie name
+		cookies.set('session', session.id, {
 			path: '/',
 			httpOnly: true,
 			sameSite: 'strict',

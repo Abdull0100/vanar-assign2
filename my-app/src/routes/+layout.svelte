@@ -42,12 +42,19 @@
 								? 'bg-red-100 text-red-700' 
 								: 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'}"
 						>
-							Admin
+							🔐 Admin Dashboard
 						</a>
 					{/if}
 				</div>
 			</div>
 			<div class="flex items-center space-x-4">
+				<!-- Admin Badge -->
+				{#if data.user?.role === 'admin'}
+					<span class="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
+						✅ Admin
+					</span>
+				{/if}
+				
 				<!-- Mobile AI Chat Link -->
 				<a 
 					href="/chat" 

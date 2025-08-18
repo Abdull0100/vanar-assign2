@@ -1,5 +1,38 @@
 <script lang="ts">
 	let { data } = $props<{ data: { user: any } }>();
+	
+	let isMakingAdmin = $state(false);
+	let adminMessage = $state<string | null>(null);
+
+	async function makeAdmin() {
+		if (isMakingAdmin) return;
+		
+		isMakingAdmin = true;
+		adminMessage = null;
+		
+		try {
+			const response = await fetch('/api/make-admin', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				}
+			});
+			
+			const result = await response.json();
+			
+			if (result.success) {
+				adminMessage = result.message;
+				// Update the user data to reflect admin status
+				data.user.role = 'admin';
+			} else {
+				adminMessage = result.error || 'Failed to make admin';
+			}
+		} catch (error) {
+			adminMessage = 'Error making admin';
+		} finally {
+			isMakingAdmin = false;
+		}
+	}
 </script>
 
 <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -79,6 +112,32 @@
             <div class="bg-white p-6 rounded-lg border border-gray-200">
               <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
               <div class="space-y-3">
+                {#if data.user.role !== 'admin'}
+                  <button 
+                    onclick={makeAdmin}
+                    disabled={isMakingAdmin}
+                    class="w-full text-left px-4 py-2 text-sm text-purple-700 hover:bg-purple-50 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isMakingAdmin ? 'Making Admin...' : '🔐 Make Me Admin (Testing)'}
+                  </button>
+                  
+                  {#if adminMessage}
+                    <div class="mt-2 p-2 text-xs rounded {adminMessage.includes('success') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                      {adminMessage}
+                    </div>
+                  {/if}
+                {:else}
+                  <div class="w-full text-left px-4 py-2 text-sm text-green-700 bg-green-50 rounded-md">
+                    ✅ You are an Admin!
+                  </div>
+                  <a 
+                    href="/admin" 
+                    class="block w-full text-left px-4 py-2 text-sm text-blue-700 hover:bg-blue-50 rounded-md transition-colors"
+                  >
+                    🎛️ Go to Admin Dashboard
+                  </a>
+                {/if}
+                
                 <button class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md transition-colors">
                   Edit Profile
                 </button>

@@ -10,6 +10,7 @@ export const users = pgTable('users', {
   name: text('name'),
   verified: boolean('verified').default(false).notNull(), // email verification status
   role: text('role').default('user').notNull(), // 'user' or 'admin'
+  disabled: boolean('disabled').default(false).notNull(), // account status
   provider: text('provider'), // 'google', 'email', etc.
   providerId: text('provider_id'), // Google user ID
   avatar: text('avatar'), // Profile picture URL

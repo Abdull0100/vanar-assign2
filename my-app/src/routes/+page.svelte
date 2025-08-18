@@ -1,5 +1,5 @@
 <script lang="ts">
-	let { data } = $props<{ data: { user: any } }>();
+	let { data } = $props<{ data: { user: any; adminAccessError?: boolean } }>();
 </script>
 
 <div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 relative overflow-hidden">
@@ -37,6 +37,23 @@
 				Your modern platform with AI-powered chat, OAuth authentication, role-based access, and secure sessions
 			</p>
 			
+			<!-- Admin Access Error Message -->
+			{#if data.adminAccessError}
+				<div class="bg-red-50 border border-red-200 rounded-xl p-6 mb-8 animate-fade-in">
+					<div class="flex items-center space-x-3">
+						<div class="flex-shrink-0">
+							<svg class="h-6 w-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+							</svg>
+						</div>
+						<div>
+							<h3 class="text-lg font-medium text-red-800">Access Denied</h3>
+							<p class="text-red-700">You don't have permission to access the admin dashboard. Only administrators can view that page.</p>
+						</div>
+					</div>
+				</div>
+			{/if}
+
 			<!-- Welcome Message for Logged-in Users -->
 			{#if data.user}
 				<div class="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-white/20 mb-12 animate-fade-in">
@@ -48,7 +65,12 @@
 						</div>
 						<div class="text-left">
 							<h2 class="text-2xl font-bold text-gray-900 animate-slide-in-left">Welcome back, {data.user.name || 'User'}! 👋</h2>
-							<p class="text-gray-600 animate-slide-in-left-delay">You're logged in as a <span class="font-semibold {data.user.role === 'admin' ? 'text-red-600' : 'text-blue-600'}">{data.user.role}</span></p>
+							<p class="text-gray-600 animate-slide-in-left-delay">
+								You're logged in as a 
+								<span class="font-semibold {data.user.role === 'admin' ? 'text-red-600' : 'text-blue-600'}">
+									{data.user.role === 'admin' ? '🔐 Admin' : '👤 User'}
+								</span>
+							</p>
 						</div>
 					</div>
 				</div>
