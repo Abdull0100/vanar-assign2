@@ -11,9 +11,13 @@ import { GEMINI_API_KEY } from '$env/static/private';
 // Initialize Gemini AI only if API key is available
 const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 
+type HistoryTurn = { message: string; response: string };
+
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
-		const { message } = await request.json();
+		const body = await request.json();
+		const message: string = body.message;
+		const history: HistoryTurn[] | undefined = Array.isArray(body.history) ? body.history : undefined;
 		const session = await locals.getSession?.();
 
 		if (!session?.user?.id) {
@@ -31,54 +35,40 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			});
 		}
 
+		// Build conversation transcript from history (limit to recent turns)
+		let transcript = '';
+		if (history && history.length > 0) {
+			const recent = history.slice(-20); // keep last 20 pairs
+			for (const turn of recent) {
+				if (turn.message) transcript += `User: ${turn.message}\n`;
+				if (turn.response) transcript += `Vanar: ${turn.response}\n`;
+			}
+		}
+
+		const systemInstruction = `You are Vanar, an advanced AI Chat Bot similar to Gemini and ChatGPT.
+
+Persona and behavior:
+- Behave like a professional, friendly, and knowledgeable chatbot.
+- Be adaptive: casual tone for casual chats, professional tone for work queries.
+- Support coding help, explanations, brainstorming, and research.
+- Remember context within the current conversation transcript provided.
+- If asked "Who are you?", always reply exactly: "I am Vanar, your AI assistant.".
+
+Capabilities:
+- Provide clear, concise, and professional answers.
+- You can continue a conversation from earlier points using the provided transcript.
+- Prefer structured, skimmable responses when helpful.
+`;
+
+		// Compose the final prompt including transcript and the new user message
+		const prompt = `${transcript ? `Conversation so far:\n${transcript}\n` : ''}User: ${message}\nVanar:`;
+
 		// Generate AI response with streaming
 		const model = genAI.getGenerativeModel({ 
 			model: 'gemini-1.5-flash',
-			systemInstruction: `You are Vanar, the official AI assistant for Vanar Chain - the first AI-native blockchain designed for the real economy.
-
-ABOUT VANAR CHAIN:
-- Vanar is "The Chain That Thinks" - an intelligent Layer 1 blockchain for real-world finance
-- Built from the ground up to power AI agents, onchain finance, and tokenized real-world infrastructure
-- Every transaction is intelligent, every record is queryable, every asset is provable
-- Trusted by major companies like Binance, Bybit, Kraken, Crypto.com, KuCoin, MEXC, and others
-
-KEY TECHNOLOGIES:
-1. VANARCHAIN: Fast, low-cost transaction layer with structured UDF storage
-2. KAYON: Onchain AI logic engine that queries, validates, and applies real-time compliance
-3. NEUTRON SEEDS: Semantic compression layer that stores legal, financial, and proof-based data directly onchain
-
-NEUTRON CAPABILITIES:
-- Transforms raw files into compact, queryable, AI-readable "Seeds" stored directly onchain
-- Property deeds become searchable proofs
-- PDF invoices become agent-readable memory
-- Compliance docs become programmable triggers
-- Powered by neural + algorithmic compression
-
-KAYON AI ENGINE:
-- Onchain reasoning engine inside the blockchain
-- Lets smart contracts and agents query and reason over live, compressed, verifiable data
-- Automates logic from deeds, receipts, or records
-- Validates compliance before payment flows
-- Triggers AI models to act on-chain with no oracles or middleware needed
-
-USE CASES:
-- AI Agents that read, reason, and act on compressed onchain records
-- PayFi (Payment Finance) solutions
-- Tokenized Real-World Assets (RWA)
-- Tokenized Infrastructure
-
-TOKEN: $VANRY is Vanar's utility token
-
-PERSONALITY:
-- Professional but friendly and approachable
-- Knowledgeable about blockchain, AI, and finance
-- Enthusiastic about Vanar's AI-native technology
-- Always introduce yourself as "Vanar, your AI assistant from Vanar Chain"
-- End responses with encouragement to explore Vanar's ecosystem
-
-Be helpful with general questions but always relate back to how Vanar Chain's AI-native blockchain technology can solve real-world problems.`
+			systemInstruction
 		});
-		const result = await model.generateContentStream(message);
+		const result = await model.generateContentStream(prompt);
 		
 		let fullResponse = '';
 		
@@ -89,7 +79,6 @@ Be helpful with general questions but always relate back to how Vanar Chain's AI
 					for await (const chunk of result.stream) {
 						const chunkText = chunk.text();
 						fullResponse += chunkText;
-						
 						// Send each chunk to the client
 						const data = JSON.stringify({ 
 							chunk: chunkText, 
@@ -97,7 +86,6 @@ Be helpful with general questions but always relate back to how Vanar Chain's AI
 						});
 						controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
 					}
-					
 					// Send completion signal
 					const endData = JSON.stringify({ 
 						chunk: '', 
@@ -105,14 +93,12 @@ Be helpful with general questions but always relate back to how Vanar Chain's AI
 						fullResponse 
 					});
 					controller.enqueue(new TextEncoder().encode(`data: ${endData}\n\n`));
-					
 					// Save complete response to database
 					await db.insert(chatMessages).values({
 						userId: session.user!.id,
 						message,
 						response: fullResponse
 					});
-					
 					controller.close();
 				} catch (error) {
 					console.error('Streaming error:', error);

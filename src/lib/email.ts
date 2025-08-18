@@ -148,6 +148,59 @@ const createAdminPromotionEmail = (email: string, name: string) => `
 </html>
 `;
 
+const createAdminDemotionEmail = (email: string, name: string, adminName: string) => `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Role Update - Vanar Chain</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%); padding: 30px; border-radius: 10px; text-align: center; margin-bottom: 30px;">
+        <h1 style="color: white; margin: 0; font-size: 28px;">📋 Vanar Chain</h1>
+        <p style="color: white; margin: 10px 0 0 0; font-size: 16px;">Role Update Notification</p>
+    </div>
+    
+    <div style="background: #f8f9fa; padding: 30px; border-radius: 10px; border-left: 4px solid #6c757d;">
+        <h2 style="color: #333; margin-top: 0;">Hello, ${name}</h2>
+        <p>This is to inform you that your role on Vanar Chain has been updated from <strong>Administrator</strong> to <strong>User</strong>.</p>
+        
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #dee2e6;">
+            <h3 style="color: #6c757d; margin-top: 0;">📝 Role Change Details:</h3>
+            <ul style="color: #333; margin: 10px 0; padding-left: 20px;">
+                <li><strong>Previous Role:</strong> Administrator</li>
+                <li><strong>New Role:</strong> User</li>
+                <li><strong>Changed By:</strong> ${adminName}</li>
+                <li><strong>Date:</strong> ${new Date().toLocaleDateString()}</li>
+            </ul>
+        </div>
+        
+        <p>As a user, you still have access to all the core features of Vanar Chain, including:</p>
+        <ul style="color: #333; margin: 10px 0; padding-left: 20px;">
+            <li>AI Chat functionality</li>
+            <li>Profile management</li>
+            <li>Dashboard access</li>
+            <li>Community features</li>
+        </ul>
+        
+        <p>If you have any questions about this change or believe it was made in error, please contact the development team or reach out to the administrator who made this change.</p>
+        
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6;">
+            <p style="font-size: 14px; color: #666; margin: 0;">
+                Thank you for your understanding and continued participation in the Vanar Chain community.
+            </p>
+        </div>
+    </div>
+    
+    <div style="text-align: center; margin-top: 30px; color: #666; font-size: 14px;">
+        <p>© 2025  Vanar Chain. All rights reserved.</p>
+        <p>The Chain That Thinks</p>
+    </div>
+</body>
+</html>
+`;
+
 // Helper function to send emails
 export const sendEmail = async (to: string, subject: string, html: string) => {
 	const transporter = createTransporter();
@@ -201,4 +254,69 @@ export const sendPasswordResetEmail = async (email: string, token: string) => {
 export const sendAdminPromotionEmail = async (email: string, name: string) => {
 	const html = createAdminPromotionEmail(email, name);
 	return await sendEmail(email, '🎉 Congratulations! You\'re Now an Admin - Vanar Chain', html);
+};
+
+export const sendAdminDemotionEmail = async (email: string, name: string, adminName: string) => {
+	const html = createAdminDemotionEmail(email, name, adminName);
+	return await sendEmail(email, 'Role Update - Vanar Chain', html);
+};
+
+const createAccountDeletionEmail = (email: string, name: string, adminName: string) => `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Deletion Notice - Vanar Chain</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); padding: 30px; border-radius: 10px; text-align: center; margin-bottom: 30px;">
+        <h1 style="color: white; margin: 0; font-size: 28px;">⚠️ Vanar Chain</h1>
+        <p style="color: white; margin: 10px 0 0 0; font-size: 16px;">Account Deletion Notice</p>
+    </div>
+    
+    <div style="background: #f8f9fa; padding: 30px; border-radius: 10px; border-left: 4px solid #dc3545;">
+        <h2 style="color: #333; margin-top: 0;">Hello, ${name}</h2>
+        <p>This is to inform you that your account on Vanar Chain has been permanently deleted by an administrator.</p>
+        
+        <div style="background: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #ffeaa7;">
+            <h3 style="color: #856404; margin-top: 0;">📝 Deletion Details:</h3>
+            <ul style="color: #333; margin: 10px 0; padding-left: 20px;">
+                <li><strong>Account Email:</strong> ${email}</li>
+                <li><strong>Deleted By:</strong> ${adminName}</li>
+                <li><strong>Date:</strong> ${new Date().toLocaleDateString()}</li>
+                <li><strong>Action:</strong> Permanent Account Deletion</li>
+            </ul>
+        </div>
+        
+        <div style="background: #f8d7da; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #f5c6cb;">
+            <h3 style="color: #721c24; margin-top: 0;">⚠️ Important Information:</h3>
+            <ul style="color: #333; margin: 10px 0; padding-left: 20px;">
+                <li>Your account has been permanently removed from the system</li>
+                <li>All associated data has been deleted</li>
+                <li>You will no longer have access to Vanar Chain services</li>
+                <li>This action cannot be undone</li>
+            </ul>
+        </div>
+        
+        <p>If you believe this deletion was made in error or have any questions, please contact the development team immediately. You may also reach out to the administrator who performed this action.</p>
+        
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6;">
+            <p style="font-size: 14px; color: #666; margin: 0;">
+                Thank you for being part of the Vanar Chain community. We hope to see you again in the future.
+            </p>
+        </div>
+    </div>
+    
+    <div style="text-align: center; margin-top: 30px; color: #666; font-size: 14px;">
+        <p>© 2025  Vanar Chain. All rights reserved.</p>
+        <p>The Chain That Thinks</p>
+    </div>
+</body>
+</html>
+`;
+
+export const sendAccountDeletionEmail = async (email: string, name: string, adminName: string) => {
+	const html = createAccountDeletionEmail(email, name, adminName);
+	return await sendEmail(email, 'Account Deletion Notice - Vanar Chain', html);
 };

@@ -5,11 +5,22 @@
 
 	let message = '';
 	let loading = false;
-	let messages: Array<{ message: string; response: string; createdAt: string; id?: number }> = [];
+	type ChatItem = { message: string; response: string; createdAt: string; id?: number };
+	let messages: Array<ChatItem> = [];
 	let error = '';
 	let messagesContainer: HTMLElement;
 
+	// Conversations state
+	type Conversation = { id: string; title: string; createdAt: string; messages: Array<ChatItem> };
+	let conversations: Array<Conversation> = [];
+	let currentConversationId: string | null = null;
+
 	$: user = $page.data.session?.user;
+	$: currentConversation = conversations.find((c) => c.id === currentConversationId) || null;
+	$: messages = currentConversation ? currentConversation.messages : [];
+
+	const storageKey = () => `vanar_conversations_${user?.id || 'anon'}`;
+	const generateId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
 	onMount(() => {
 		// Only redirect if we're sure there's no session data
@@ -17,8 +28,115 @@
 			goto('/auth/signin');
 			return;
 		}
+		loadConversationsFromStorage();
 		loadChatHistory();
 	});
+
+	function saveConversationsToStorage() {
+		try {
+			localStorage.setItem(storageKey(), JSON.stringify({ conversations, currentConversationId }));
+		} catch (e) {
+			console.warn('Failed to save conversations:', e);
+		}
+	}
+
+	function loadConversationsFromStorage() {
+		try {
+			const raw = localStorage.getItem(storageKey());
+			if (raw) {
+				const parsed = JSON.parse(raw);
+				conversations = parsed.conversations || [];
+				currentConversationId = parsed.currentConversationId || (conversations[0]?.id ?? null);
+			}
+		} catch (e) {
+			console.warn('Failed to load conversations:', e);
+		}
+	}
+
+	async function newConversation() {
+		const id = generateId();
+		const conv: Conversation = { id, title: 'New Chat', createdAt: new Date().toISOString(), messages: [] };
+		conversations = [conv, ...conversations];
+		currentConversationId = id;
+		saveConversationsToStorage();
+		
+		// Optionally offer to load server history if this is the first conversation
+		if (conversations.length === 1) {
+			try {
+				const response = await fetch('/api/chat');
+				if (response.ok) {
+					const data = await response.json();
+					if (data.messages && data.messages.length > 0) {
+						// Ask user if they want to load previous chat history
+						if (confirm('Would you like to load your previous chat history from the server?')) {
+							conv.messages = (data.messages || []).reverse(); // oldest to newest
+							conv.title = data.messages[0]?.message ? 
+								(data.messages[0].message.length > 40 ? data.messages[0].message.slice(0, 40) + '…' : data.messages[0].message) : 
+								'Previous Chat';
+							saveConversationsToStorage();
+						}
+					}
+				}
+			} catch (err) {
+				console.error('Error loading server history:', err);
+			}
+		}
+	}
+
+	function selectConversation(id: string) {
+		currentConversationId = id;
+		saveConversationsToStorage();
+	}
+
+	function renameConversationTitleIfNeeded(firstUserMessage: string) {
+		if (!currentConversation) return;
+		if (currentConversation.title === 'New Chat' && firstUserMessage) {
+			currentConversation.title = firstUserMessage.length > 40 ? firstUserMessage.slice(0, 40) + '…' : firstUserMessage;
+			saveConversationsToStorage();
+		}
+	}
+
+	function forkFromIndex(index: number) {
+		if (!currentConversation) return;
+		const id = generateId();
+		const baseMessages = currentConversation.messages.slice(0, index + 1);
+		const titleSource = baseMessages.find((m) => m.message)?.message || 'Forked Chat';
+		const conv: Conversation = {
+			id,
+			title: (titleSource?.length || 0) > 40 ? titleSource.slice(0, 40) + '…' : (titleSource || 'Forked Chat'),
+			createdAt: new Date().toISOString(),
+			messages: baseMessages
+		};
+		conversations = [conv, ...conversations];
+		currentConversationId = id;
+		saveConversationsToStorage();
+	}
+
+	function deleteConversation(id: string) {
+		const conv = conversations.find(c => c.id === id);
+		if (!conv) return;
+		
+		const convTitle = conv.title || 'this conversation';
+		if (!confirm(`Are you sure you want to delete "${convTitle}"? This action cannot be undone.`)) {
+			return;
+		}
+		
+		// Remove the conversation
+		conversations = conversations.filter(c => c.id !== id);
+		
+		// If we deleted the current conversation, select another one or go to welcome state
+		if (currentConversationId === id) {
+			if (conversations.length > 0) {
+				// If there are other conversations, select the first one
+				currentConversationId = conversations[0].id;
+			} else {
+				// If this was the last conversation, go to welcome state
+				currentConversationId = null;
+			}
+		}
+		
+		saveConversationsToStorage();
+	}
 
 	async function handleSignOut() {
 		try {
@@ -36,7 +154,9 @@
 			const response = await fetch('/api/chat');
 			if (response.ok) {
 				const data = await response.json();
-				messages = data.messages.reverse(); // Show newest first
+				// Only seed a conversation from server history if user explicitly wants to continue
+				// For now, let the user start fresh with the welcome state
+				// If they want to see history, they can click "New Chat" and it will load from server
 			}
 		} catch (err) {
 			console.error('Error loading chat history:', err);
@@ -45,6 +165,11 @@
 
 	async function sendMessage() {
 		if (!message.trim() || loading) return;
+		
+		// Only create a new conversation if there isn't one and user is actually sending a message
+		if (!currentConversationId) {
+			newConversation();
+		}
 
 		const userMessage = message.trim();
 		message = '';
@@ -53,18 +178,24 @@
 
 		// Add user message to UI immediately
 		const tempId = Date.now();
-		messages = [
-			...messages,
-			{ message: userMessage, response: '', createdAt: new Date().toISOString(), id: tempId }
-		];
+		const newItem: ChatItem = { message: userMessage, response: '', createdAt: new Date().toISOString(), id: tempId };
+		if (currentConversation) {
+			currentConversation.messages = [...currentConversation.messages, newItem];
+			renameConversationTitleIfNeeded(userMessage);
+			saveConversationsToStorage();
+		}
 
 		try {
+			const history = (currentConversation?.messages || [])
+				.filter((m) => m.id !== tempId) // exclude the temp item (just the new user turn)
+				.map((m) => ({ message: m.message, response: m.response }));
+
 			const response = await fetch('/api/chat', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
 				},
-				body: JSON.stringify({ message: userMessage })
+				body: JSON.stringify({ message: userMessage, history })
 			});
 
 			if (response.ok && response.headers.get('content-type')?.includes('text/event-stream')) {
@@ -88,16 +219,22 @@
 									
 									if (data.error) {
 										error = data.error;
-										messages = messages.filter((msg) => msg.id !== tempId);
+										if (currentConversation) {
+											currentConversation.messages = currentConversation.messages.filter((msg) => msg.id !== tempId);
+											saveConversationsToStorage();
+										}
 										break;
 									}
 									
 									if (data.chunk) {
 										streamedResponse += data.chunk;
 										// Update the message with the streaming response
-										messages = messages.map((msg) =>
-											msg.id === tempId ? { ...msg, response: streamedResponse } : msg
-										);
+										if (currentConversation) {
+											currentConversation.messages = currentConversation.messages.map((msg) =>
+												msg.id === tempId ? { ...msg, response: streamedResponse } : msg
+											);
+											saveConversationsToStorage();
+										}
 										// Auto-scroll to bottom during streaming
 										setTimeout(() => {
 											if (messagesContainer) {
@@ -108,9 +245,12 @@
 									
 									if (data.done) {
 										// Finalize the message
-										messages = messages.map((msg) =>
-											msg.id === tempId ? { ...msg, id: undefined } : msg
-										);
+										if (currentConversation) {
+											currentConversation.messages = currentConversation.messages.map((msg) =>
+												msg.id === tempId ? { ...msg, id: undefined } : msg
+											);
+											saveConversationsToStorage();
+										}
 									}
 								} catch (parseError) {
 									console.error('Error parsing streaming data:', parseError);
@@ -123,17 +263,26 @@
 				// Fallback to regular JSON response
 				const data = await response.json();
 				if (response.ok) {
-					messages = messages.map((msg) =>
-						msg.id === tempId ? { ...msg, response: data.response, id: undefined } : msg
-					);
+					if (currentConversation) {
+						currentConversation.messages = currentConversation.messages.map((msg) =>
+							msg.id === tempId ? { ...msg, response: data.response, id: undefined } : msg
+						);
+						saveConversationsToStorage();
+					}
 				} else {
 					error = data.error || 'Failed to get response from AI';
-					messages = messages.filter((msg) => msg.id !== tempId);
+					if (currentConversation) {
+						currentConversation.messages = currentConversation.messages.filter((msg) => msg.id !== tempId);
+						saveConversationsToStorage();
+					}
 				}
 			}
 		} catch (err) {
 			error = 'An error occurred while sending message';
-			messages = messages.filter((msg) => msg.id !== tempId);
+			if (currentConversation) {
+				currentConversation.messages = currentConversation.messages.filter((msg) => msg.id !== tempId);
+				saveConversationsToStorage();
+			}
 		} finally {
 			loading = false;
 		}
@@ -167,7 +316,7 @@
 						>
 							Dashboard
 						</button>
-													<button
+									<button
 								on:click={() => goto('/chat')}
 								class="inline-flex items-center border-b-2 border-indigo-500 px-1 pt-1 text-sm font-medium text-gray-900"
 							>
@@ -212,20 +361,36 @@
 			<!-- Chat History Sidebar -->
 			<div class="lg:col-span-1">
 				<div class="rounded-xl bg-white shadow-lg h-full">
-					<div class="p-4 border-b border-gray-200">
-						<h3 class="text-lg font-semibold text-gray-900">Chat History</h3>
-						<p class="text-sm text-gray-500">Your recent conversations</p>
+					<div class="p-4 border-b border-gray-200 flex items-center justify-between">
+						<div>
+							<h3 class="text-lg font-semibold text-gray-900">Conversations</h3>
+							<p class="text-sm text-gray-500">Start new chats and revisit old ones</p>
+						</div>
+						<button on:click={newConversation} class="rounded-md bg-indigo-600 px-3 py-2 text-xs font-medium text-white hover:bg-indigo-700">New Chat</button>
 					</div>
 					<div class="p-4 max-h-96 overflow-y-auto">
-						{#if messages.length === 0}
-							<p class="text-sm text-gray-500 text-center py-8">No conversations yet</p>
+						{#if conversations.length === 0}
+							<div class="text-center py-8">
+								<div class="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+									<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+								</div>
+								<p class="text-sm text-gray-500 mb-2">No conversations yet</p>
+								<p class="text-xs text-gray-400">Start a new chat to begin</p>
+							</div>
 						{:else}
-							{#each messages.slice(0, 10) as messageItem, index}
-								<div class="mb-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer">
-									<p class="text-sm text-gray-800 truncate">{messageItem.message}</p>
-									<p class="text-xs text-gray-500 mt-1">
-										{new Date(messageItem.createdAt).toLocaleDateString()}
-									</p>
+							{#each conversations as conv}
+								<div class="mb-3 p-3 rounded-lg transition-colors cursor-pointer {currentConversationId === conv.id ? 'bg-indigo-50 border border-indigo-200' : 'bg-gray-50 hover:bg-gray-100'}" on:click={() => selectConversation(conv.id)}>
+									<div class="flex items-center justify-between">
+										<p class="text-sm text-gray-800 truncate flex-1 mr-2">{conv.title}</p>
+										<button 
+											on:click={(e) => { e.stopPropagation(); deleteConversation(conv.id); }} 
+											class="text-red-500 hover:text-red-700 text-xs p-1.5 rounded-full hover:bg-red-50 transition-colors flex-shrink-0"
+											title="Delete conversation"
+										>
+											<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6"/><path d="M9 9l6 6"/></svg>
+										</button>
+									</div>
+									<p class="text-xs text-gray-500 mt-1">{new Date(conv.createdAt).toLocaleDateString()}</p>
 								</div>
 							{/each}
 						{/if}
@@ -294,9 +459,9 @@
 								</div>
 							</div>
 						{:else}
-							{#each messages as messageItem (messageItem.createdAt)}
+							{#each messages as messageItem, idx (messageItem.createdAt)}
 								<!-- User Message -->
-								<div class="flex justify-end mb-4">
+								<div class="flex justify-end mb-2">
 									<div class="flex items-end space-x-2 max-w-xl">
 										<div class="rounded-2xl rounded-br-sm bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 text-white shadow-lg">
 											<p class="text-sm leading-relaxed">{messageItem.message}</p>
@@ -305,6 +470,9 @@
 											<span class="text-sm">👤</span>
 										</div>
 									</div>
+								</div>
+								<div class="flex justify-end -mt-1 mb-3 pr-12">
+									<button class="text-[11px] text-gray-400 hover:text-gray-600" on:click={() => forkFromIndex(idx)}>Fork from here</button>
 								</div>
 
 								<!-- AI Response -->
@@ -348,7 +516,7 @@
 									</div>
 								{/if}
 							{/each}
-
+<!-- Isko Delte delete krna hai -->
 							{#if loading}
 								<div class="flex justify-start mb-4">
 									<div class="flex items-end space-x-2">

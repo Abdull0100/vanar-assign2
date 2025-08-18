@@ -13,6 +13,7 @@
 	}> = [];
 	let loading = true;
 	let error = '';
+	let success = '';
 	let stats = {
 		totalUsers: 0,
 		verifiedUsers: 0,
@@ -65,8 +66,17 @@
 		};
 	}
 
+	function clearSuccessMessage() {
+		setTimeout(() => {
+			success = '';
+		}, 3000);
+	}
+
 	async function updateUserRole(userId: string, newRole: string) {
 		try {
+			error = ''; // Clear previous errors
+			success = ''; // Clear previous success messages
+			
 			const response = await fetch(`/api/admin/users/${userId}/role`, {
 				method: 'PATCH',
 				headers: {
@@ -79,8 +89,12 @@
 				// Update local state
 				users = users.map((u) => (u.id === userId ? { ...u, role: newRole } : u));
 				calculateStats();
+				error = ''; // Clear any previous errors
+				success = 'User role updated successfully!';
+				clearSuccessMessage();
 			} else {
-				error = 'Failed to update user role';
+				const errorData = await response.json();
+				error = errorData.error || 'Failed to update user role';
 			}
 		} catch (err) {
 			error = 'An error occurred while updating user role';
@@ -89,6 +103,9 @@
 
 	async function toggleUserStatus(userId: string, currentStatus: boolean) {
 		try {
+			error = ''; // Clear previous errors
+			success = ''; // Clear previous success messages
+			
 			const response = await fetch(`/api/admin/users/${userId}/status`, {
 				method: 'PATCH',
 				headers: {
@@ -100,11 +117,53 @@
 			if (response.ok) {
 				// Reload users to get updated data
 				await loadUsers();
+				success = 'User status updated successfully!';
+				clearSuccessMessage();
 			} else {
 				error = 'Failed to update user status';
 			}
 		} catch (err) {
 			error = 'An error occurred while updating user status';
+		}
+	}
+
+	async function deleteUser(userId: string, userName: string) {
+		if (!confirm(`Are you sure you want to permanently delete ${userName || 'this user'}? This action cannot be undone.`)) {
+			return;
+		}
+
+		try {
+			error = ''; // Clear previous errors
+			success = ''; // Clear previous success messages
+			
+			const response = await fetch(`/api/admin/users/${userId}`, {
+				method: 'DELETE'
+			});
+
+			if (response.ok) {
+				// Remove user from local state
+				users = users.filter(u => u.id !== userId);
+				calculateStats();
+				success = 'User deleted successfully!';
+				clearSuccessMessage();
+			} else {
+				const errorData = await response.json();
+				// Show more specific error messages
+				if (errorData.error === 'You cannot delete your own account') {
+					error = 'You cannot delete your own account. Please ask another admin to do this.';
+				} else if (errorData.error === 'User not found') {
+					error = 'User not found. They may have already been deleted.';
+				} else if (errorData.error === 'Forbidden') {
+					error = 'You do not have permission to delete users.';
+				} else if (errorData.error === 'Unauthorized') {
+					error = 'You are not authorized to perform this action. Please log in again.';
+				} else {
+					error = errorData.error || 'Failed to delete user. Please try again.';
+				}
+			}
+		} catch (err) {
+			console.error('Delete user error:', err);
+			error = 'An error occurred while deleting user. Please check your connection and try again.';
 		}
 	}
 
@@ -314,11 +373,41 @@
 				<div class="px-4 py-5 sm:px-6">
 					<h3 class="text-lg leading-6 font-medium text-gray-900">User Management</h3>
 					<p class="mt-1 max-w-2xl text-sm text-gray-500">Manage user roles and account status</p>
+					
+					<!-- Info about user deletion -->
+					<div class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+						<div class="flex">
+							<div class="flex-shrink-0">
+								<svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+									<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+								</svg>
+							</div>
+							<div class="ml-3">
+								<h4 class="text-sm font-medium text-blue-800">User Deletion Information</h4>
+								<div class="mt-2 text-sm text-blue-700">
+									<p>When you delete a user, the following will happen:</p>
+									<ul class="mt-1 list-disc list-inside space-y-1">
+										<li>All user sessions will be terminated</li>
+										<li>User account and profile data will be permanently removed</li>
+										<li>Chat history and messages will be deleted</li>
+										<li>An email notification will be sent to the deleted user</li>
+									</ul>
+									<p class="mt-2 font-medium">⚠️ This action cannot be undone!</p>
+								</div>
+							</div>
+						</div>
+					</div>
 				</div>
 
 				{#if error}
 					<div class="border border-red-200 bg-red-50 px-4 py-3 text-red-700">
 						{error}
+					</div>
+				{/if}
+
+				{#if success}
+					<div class="border border-green-200 bg-green-50 px-4 py-3 text-green-700">
+						{success}
 					</div>
 				{/if}
 
@@ -344,7 +433,7 @@
 									>
 									<th
 										class="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
-										>Status</th
+										>Verification Status</th
 									>
 									<th
 										class="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
@@ -352,7 +441,7 @@
 									>
 									<th
 										class="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
-										>Actions</th
+										>Actions <span class="text-xs font-normal text-gray-400">(Current user: N/A)</span></th
 									>
 								</tr>
 							</thead>
@@ -381,15 +470,22 @@
 											</div>
 										</td>
 										<td class="px-6 py-4 whitespace-nowrap">
-											<select
-												value={userItem.role}
-												on:change={(e) =>
-													updateUserRole(userItem.id, (e.target as HTMLSelectElement).value)}
-												class="rounded-md border-gray-300 text-sm text-gray-900 focus:border-indigo-500 focus:ring-indigo-500"
-											>
-												<option value="user">User</option>
-												<option value="admin">Admin</option>
-											</select>
+											{#if userItem.id === user?.id}
+												<div class="flex items-center space-x-2">
+													<span class="text-sm font-medium text-gray-900">{userItem.role}</span>
+													<span class="text-xs text-gray-500">(Current user)</span>
+												</div>
+											{:else}
+												<select
+													value={userItem.role}
+													on:change={(e) =>
+														updateUserRole(userItem.id, (e.target as HTMLSelectElement).value)}
+													class="rounded-md border-gray-300 text-sm text-gray-900 focus:border-indigo-500 focus:ring-indigo-500"
+												>
+													<option value="user">User</option>
+													<option value="admin">Admin</option>
+												</select>
+											{/if}
 										</td>
 										<td class="px-6 py-4 whitespace-nowrap">
 											<span
@@ -404,12 +500,24 @@
 											{new Date(userItem.createdAt).toLocaleDateString()}
 										</td>
 										<td class="px-6 py-4 text-sm font-medium whitespace-nowrap">
-											<button
-												on:click={() => toggleUserStatus(userItem.id, !!userItem.emailVerified)}
-												class="text-indigo-600 hover:text-indigo-900"
-											>
-												{userItem.emailVerified ? 'Disable' : 'Enable'}
-											</button>
+											{#if userItem.id === user?.id}
+												<span class="text-gray-400">N/A</span>
+											{:else}
+												<div class="flex space-x-2">
+													<button
+														on:click={() => toggleUserStatus(userItem.id, !!userItem.emailVerified)}
+														class="text-indigo-600 hover:text-indigo-900"
+													>
+														{userItem.emailVerified ? 'Disable' : 'Enable'}
+													</button>
+													<button
+														on:click={() => deleteUser(userItem.id, userItem.name || userItem.email)}
+														class="text-red-600 hover:text-red-900"
+													>
+														Delete
+													</button>
+												</div>
+											{/if}
 										</td>
 									</tr>
 								{/each}
