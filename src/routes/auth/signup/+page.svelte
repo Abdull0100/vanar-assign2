@@ -63,7 +63,7 @@
 			} else if (provider === 'github') {
 				const githubAuthUrl = `https://github.com/login/oauth/authorize?` +
 					`client_id=${encodeURIComponent('Ov23lisZHgi7Nzi3SycW')}&` +
-					`redirect_uri=${encodeURIComponent('http://localhost:5173/auth/github/callback')}&` +
+					`redirect_uri=${encodeURIComponent('http://localhost:5173/auth/callback/github')}&` +
 					`scope=${encodeURIComponent('user:email')}`;
 				window.location.href = githubAuthUrl;
 			}
