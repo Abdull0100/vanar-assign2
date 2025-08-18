@@ -1,8 +1,8 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { db } from '$lib/db';
-import { chatMessages } from '$lib/db/schema';
-import { eq, inArray } from 'drizzle-orm';
+import { chatMessages, conversations } from '$lib/db/schema';
+import { eq, inArray, and } from 'drizzle-orm';
 import { AuthError, ValidationError, handleApiError } from '$lib/errors';
 
 // Import env vars from $env
@@ -31,6 +31,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const body = await request.json();
 		const message: string = body.message;
 		const history: HistoryTurn[] | undefined = Array.isArray(body.history) ? body.history : undefined;
+		const conversationId: string | undefined = body.conversationId;
 		const session = await locals.getSession?.();
 
 		if (!session?.user?.id) {
@@ -41,18 +42,46 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			throw new ValidationError('Message is required and must be a valid string');
 		}
 
+		// Get or create conversation
+		let conversation;
+		if (conversationId) {
+			// Find existing conversation
+			conversation = await db.query.conversations.findFirst({
+				where: and(
+					eq(conversations.id, conversationId),
+					eq(conversations.userId, session.user.id)
+				)
+			});
+			
+			if (!conversation) {
+				throw new ValidationError('Conversation not found or access denied');
+			}
+		} else {
+			// Create new conversation
+			const [newConversation] = await db.insert(conversations).values({
+				userId: session.user.id,
+				title: message.length > 40 ? message.slice(0, 40) + '…' : message
+			}).returning();
+			
+			conversation = newConversation;
+		}
+
 		// Check if Gemini API is available
 		if (!genAI) {
 			const fallbackResponse = "I apologize, but the AI chat service is currently unavailable. The Gemini API key is not configured. Please contact your administrator to set up the GEMINI_API_KEY environment variable.";
 			
 			// Save fallback response to database
 			await db.insert(chatMessages).values({
+				conversationId: conversation.id,
 				userId: session.user.id,
 				message,
 				response: fallbackResponse
 			});
 
-			return json({ response: fallbackResponse });
+			return json({ 
+				response: fallbackResponse,
+				conversationId: conversation.id
+			});
 		}
 
 		// Build conversation transcript from history (limit to recent turns)
@@ -116,6 +145,7 @@ Capabilities:
 						controller.enqueue(new TextEncoder().encode(`data: ${endData}\n\n`));
 						// Save complete response to database
 						await db.insert(chatMessages).values({
+							conversationId: conversation.id,
 							userId: session.user!.id,
 							message,
 							response: fullResponse
@@ -167,6 +197,7 @@ Capabilities:
 			if (shouldSaveToDb) {
 				try {
 					await db.insert(chatMessages).values({
+						conversationId: conversation.id,
 						userId: session.user.id,
 						message,
 						response: errorMessage
@@ -212,16 +243,67 @@ export const GET: RequestHandler = async ({ locals }) => {
 			throw new AuthError('Please sign in to view chat history');
 		}
 
-		// Get chat history for the user
-		const messages = await db.query.chatMessages.findMany({
-			where: eq(chatMessages.userId, session.user.id),
-			orderBy: (chatMessages, { desc }) => [desc(chatMessages.createdAt)],
-			limit: 50
+		// Get conversations with their messages for the user
+		const userConversations = await db.query.conversations.findMany({
+			where: eq(conversations.userId, session.user.id),
+			orderBy: (conversations, { desc }) => [desc(conversations.updatedAt)],
+			with: {
+				messages: {
+					orderBy: (chatMessages, { asc }) => [asc(chatMessages.createdAt)]
+				}
+			}
 		});
 
-		return json({ messages });
+		return json({ conversations: userConversations });
 	} catch (error) {
-		handleApiError(error);
+		return handleApiError(error);
+	}
+}
+
+export const PUT: RequestHandler = async ({ request, locals }) => {
+	try {
+		const session = await locals.getSession?.();
+
+		if (!session?.user?.id) {
+			throw new AuthError('Please sign in to update conversations');
+		}
+
+		const body = await request.json();
+		const { conversationId, title, messages } = body;
+
+		if (!conversationId) {
+			throw new ValidationError('Conversation ID is required');
+		}
+
+		// Verify the conversation belongs to the current user
+		const existingConversation = await db.query.conversations.findFirst({
+			where: and(
+				eq(conversations.id, conversationId),
+				eq(conversations.userId, session.user.id)
+			)
+		});
+
+		if (!existingConversation) {
+			throw new AuthError('Conversation not found or access denied');
+		}
+
+		// Update conversation title
+		if (title) {
+			await db.update(conversations)
+				.set({ 
+					title,
+					updatedAt: new Date()
+				})
+				.where(eq(conversations.id, conversationId));
+		}
+
+		// For now, we'll just update the conversation metadata
+		// In a more sophisticated system, you might want to sync individual message deletions
+		// This would require more complex logic to handle message ordering and relationships
+
+		return json({ success: true, message: 'Conversation updated successfully' });
+	} catch (error) {
+		return handleApiError(error);
 	}
 }
 
@@ -234,14 +316,10 @@ export const DELETE: RequestHandler = async ({ request, locals }) => {
 		}
 
 		const body = await request.json();
-		const { messageIds } = body;
+		const { messageIds, conversationIds } = body;
 
-		if (!messageIds || !Array.isArray(messageIds)) {
-			throw new ValidationError('Message IDs array is required');
-		}
-
-		// Delete specific messages from database (only if they belong to the current user)
-		if (messageIds.length > 0) {
+		// Delete specific messages
+		if (messageIds && Array.isArray(messageIds) && messageIds.length > 0) {
 			// First verify all messages belong to the current user
 			const userMessages = await db.query.chatMessages.findMany({
 				where: inArray(chatMessages.id, messageIds),
@@ -259,14 +337,38 @@ export const DELETE: RequestHandler = async ({ request, locals }) => {
 				.where(
 					inArray(chatMessages.id, messageIds)
 				);
-		} else {
-			// Clear all messages for the user
-			await db.delete(chatMessages)
-				.where(eq(chatMessages.userId, session.user!.id));
+		}
+		
+		// Delete specific conversations
+		if (conversationIds && Array.isArray(conversationIds) && conversationIds.length > 0) {
+			// First verify all conversations belong to the current user
+			const userConversations = await db.query.conversations.findMany({
+				where: inArray(conversations.id, conversationIds),
+				columns: { id: true, userId: true }
+			});
+
+			// Check if all conversations belong to the current user
+			const allOwned = userConversations.every(conv => conv.userId === session.user!.id);
+			if (!allOwned) {
+				throw new AuthError('You can only delete your own conversations');
+			}
+
+			// Delete the conversations (messages will be deleted due to CASCADE)
+			await db.delete(conversations)
+				.where(
+					inArray(conversations.id, conversationIds)
+				);
 		}
 
-		return json({ success: true, message: 'Chat messages deleted successfully' });
+		// If no specific IDs provided, clear all for the user
+		if ((!messageIds || messageIds.length === 0) && (!conversationIds || conversationIds.length === 0)) {
+			// Delete all conversations for the user (messages will be deleted due to CASCADE)
+			await db.delete(conversations)
+				.where(eq(conversations.userId, session.user!.id));
+		}
+
+		return json({ success: true, message: 'Chat data deleted successfully' });
 	} catch (error) {
-		handleApiError(error);
+		return handleApiError(error);
 	}
 }

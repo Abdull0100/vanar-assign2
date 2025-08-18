@@ -58,8 +58,21 @@ export const passwordResetTokens = pgTable('passwordResetTokens', {
 	createdAt: timestamp('createdAt').defaultNow().notNull()
 });
 
+export const conversations = pgTable('conversations', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	userId: uuid('userId')
+		.notNull()
+		.references(() => users.id, { onDelete: 'cascade' }),
+	title: text('title').notNull(),
+	createdAt: timestamp('createdAt').defaultNow().notNull(),
+	updatedAt: timestamp('updatedAt').defaultNow().notNull()
+});
+
 export const chatMessages = pgTable('chatMessages', {
 	id: uuid('id').primaryKey().defaultRandom(),
+	conversationId: uuid('conversationId')
+		.notNull()
+		.references(() => conversations.id, { onDelete: 'cascade' }),
 	userId: uuid('userId')
 		.notNull()
 		.references(() => users.id, { onDelete: 'cascade' }),
@@ -72,6 +85,7 @@ export const chatMessages = pgTable('chatMessages', {
 export const usersRelations = relations(users, ({ many }) => ({
 	accounts: many(accounts),
 	sessions: many(sessions),
+	conversations: many(conversations),
 	chatMessages: many(chatMessages)
 }));
 
@@ -89,9 +103,21 @@ export const sessionsRelations = relations(sessions, ({ one }) => ({
 	})
 }));
 
+export const conversationsRelations = relations(conversations, ({ one, many }) => ({
+	user: one(users, {
+		fields: [conversations.userId],
+		references: [users.id]
+	}),
+	messages: many(chatMessages)
+}));
+
 export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
 	user: one(users, {
 		fields: [chatMessages.userId],
 		references: [users.id]
+	}),
+	conversation: one(conversations, {
+		fields: [chatMessages.conversationId],
+		references: [conversations.id]
 	})
 }));
