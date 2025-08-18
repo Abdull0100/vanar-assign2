@@ -18,17 +18,23 @@
 				</div>
 				<h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">Check your email</h2>
 				<p class="mt-2 text-center text-sm text-gray-600">
-					A sign in link has been sent to your email address.
+					A verification email has been sent to your email address.
 				</p>
 				<p class="mt-4 text-center text-sm text-gray-500">
-					If you don't see it, check your spam folder.
+					Click the verification link in the email to complete your account setup. If you don't see it, check your spam folder.
 				</p>
-				<div class="mt-6">
+				<div class="mt-6 space-y-3">
 					<a
 						href="/auth/signin"
 						class="flex w-full justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none"
 					>
 						Back to Sign In
+					</a>
+					<a
+						href="/verify"
+						class="flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none"
+					>
+						Need a new verification email?
 					</a>
 				</div>
 			</div>

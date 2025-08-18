@@ -30,7 +30,10 @@ export const POST: RequestHandler = async ({ request }) => {
 			const expiredToken = expiredTokenResult[0];
 			if (expiredToken) {
 				console.log('Token found but expired:', expiredToken);
-				return json({ error: 'Token has expired. Please request a new verification email.' }, { status: 400 });
+				return json({ 
+					error: 'Token has expired. Please request a new verification email.',
+					email: expiredToken.identifier
+				}, { status: 400 });
 			}
 			
 			console.log('No token found in database');
@@ -46,7 +49,11 @@ export const POST: RequestHandler = async ({ request }) => {
 		// Delete the used token
 		await db.delete(verificationTokens).where(eq(verificationTokens.token, token));
 
-		return json({ success: true, message: 'Email verified successfully' });
+		return json({ 
+			success: true, 
+			message: 'Email verified successfully',
+			email: verificationToken.identifier
+		});
 	} catch (error) {
 		console.error('Email verification error:', error);
 		return json({ error: 'Internal server error' }, { status: 500 });

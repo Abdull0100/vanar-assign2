@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 
@@ -9,6 +9,16 @@
 	let messages: Array<ChatItem> = [];
 	let error = '';
 	let messagesContainer: HTMLElement;
+	
+	// Note: Frontend messages use temporary IDs (timestamp-based) for UI state management
+	// Database messages have persistent IDs (large numbers) for server-side operations
+	// The id field can be undefined (no database ID), temporary (frontend), or persistent (database)
+
+	// Error handling state
+	let retryCountdown = 0;
+	let retryTimer: NodeJS.Timeout | null = null;
+	let lastErrorTime = 0;
+	let errorRetryCount = 0;
 
 	// Conversations state
 	type Conversation = { id: string; title: string; createdAt: string; messages: Array<ChatItem> };
@@ -30,6 +40,14 @@
 		}
 		loadConversationsFromStorage();
 		loadChatHistory();
+	});
+
+	// Cleanup timers on component destruction
+	onDestroy(() => {
+		if (retryTimer) {
+			clearInterval(retryTimer);
+			retryTimer = null;
+		}
 	});
 
 	function saveConversationsToStorage() {
@@ -59,28 +77,6 @@
 		conversations = [conv, ...conversations];
 		currentConversationId = id;
 		saveConversationsToStorage();
-		
-		// Optionally offer to load server history if this is the first conversation
-		if (conversations.length === 1) {
-			try {
-				const response = await fetch('/api/chat');
-				if (response.ok) {
-					const data = await response.json();
-					if (data.messages && data.messages.length > 0) {
-						// Ask user if they want to load previous chat history
-						if (confirm('Would you like to load your previous chat history from the server?')) {
-							conv.messages = (data.messages || []).reverse(); // oldest to newest
-							conv.title = data.messages[0]?.message ? 
-								(data.messages[0].message.length > 40 ? data.messages[0].message.slice(0, 40) + '…' : data.messages[0].message) : 
-								'Previous Chat';
-							saveConversationsToStorage();
-						}
-					}
-				}
-			} catch (err) {
-				console.error('Error loading server history:', err);
-			}
-		}
 	}
 
 	function selectConversation(id: string) {
@@ -96,23 +92,7 @@
 		}
 	}
 
-	function forkFromIndex(index: number) {
-		if (!currentConversation) return;
-		const id = generateId();
-		const baseMessages = currentConversation.messages.slice(0, index + 1);
-		const titleSource = baseMessages.find((m) => m.message)?.message || 'Forked Chat';
-		const conv: Conversation = {
-			id,
-			title: (titleSource?.length || 0) > 40 ? titleSource.slice(0, 40) + '…' : (titleSource || 'Forked Chat'),
-			createdAt: new Date().toISOString(),
-			messages: baseMessages
-		};
-		conversations = [conv, ...conversations];
-		currentConversationId = id;
-		saveConversationsToStorage();
-	}
-
-	function deleteConversation(id: string) {
+	async function deleteConversation(id: string) {
 		const conv = conversations.find(c => c.id === id);
 		if (!conv) return;
 		
@@ -121,7 +101,16 @@
 			return;
 		}
 		
-		// Remove the conversation
+		// Optionally delete from database if there are actual database messages
+		// This is secondary to local deletion for better user experience
+		try {
+			await deleteConversationFromDatabase(id);
+		} catch (error) {
+			console.error('Failed to delete conversation from database:', error);
+			// Continue with local deletion even if database deletion fails
+		}
+		
+		// Remove the conversation from local storage
 		conversations = conversations.filter(c => c.id !== id);
 		
 		// If we deleted the current conversation, select another one or go to welcome state
@@ -135,6 +124,30 @@
 			}
 		}
 		
+		saveConversationsToStorage();
+	}
+
+	async function clearAllChatHistory() {
+		if (!confirm('Are you sure you want to clear all chat history? This action cannot be undone.')) {
+			return;
+		}
+
+		try {
+			// Clear all messages from database for the current user
+			await fetch('/api/chat', {
+				method: 'DELETE',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ messageIds: [] }) // Empty array means clear all for current user
+			});
+		} catch (error) {
+			console.error('Failed to clear chat history from database:', error);
+		}
+
+		// Clear local storage
+		conversations = [];
+		currentConversationId = null;
 		saveConversationsToStorage();
 	}
 
@@ -219,6 +232,10 @@
 									
 									if (data.error) {
 										error = data.error;
+										// Check if it's a rate limit error and start countdown
+										if (data.error.includes('rate limit') || data.error.includes('quota') || data.error.includes('high demand')) {
+											startRetryCountdown(60);
+										}
 										if (currentConversation) {
 											currentConversation.messages = currentConversation.messages.filter((msg) => msg.id !== tempId);
 											saveConversationsToStorage();
@@ -278,7 +295,23 @@
 				}
 			}
 		} catch (err) {
-			error = 'An error occurred while sending message';
+			console.error('Chat error:', err);
+			
+			// Handle specific error types
+			if (err instanceof Error) {
+				if (err.message.includes('rate limit') || err.message.includes('quota')) {
+					error = 'The AI service is currently experiencing high demand. Please try again in a few minutes.';
+					// Start a 60-second retry countdown for rate limit errors
+					startRetryCountdown(60);
+				} else if (err.message.includes('Failed to fetch')) {
+					error = 'Unable to connect to the AI service. Please check your internet connection and try again.';
+				} else {
+					error = 'An error occurred while sending message. Please try again.';
+				}
+			} else {
+				error = 'An error occurred while sending message. Please try again.';
+			}
+			
 			if (currentConversation) {
 				currentConversation.messages = currentConversation.messages.filter((msg) => msg.id !== tempId);
 				saveConversationsToStorage();
@@ -292,6 +325,89 @@
 		if (event.key === 'Enter' && !event.shiftKey) {
 			event.preventDefault();
 			sendMessage();
+		}
+	}
+
+	function startRetryCountdown(seconds: number) {
+		retryCountdown = seconds;
+		errorRetryCount++;
+		lastErrorTime = Date.now();
+		
+		if (retryTimer) clearInterval(retryTimer);
+		
+		retryTimer = setInterval(() => {
+			retryCountdown--;
+			if (retryCountdown <= 0) {
+				if (retryTimer) clearInterval(retryTimer);
+				retryTimer = null;
+				// Auto-retry when countdown reaches zero
+				if (error && (error.includes('rate limit') || error.includes('quota') || error.includes('high demand'))) {
+					// Small delay to ensure UI updates
+					setTimeout(() => {
+						if (retryCountdown <= 0) {
+							clearErrorState();
+						}
+					}, 100);
+				}
+			}
+		}, 1000);
+	}
+
+	function clearErrorState() {
+		error = '';
+		retryCountdown = 0;
+		errorRetryCount = 0;
+		if (retryTimer) {
+			clearInterval(retryTimer);
+			retryTimer = null;
+		}
+	}
+
+	function canRetryNow(): boolean {
+		return retryCountdown <= 0;
+	}
+
+	function getTimeUntilRetry(): string {
+		if (retryCountdown <= 0) return 'Ready to retry';
+		
+		const minutes = Math.floor(retryCountdown / 60);
+		const seconds = retryCountdown % 60;
+		
+		if (minutes > 0) {
+			return `${minutes}m ${seconds}s`;
+		}
+		return `${seconds}s`;
+	}
+
+	// Function to delete individual messages from database (for future use)
+	async function deleteMessagesFromDatabase(messageIds: number[]) {
+		if (messageIds.length === 0) return;
+		
+		try {
+			await fetch('/api/chat', {
+				method: 'DELETE',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ messageIds })
+			});
+		} catch (error) {
+			console.error('Failed to delete messages from database:', error);
+		}
+	}
+
+	// Function to delete a conversation's messages from database if they have database IDs
+	async function deleteConversationFromDatabase(conversationId: string) {
+		const conv = conversations.find(c => c.id === conversationId);
+		if (!conv) return;
+		
+		// Find messages that have actual database IDs (not temporary frontend IDs)
+		const messageIds = conv.messages
+			.filter(msg => msg.id && typeof msg.id === 'number' && msg.id > 1000000) // Database IDs are typically large numbers
+			.map(msg => msg.id as number);
+		
+		if (messageIds.length > 0) {
+			await deleteMessagesFromDatabase(messageIds);
 		}
 	}
 </script>
@@ -366,31 +482,70 @@
 							<h3 class="text-lg font-semibold text-gray-900">Conversations</h3>
 							<p class="text-sm text-gray-500">Start new chats and revisit old ones</p>
 						</div>
-						<button on:click={newConversation} class="rounded-md bg-indigo-600 px-3 py-2 text-xs font-medium text-white hover:bg-indigo-700">New Chat</button>
+						<div class="flex space-x-2">
+							<button on:click={newConversation} class="rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-sm font-medium text-white hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg" aria-label="Start a new conversation">New Chat</button>
+							{#if conversations.length > 0}
+								<button on:click={clearAllChatHistory} class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-all duration-200 shadow-md hover:shadow-lg" aria-label="Clear all chat history">Clear All</button>
+							{/if}
+						</div>
 					</div>
 					<div class="p-4 max-h-96 overflow-y-auto">
-						{#if conversations.length === 0}
-							<div class="text-center py-8">
-								<div class="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
-									<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+						{#if error && (error.includes('rate limit') || error.includes('quota') || error.includes('high demand'))}
+							<div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+								<div class="flex items-start text-yellow-800">
+									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 mt-0.5 flex-shrink-0">
+										<circle cx="12" cy="12" r="10"/>
+										<path d="M12 6v6l4 2"/>
+									</svg>
+									<div class="text-xs">
+										<strong>Service Notice:</strong> AI service is currently experiencing high demand.
+										{#if retryCountdown > 0}
+											<br><span class="text-yellow-700">Retry available in: {getTimeUntilRetry()}</span>
+										{:else}
+											<br>This usually resolves within a few minutes.
+										{/if}
+									</div>
 								</div>
-								<p class="text-sm text-gray-500 mb-2">No conversations yet</p>
-								<p class="text-xs text-gray-400">Start a new chat to begin</p>
+							</div>
+						{/if}
+						{#if conversations.length === 0}
+							<div class="text-center py-12">
+								<div class="h-16 w-16 rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 flex items-center justify-center mx-auto mb-4">
+									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-500"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+								</div>
+								<h3 class="text-lg font-semibold text-gray-900 mb-2">No conversations yet</h3>
+								<p class="text-sm text-gray-500 mb-4">Start your first chat to begin exploring Vanar AI</p>
+								<button on:click={newConversation} class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-medium rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg" aria-label="Start your first chat conversation">
+									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+									Start New Chat
+								</button>
 							</div>
 						{:else}
 							{#each conversations as conv}
-								<div class="mb-3 p-3 rounded-lg transition-colors cursor-pointer {currentConversationId === conv.id ? 'bg-indigo-50 border border-indigo-200' : 'bg-gray-50 hover:bg-gray-100'}" on:click={() => selectConversation(conv.id)}>
+								<div 
+									class="w-full mb-3 p-4 rounded-lg transition-all duration-200 cursor-pointer border {currentConversationId === conv.id ? 'bg-indigo-50 border-indigo-200 shadow-md' : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm'}" 
+									on:click={() => selectConversation(conv.id)}
+									on:keydown={(e) => e.key === 'Enter' && selectConversation(conv.id)}
+									role="button"
+									tabindex="0"
+									aria-label="Select conversation: {conv.title}"
+									aria-pressed={currentConversationId === conv.id}
+								>
 									<div class="flex items-center justify-between">
-										<p class="text-sm text-gray-800 truncate flex-1 mr-2">{conv.title}</p>
+										<p class="text-sm font-medium text-gray-800 truncate flex-1 mr-3">{conv.title}</p>
 										<button 
-											on:click={(e) => { e.stopPropagation(); deleteConversation(conv.id); }} 
-											class="text-red-500 hover:text-red-700 text-xs p-1.5 rounded-full hover:bg-red-50 transition-colors flex-shrink-0"
+											on:click={(e) => { e.stopPropagation(); deleteConversation(conv.id).catch(console.error); }} 
+											class="text-red-500 hover:text-red-700 text-xs p-2 rounded-md hover:bg-red-50 transition-colors flex-shrink-0 border border-red-200 hover:border-red-300"
 											title="Delete conversation"
+											aria-label="Delete conversation: {conv.title}"
 										>
-											<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6"/><path d="M9 9l6 6"/></svg>
+											<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
 										</button>
 									</div>
-									<p class="text-xs text-gray-500 mt-1">{new Date(conv.createdAt).toLocaleDateString()}</p>
+									<div class="flex items-center justify-between mt-2">
+										<p class="text-xs text-gray-500">{new Date(conv.createdAt).toLocaleDateString()}</p>
+										<span class="text-xs text-gray-400">{conv.messages.length} messages</span>
+									</div>
 								</div>
 							{/each}
 						{/if}
@@ -414,8 +569,18 @@
 								</div>
 							</div>
 							<div class="flex items-center space-x-2">
-								<div class="h-2 w-2 rounded-full bg-green-400"></div>
-								<span class="text-sm text-white">Online</span>
+								{#if error && (error.includes('rate limit') || error.includes('quota') || error.includes('high demand'))}
+									<div class="h-2 w-2 rounded-full bg-yellow-400 animate-pulse"></div>
+									<span class="text-sm text-yellow-200">
+										{retryCountdown > 0 ? `Busy (${getTimeUntilRetry()})` : 'Service Busy'}
+									</span>
+								{:else if error}
+									<div class="h-2 w-2 rounded-full bg-red-400 animate-pulse"></div>
+									<span class="text-sm text-red-200">Service Error</span>
+								{:else}
+									<div class="h-2 w-2 rounded-full bg-green-400"></div>
+									<span class="text-sm text-white">Online</span>
+								{/if}
 							</div>
 						</div>
 					</div>
@@ -431,28 +596,48 @@
 								<p class="text-gray-500 max-w-md">
 									Hi! I'm Vanar, your AI assistant from Vanar Chain. Ask me about blockchain, AI-native technology, PayFi, RWAs, or anything else!
 								</p>
+								{#if error && (error.includes('rate limit') || error.includes('quota') || error.includes('high demand'))}
+									<div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+										<div class="flex items-center text-yellow-800">
+											<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2">
+												<circle cx="12" cy="12" r="10"/>
+												<path d="M12 6v6l4 2"/>
+											</svg>
+											<div class="text-sm">
+												AI service is currently busy. You can still ask questions, but responses may be delayed.
+												{#if retryCountdown > 0}
+													<br><span class="text-yellow-700 text-xs">Retry available in: {getTimeUntilRetry()}</span>
+												{/if}
+											</div>
+										</div>
+									</div>
+								{/if}
 								<div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-md">
 									<button 
 										on:click={() => { message = "What is Vanar Chain?"; sendMessage(); }}
-										class="p-3 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors text-sm"
+										class="p-4 rounded-xl bg-gradient-to-r from-indigo-50 to-indigo-100 text-indigo-700 hover:from-indigo-100 hover:to-indigo-200 transition-all duration-200 text-sm font-medium border border-indigo-200 hover:border-indigo-300 shadow-sm hover:shadow-md"
+										aria-label="Ask about Vanar Chain"
 									>
 										🔗 About Vanar Chain
 									</button>
 									<button 
 										on:click={() => { message = "Explain Neutron and Kayon technology"; sendMessage(); }}
-										class="p-3 rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors text-sm"
+										class="p-4 rounded-xl bg-gradient-to-r from-purple-50 to-purple-100 text-purple-700 hover:from-purple-100 hover:to-purple-200 transition-all duration-200 text-sm font-medium border border-purple-200 hover:border-purple-300 shadow-sm hover:shadow-md"
+										aria-label="Ask about AI technology"
 									>
 										🧠 AI Technology
 									</button>
 									<button 
 										on:click={() => { message = "How does PayFi work on Vanar?"; sendMessage(); }}
-										class="p-3 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors text-sm"
+										class="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 hover:from-blue-100 hover:to-blue-200 transition-all duration-200 text-sm font-medium border border-blue-200 hover:border-blue-300 shadow-sm hover:shadow-md"
+										aria-label="Ask about PayFi solutions"
 									>
 										💰 PayFi Solutions
 									</button>
 									<button 
 										on:click={() => { message = "Tell me about $VANRY token"; sendMessage(); }}
-										class="p-3 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 transition-colors text-sm"
+										class="p-4 rounded-xl bg-gradient-to-r from-green-50 to-green-100 text-green-700 hover:from-green-100 hover:to-green-200 transition-all duration-200 text-sm font-medium border border-green-200 hover:border-green-300 shadow-sm hover:shadow-md"
+										aria-label="Ask about VANRY token"
 									>
 										🪙 $VANRY Token
 									</button>
@@ -470,9 +655,6 @@
 											<span class="text-sm">👤</span>
 										</div>
 									</div>
-								</div>
-								<div class="flex justify-end -mt-1 mb-3 pr-12">
-									<button class="text-[11px] text-gray-400 hover:text-gray-600" on:click={() => forkFromIndex(idx)}>Fork from here</button>
 								</div>
 
 								<!-- AI Response -->
@@ -516,41 +698,107 @@
 									</div>
 								{/if}
 							{/each}
-<!-- Isko Delte delete krna hai -->
-							{#if loading}
-								<div class="flex justify-start mb-4">
-									<div class="flex items-end space-x-2">
-										<div class="h-8 w-8 rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 flex items-center justify-center">
-											<img src="/src/lib/assets/images-removebg-preview.png" alt="Vanar Chain" class="w-5 h-5" />
-										</div>
-										<div class="rounded-2xl rounded-bl-sm bg-white px-4 py-3 shadow-lg border border-gray-100">
-											<div class="flex items-center space-x-2">
-												<div class="flex space-x-1">
-													<div class="h-2 w-2 rounded-full bg-indigo-400 animate-bounce"></div>
-													<div class="h-2 w-2 rounded-full bg-indigo-400 animate-bounce" style="animation-delay: 0.1s"></div>
-													<div class="h-2 w-2 rounded-full bg-indigo-400 animate-bounce" style="animation-delay: 0.2s"></div>
-												</div>
-												<span class="text-sm text-gray-600">AI is thinking...</span>
-											</div>
-										</div>
-									</div>
-								</div>
-							{/if}
 						{/if}
 					</div>
 
 					<!-- Error Display -->
 					{#if error}
 						<div class="px-6 pb-4">
-							<div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 flex items-center">
-								<span class="text-red-600 mr-2">⚠️</span>
-								<span class="text-red-700 text-sm">{error}</span>
+							<div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+								<div class="flex items-start justify-between">
+									<div class="flex items-start">
+										<span class="text-red-600 mr-2 mt-0.5">⚠️</span>
+										<div class="flex-1">
+											<span class="text-red-700 text-sm font-medium">{error}</span>
+											{#if error.includes('rate limit') || error.includes('quota') || error.includes('high demand')}
+												<div class="mt-2 space-y-2">
+													<p class="text-red-600 text-xs">
+														This usually resolves within a few minutes. You can try again or wait a bit.
+													</p>
+													{#if retryCountdown > 0}
+														<div class="flex items-center space-x-2">
+															<div class="flex items-center space-x-1">
+																<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500">
+																	<circle cx="12" cy="12" r="10"/>
+																	<path d="M12 6v6l4 2"/>
+																</svg>
+																<span class="text-xs text-red-600 font-medium">
+																	Retry available in: {getTimeUntilRetry()}
+																</span>
+															</div>
+															<!-- Progress bar for retry countdown -->
+															<div class="w-16 h-1.5 bg-red-200 rounded-full overflow-hidden">
+																<div 
+																	class="h-full bg-red-500 transition-all duration-1000 ease-linear"
+																	style="width: {((60 - retryCountdown) / 60) * 100}%"
+																></div>
+															</div>
+														</div>
+													{/if}
+													{#if errorRetryCount > 1}
+														<p class="text-xs text-red-500">
+															Attempt {errorRetryCount}: Multiple retries may indicate ongoing service issues
+														</p>
+													{/if}
+												</div>
+											{/if}
+										</div>
+									</div>
+									<button 
+										on:click={clearErrorState}
+										class="text-red-400 hover:text-red-600 transition-colors ml-2"
+										aria-label="Dismiss error message"
+									>
+										<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+											<path d="M18 6L6 18M6 6l12 12"/>
+										</svg>
+									</button>
+								</div>
+								{#if error.includes('rate limit') || error.includes('quota') || error.includes('high demand')}
+									<div class="mt-3 pt-3 border-t border-red-200">
+										<div class="flex items-center justify-between">
+											<button 
+												on:click={() => { clearErrorState(); sendMessage(); }}
+												disabled={!canRetryNow()}
+												class="inline-flex items-center px-3 py-1.5 bg-red-100 text-red-700 text-xs font-medium rounded-md hover:bg-red-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+												aria-label="Retry sending message"
+											>
+												<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1">
+													<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 12"/>
+													<path d="M21 3v9h-9"/>
+												</svg>
+												{canRetryNow() ? 'Retry Now' : `Wait ${getTimeUntilRetry()}`}
+											</button>
+											{#if retryCountdown > 0}
+												<div class="text-xs text-red-500">
+													Next retry: {getTimeUntilRetry()}
+												</div>
+											{/if}
+										</div>
+									</div>
+								{/if}
 							</div>
 						</div>
 					{/if}
 
 					<!-- Message Input -->
 					<div class="border-t border-gray-200 bg-white p-6">
+						{#if error && (error.includes('rate limit') || error.includes('quota') || error.includes('high demand'))}
+							<div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+								<div class="flex items-center text-yellow-800">
+									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2">
+										<circle cx="12" cy="12" r="10"/>
+										<path d="M12 6v6l4 2"/>
+									</svg>
+									<span class="text-sm">
+										<strong>Service Status:</strong> AI service is currently busy
+										{#if retryCountdown > 0}
+											• Retry available in: {getTimeUntilRetry()}
+										{/if}
+									</span>
+								</div>
+							</div>
+						{/if}
 						<div class="flex space-x-4">
 							<div class="flex-1">
 								<div class="relative">
@@ -560,6 +808,7 @@
 										placeholder="Type your message here... (Press Enter to send, Shift+Enter for new line)"
 										rows="2"
 										class="block w-full resize-none rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 pr-12 bg-gray-50 focus:bg-white transition-colors"
+										aria-label="Type your message to Vanar AI"
 									></textarea>
 									<div class="absolute right-3 bottom-3 text-xs text-gray-400">
 										{message.length}/2000
@@ -571,6 +820,7 @@
 									on:click={sendMessage}
 									disabled={loading || !message.trim() || message.length > 2000}
 									class="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-3 text-white font-medium hover:from-indigo-700 hover:to-purple-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200 shadow-lg hover:shadow-xl"
+									aria-label="Send message to Vanar AI"
 								>
 									{#if loading}
 										<div class="h-4 w-4 animate-spin rounded-full border-b-2 border-white mr-2"></div>
@@ -584,6 +834,7 @@
 									<button
 										on:click={() => { message = ''; }}
 										class="inline-flex items-center justify-center rounded-xl bg-gray-100 px-6 py-2 text-gray-600 hover:bg-gray-200 transition-colors text-sm"
+										aria-label="Clear message input"
 									>
 										Clear
 									</button>

@@ -22,6 +22,11 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			return json({ error: 'Invalid email or password' }, { status: 401 });
 		}
 
+		// Check if email is verified
+		if (!user.emailVerified) {
+			return json({ error: 'Please verify your email before signing in. Check your inbox for a verification link.' }, { status: 401 });
+		}
+
 		// Verify password
 		const isValid = await bcrypt.compare(password, user.password);
 		if (!isValid) {

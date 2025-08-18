@@ -10,7 +10,7 @@ import Email from '@auth/sveltekit/providers/email';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { eq } from 'drizzle-orm';
-import { AUTH_SECRET, GMAIL_USER, GMAIL_APP_PASSWORD,GOOGLE_SECRET,GOOGLE_ID,GITHUB_ID,GITHUB_SECRET } from '$env/static/private';
+import { AUTH_SECRET, GMAIL_USER, GMAIL_APP_PASSWORD,baseUrl} from '$env/static/private';
 import { db } from './db';
 import { users, accounts, sessions, verificationTokens } from './db/schema';
 import { sendVerificationEmail } from '$lib/email';
@@ -110,7 +110,8 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 				// Use relative URL since we're not using basePath
 				const url = `/auth/verify?token=${token}`;
 				console.log('Generated verification URL:', url);
-				await sendVerificationEmail(user.email, url);
+				// Note: In Auth.js context, we can't easily get the baseUrl, so we'll use a fallback
+				await sendVerificationEmail(user.email, url, 'http://localhost:5173');
 			}
 		}
 	}

@@ -225,15 +225,16 @@ export const sendEmail = async (to: string, subject: string, html: string) => {
 };
 
 // Specific email functions
-export const sendVerificationEmail = async (email: string, tokenOrUrl: string) => {
+export const sendVerificationEmail = async (email: string, tokenOrUrl: string, baseUrl?: string) => {
 	// Handle both token (string) and full URL from Auth.js
 	let url: string;
 	if (tokenOrUrl.startsWith('http')) {
 		// Auth.js passed a full URL
 		url = tokenOrUrl;
 	} else {
-		// Custom token, construct URL
-		url = `http://localhost:5173/auth/verify?token=${tokenOrUrl}`;
+		// Custom token, construct URL with domain
+		const domain = baseUrl || 'http://localhost:5173';
+		url = `${domain}${tokenOrUrl}`;
 	}
 	
 	console.log('Sending verification email to:', email, 'with URL:', url);
@@ -245,8 +246,9 @@ export const sendVerificationEmail = async (email: string, tokenOrUrl: string) =
 	return result;
 };
 
-export const sendPasswordResetEmail = async (email: string, token: string) => {
-	const url = `http://localhost:5173/reset-password?token=${token}`;
+export const sendPasswordResetEmail = async (email: string, token: string, baseUrl?: string) => {
+	const domain = baseUrl || 'http://localhost:5173';
+	const url = `${domain}/reset-password?token=${token}`;
 	const html = createPasswordResetEmail(email, url);
 	return await sendEmail(email, 'Reset Your Password - Vanar Chain', html);
 };

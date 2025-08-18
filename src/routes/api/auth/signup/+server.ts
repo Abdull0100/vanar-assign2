@@ -51,9 +51,10 @@ export const POST: RequestHandler = async ({ request }) => {
 			expires
 		});
 
-		// Send verification email
-		const url = `http://localhost:5173/auth/verify?token=${token}`;
-		await sendVerificationEmail(email, url);
+		// Send verification email with domain
+		const url = `/auth/verify?token=${token}`;
+		const baseUrl = request.headers.get('origin') || 'http://localhost:5173';
+		await sendVerificationEmail(email, url, baseUrl);
 
 		return json({
 			success: true,
