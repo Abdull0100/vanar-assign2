@@ -30,6 +30,12 @@
 	const loading = writable(false);
 	const error = writable('');
 
+	// Modal state
+	const showDeleteModal = writable(false);
+	const deleteTarget = writable<{ id: string; title: string } | null>(null);
+	const showDeleteAllModal = writable(false);
+	const deleteAllTarget = writable<{ title: string } | null>(null);
+
 	// Local variable for input binding
 	let messageText = '';
 
@@ -111,8 +117,24 @@
 	}
 
 	function newConversation() {
-		// Clear current conversation and messages
-		currentConversationId.set(null);
+		// Generate a temporary ID for the new conversation
+		const tempId = `temp-${generateId()}`;
+		
+		// Create a new conversation immediately in the UI
+		const newConv: Conversation = {
+			id: tempId,
+			roomName: 'New Chat',
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+			messageCount: 0,
+			messages: []
+		};
+		
+		// Add the new conversation to the list
+		conversations.update(convs => [newConv, ...convs]);
+		
+		// Set it as the current conversation
+		currentConversationId.set(tempId);
 		messages.set([]);
 		
 		// Debounced save to avoid excessive localStorage writes
@@ -121,6 +143,13 @@
 
 	async function selectConversation(id: string) {
 		currentConversationId.set(id);
+		
+		// Don't try to load messages for temporary conversations
+		if (id.startsWith('temp-')) {
+			messages.set([]);
+			debouncedSaveToStorage();
+			return;
+		}
 		
 		// Load messages for this conversation from the database
 		try {
@@ -251,13 +280,17 @@
 				.slice(0, -2) // Exclude the current pair we just added
 				.map(m => ({ message: m.content, response: m.aiResponse }));
 
+			// Don't send temporary conversation IDs to the API
+			// Let the API create a new conversation if needed
+			const apiConversationId = $currentConversationId && $currentConversationId.startsWith('temp-') ? undefined : $currentConversationId;
+
 			const response = await fetch('/api/chat', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					message: messageContent,
 					history,
-					conversationId: $currentConversationId || undefined
+					conversationId: apiConversationId
 				})
 			});
 
@@ -450,24 +483,38 @@
 		}
 	}
 
-	async function deleteConversation(id: string) {
+	// Modal functions
+	function openDeleteModal(id: string, title: string) {
+		deleteTarget.set({ id, title });
+		showDeleteModal.set(true);
+	}
+
+	function closeDeleteModal() {
+		showDeleteModal.set(false);
+		deleteTarget.set(null);
+	}
+
+	async function confirmDeleteConversation() {
+		if (!$deleteTarget) return;
+		
+		const { id, title } = $deleteTarget;
+		closeDeleteModal();
+		
+		// Only delete from database if this is a real conversation (not a temporary one)
+		// Temporary conversations have IDs that start with "temp-" and don't exist in the database yet
 		const conv = $conversations.find(c => c.id === id);
 		if (!conv) return;
 		
-		const convTitle = conv.roomName || 'this conversation';
-		if (!confirm(`Are you sure you want to delete "${convTitle}"?\n\n⚠️  PERMANENT DELETION: This entire conversation will be permanently erased from:\n• Your local chat history\n• The database\n• All backup systems\n\nThis action cannot be undone and provides guaranteed permanent erasure from all systems.`)) {
-			return;
-		}
-		
-		// Delete from database (all conversations now have proper UUIDs)
-		try {
-			await fetch('/api/chat', {
-				method: 'DELETE',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ conversationIds: [id] })
-			});
-		} catch (error) {
-			console.error('Failed to delete conversation from database:', error);
+		if (!id.startsWith('temp-') && (conv.messageCount || 0) > 0) {
+			try {
+				await fetch('/api/chat', {
+					method: 'DELETE',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ conversationIds: [id] })
+				});
+			} catch (error) {
+				console.error('Failed to delete conversation from database:', error);
+			}
 		}
 		
 		// Remove from conversations first
@@ -490,10 +537,28 @@
 		debouncedSaveToStorage();
 	}
 
-	async function clearAllChatHistory() {
-		if (!confirm(`Are you sure you want to clear ALL chat history?\n\n⚠️  PERMANENT DELETION: ALL conversations and messages will be permanently erased from:\n• Your local chat history\n• The database\n• All backup systems\n\nThis action cannot be undone and provides guaranteed permanent erasure from all systems.\n\nThis will remove ALL your chat data permanently.`)) {
-			return;
-		}
+	async function deleteConversation(id: string) {
+		const conv = $conversations.find(c => c.id === id);
+		if (!conv) return;
+		
+		const convTitle = conv.roomName || 'this conversation';
+		openDeleteModal(id, convTitle);
+	}
+
+	function openDeleteAllModal() {
+		deleteAllTarget.set({ title: 'ALL chat history' });
+		showDeleteAllModal.set(true);
+	}
+
+	function closeDeleteAllModal() {
+		showDeleteAllModal.set(false);
+		deleteAllTarget.set(null);
+	}
+
+	async function confirmDeleteAllConversations() {
+		if (!$deleteAllTarget) return;
+
+		closeDeleteAllModal();
 
 		try {
 			// Clear all conversations from database for the current user
@@ -514,11 +579,11 @@
 		currentConversationId.set(null);
 		
 		// Clear local storage
-		try {
-			localStorage.removeItem(storageKey());
-		} catch (e) {
-			console.warn('Failed to clear local storage:', e);
-		}
+		debouncedSaveToStorage();
+	}
+
+	async function clearAllChatHistory() {
+		openDeleteAllModal();
 	}
 
 	async function handleSignOut() {
@@ -549,8 +614,9 @@
 					// Filter out empty conversations from database
 					const nonEmptyDbConversations = dbConversations.filter((conv: { messageCount: number }) => conv.messageCount > 0);
 					
-					// Only use database conversations - no local ones needed since we generate proper UUIDs
-					const mergedConversations = [...nonEmptyDbConversations];
+					// Preserve temporary conversations and merge with database conversations
+					const tempConversations = $conversations.filter(conv => conv.id.startsWith('temp-'));
+					const mergedConversations = [...tempConversations, ...nonEmptyDbConversations];
 					
 					conversations.set(mergedConversations);
 					
@@ -562,11 +628,16 @@
 						messages.set([]);
 					} else if ($currentConversationId) {
 						// Check if current conversation still exists and has messages
-						const currentConv = mergedConversations.find((c: { id: string; messageCount: number }) => c.id === $currentConversationId);
-						if (!currentConv || currentConv.messageCount === 0) {
-							// Current conversation is empty or doesn't exist, clear it
-							currentConversationId.set(null);
-							messages.set([]);
+						// For temporary conversations, always keep them
+						if ($currentConversationId.startsWith('temp-')) {
+							// Temporary conversation exists, keep it
+						} else {
+							const currentConv = mergedConversations.find((c: { id: string; messageCount: number }) => c.id === $currentConversationId);
+							if (!currentConv || currentConv.messageCount === 0) {
+								// Current conversation is empty or doesn't exist, clear it
+								currentConversationId.set(null);
+								messages.set([]);
+							}
 						}
 					}
 					
@@ -1176,4 +1247,140 @@
 			</div>
 		</div>
 	</div>
+
+	<!-- Delete Confirmation Modal -->
+	{#if $showDeleteModal && $deleteTarget}
+		<div class="fixed inset-0 z-50 flex items-center justify-center p-4" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+			<!-- Background overlay -->
+<div
+class="fixed inset-0 bg-opacity-10 transition-opacity duration-300"
+aria-hidden="true"
+on:click={closeDeleteModal}>
+</div>
+
+
+			<!-- Modal panel -->
+			<div class="relative bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-hidden transform transition-all">
+				<div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+					<div class="sm:flex sm:items-start">
+						<div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+							<svg class="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+							</svg>
+						</div>
+						<div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+							<h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+								Delete Conversation
+							</h3>
+							<div class="mt-2">
+								<p class="text-sm text-gray-500">
+									Are you sure you want to delete <strong>"{$deleteTarget.title}"</strong>?
+								</p>
+								<div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+									<div class="flex items-start">
+										<svg class="h-5 w-5 text-red-400 mt-0.5 mr-2 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+											<path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+										</svg>
+										<div class="text-sm text-red-700">
+											<strong>PERMANENT DELETION:</strong> This entire conversation will be permanently erased from:
+											<ul class="mt-1 ml-4 list-disc">
+												<li>Your local chat history</li>
+												<li>The database</li>
+												<li>All backup systems</li>
+											</ul>
+											<p class="mt-2 font-medium">This action cannot be undone and provides guaranteed permanent erasure from all systems.</p>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+					<button
+						type="button"
+						class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm transition-colors duration-200"
+						on:click={confirmDeleteConversation}
+					>
+						Delete Conversation
+					</button>
+					<button
+						type="button"
+						class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm transition-colors duration-200"
+						on:click={closeDeleteModal}
+					>
+						Cancel
+					</button>
+					</div>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Delete All Confirmation Modal -->
+	{#if $showDeleteAllModal && $deleteAllTarget}
+		<div class="fixed inset-0 z-50 flex items-center justify-center p-4" aria-labelledby="modal-title-all" role="dialog" aria-modal="true">
+			<!-- Background overlay -->
+			<div
+				class="fixed inset-0 bg-opacity-50 transition-opacity duration-300"
+				aria-hidden="true"
+				on:click={closeDeleteAllModal}>
+			</div>
+
+			<!-- Modal panel -->
+			<div class="relative bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-hidden transform transition-all">
+				<div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+					<div class="sm:flex sm:items-start">
+						<div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+							<svg class="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+							</svg>
+						</div>
+						<div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+							<h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title-all">
+								Clear All Chat History
+							</h3>
+							<div class="mt-2">
+								<p class="text-sm text-gray-500">
+									Are you sure you want to clear <strong>{$deleteAllTarget.title}</strong>?
+								</p>
+								<div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+									<div class="flex items-start">
+										<svg class="h-5 w-5 text-red-400 mt-0.5 mr-2 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+											<path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+										</svg>
+										<div class="text-sm text-red-700">
+											<strong>PERMANENT DELETION:</strong> ALL conversations and messages will be permanently erased from:
+											<ul class="mt-1 ml-4 list-disc">
+												<li>Your local chat history</li>
+												<li>The database</li>
+												<li>All backup systems</li>
+											</ul>
+											<p class="mt-2 font-medium">This action cannot be undone and provides guaranteed permanent erasure from all systems.</p>
+											<p class="mt-1 font-medium text-red-800">This will remove ALL your chat data permanently.</p>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+					<button
+						type="button"
+						class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm transition-colors duration-200"
+						on:click={confirmDeleteAllConversations}
+					>
+						Clear All History
+					</button>
+					<button
+						type="button"
+						class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm transition-colors duration-200"
+						on:click={closeDeleteAllModal}
+					>
+						Cancel
+					</button>
+				</div>
+			</div>
+		</div>
+	{/if}
 </div>
