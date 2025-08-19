@@ -16,9 +16,9 @@ import {
 	GOOGLE_CLIENT_ID,
 	GOOGLE_CLIENT_SECRET,
 	GOOGLE_REDIRECT_URI,
-	VITE_GITHUB_CLIENT_ID,
-	VITE_GITHUB_CLIENT_SECRET,
-	VITE_GITHUB_REDIRECT_URI
+	GITHUB_CLIENT_ID,
+	GITHUB_CLIENT_SECRET,
+	GITHUB_REDIRECT_URI
 } from '$env/static/private';
 import { db } from './db';
 import { users, accounts, sessions, verificationTokens } from './db/schema';
@@ -76,8 +76,8 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 
 		// GitHub OAuth Provider
 		GitHub({
-			clientId: VITE_GITHUB_CLIENT_ID,
-			clientSecret: VITE_GITHUB_CLIENT_SECRET,
+			clientId: GITHUB_CLIENT_ID,
+			clientSecret: GITHUB_CLIENT_SECRET,
 			authorization: {
 				params: {
 					scope: 'read:user user:email'

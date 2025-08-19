@@ -52,18 +52,22 @@
 
 	async function handleOAuthSignIn(provider: string) {
 		try {
+			// Get OAuth config from server
+			const response = await fetch('/api/auth/oauth-config');
+			const config = await response.json();
+			
 			if (provider === 'google') {
 				const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-					`client_id=${encodeURIComponent('156713893636-plvjsv7m8qf6f1aha036j7t87udesvom.apps.googleusercontent.com')}&` +
-					`redirect_uri=${encodeURIComponent('http://localhost:5173/auth/callback/google')}&` +
+					`client_id=${encodeURIComponent(config.google.clientId)}&` +
+					`redirect_uri=${encodeURIComponent(config.google.redirectUri)}&` +
 					`response_type=code&` +
 					`scope=${encodeURIComponent('openid email profile')}&` +
 					`access_type=offline`;
 				window.location.href = googleAuthUrl;
 			} else if (provider === 'github') {
 				const githubAuthUrl = `https://github.com/login/oauth/authorize?` +
-					`client_id=${encodeURIComponent('Ov23lisZHgi7Nzi3SycW')}&` +
-					`redirect_uri=${encodeURIComponent('http://localhost:5173/auth/callback/github')}&` +
+					`client_id=${encodeURIComponent(config.github.clientId)}&` +
+					`redirect_uri=${encodeURIComponent(config.github.redirectUri)}&` +
 					`scope=${encodeURIComponent('user:email')}`;
 				window.location.href = githubAuthUrl;
 			}

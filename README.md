@@ -158,13 +158,13 @@ GEMINI_API_KEY=your-gemini-api-key
 3. Enable Google+ API
 4. Create OAuth 2.0 credentials
 5. Add authorized redirect URIs:
-   - `http://localhost:5173/auth/callback/google`
-   - `http://localhost:5173/auth/callback/google/`
+   - `http://localhost:5173/api/auth/callback/google`
+   - `http://localhost:5173/api/auth/callback/google/`
 
 #### GitHub OAuth
 1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
 2. Create new OAuth App
-3. Set callback URL: `http://localhost:5173/auth/callback/github`
+3. Set callback URL: `http://localhost:5173/api/auth/callback/github`
 
 ## 📚 Available Scripts
 

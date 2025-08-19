@@ -28,6 +28,16 @@ export async function GET({ url, cookies }) {
 		throw redirect(302, '/auth/signin?error=no_code');
 	}
 
+	if (!env.GITHUB_CLIENT_ID || !env.GITHUB_CLIENT_SECRET || !env.GITHUB_REDIRECT_URI) {
+		console.error('❌ Missing GitHub OAuth config in .env');
+		console.error('❌ Config check:', {
+			clientId: !!env.GITHUB_CLIENT_ID,
+			clientSecret: !!env.GITHUB_CLIENT_SECRET,
+			redirectUri: !!env.GITHUB_REDIRECT_URI
+		});
+		throw redirect(302, '/auth/signin?error=oauth_config_error');
+	}
+
 	try {
 		// Exchange code for access token
 		console.log('🔄 Exchanging code for token...');
@@ -38,10 +48,10 @@ export async function GET({ url, cookies }) {
 				'Content-Type': 'application/json',
 			},
 			body: JSON.stringify({
-				client_id: env.VITE_GITHUB_CLIENT_ID,
-				client_secret: env.VITE_GITHUB_CLIENT_SECRET,
+				client_id: env.GITHUB_CLIENT_ID,
+				client_secret: env.GITHUB_CLIENT_SECRET,
 				code: code,
-				redirect_uri: env.VITE_GITHUB_REDIRECT_URI,
+				redirect_uri: env.GITHUB_REDIRECT_URI,
 			}),
 		});
 
