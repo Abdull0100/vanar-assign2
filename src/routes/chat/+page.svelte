@@ -3,6 +3,8 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { writable, derived } from 'svelte/store';
+	import { marked } from 'marked';
+	import Prism from 'prismjs';
 
 	// Types
 	type ChatMessage = {
@@ -35,6 +37,11 @@
 	const deleteTarget = writable<{ id: string; title: string } | null>(null);
 	const showDeleteAllModal = writable(false);
 	const deleteAllTarget = writable<{ title: string } | null>(null);
+	
+	// Toast notification state
+	const showToast = writable(false);
+	const toastMessage = writable('');
+	const toastType = writable<'success' | 'error' | 'info'>('success');
 
 	// Local variable for input binding
 	let messageText = '';
@@ -53,6 +60,7 @@
 	let retryTimer: NodeJS.Timeout | null = null;
 	let errorRetryCount = 0;
 	let messagesContainer: HTMLElement;
+	let aiResponseContainer: HTMLElement;
 
 	const storageKey = () => `vanar_conversations_${user?.id || 'anon'}`;
 	const generateId = () => crypto.randomUUID();
@@ -719,10 +727,419 @@
 		// Delay scroll to ensure DOM is updated
 		setTimeout(smartScrollToBottom, 100);
 	}
+	
+	// Process code blocks when AI response changes
+	$: if ($messages && aiResponseContainer) {
+		// Process code blocks after DOM update
+		setTimeout(() => {
+			if (aiResponseContainer) {
+				processCodeBlocks(aiResponseContainer);
+			}
+		}, 100);
+	}
+
+	// Function to safely render markdown
+	function renderMarkdown(text: string): string {
+		try {
+			// Configure marked options for security and proper rendering
+			marked.setOptions({
+				breaks: true, // Convert line breaks to <br>
+				gfm: true // GitHub Flavored Markdown
+			});
+			
+			// Basic HTML sanitization for security
+			const sanitized = text
+				.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove script tags
+				.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '') // Remove iframe tags
+				.replace(/javascript:/gi, '') // Remove javascript: protocol
+				.replace(/on\w+\s*=/gi, ''); // Remove event handlers
+			
+			const result = marked(sanitized);
+			// Handle both string and Promise return types
+			if (typeof result === 'string') {
+				// Apply syntax highlighting to code blocks after markdown parsing
+				const highlightedResult = result.replace(
+					/<pre><code class="language-(\w+)">([\s\S]*?)<\/code><\/pre>/g,
+					(match, lang, code) => {
+						if (lang && Prism.languages[lang]) {
+							try {
+								const highlighted = Prism.highlight(code, Prism.languages[lang], lang);
+								return `<pre><code class="language-${lang}">${highlighted}</code></pre>`;
+							} catch (err) {
+								console.warn('Prism highlighting failed for language:', lang, err);
+							}
+						}
+						return match;
+					}
+				);
+				return highlightedResult;
+			} else {
+				// If it's a Promise, return the original text for now
+				// In a real app, you might want to handle this asynchronously
+				return sanitized.replace(/\n/g, '<br>');
+			}
+		} catch (error) {
+			console.error('Markdown rendering error:', error);
+			// Fallback to plain text with basic formatting
+			return text
+				.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
+				.replace(/\*(.*?)\*/g, '<em>$1</em>') // Italic
+				.replace(/`(.*?)`/g, '<code>$1</code>') // Inline code
+				.replace(/\n/g, '<br>'); // Line breaks
+		}
+	}
+
+	// Function to show toast notifications
+	function showToastNotification(message: string, type: 'success' | 'error' | 'info' = 'success') {
+		toastMessage.set(message);
+		toastType.set(type);
+		showToast.set(true);
+		
+		// Auto-hide after 3 seconds
+		setTimeout(() => {
+			showToast.set(false);
+		}, 3000);
+	}
+
+	// Function to copy code to clipboard
+	async function copyCodeToClipboard(codeText: string) {
+		try {
+			await navigator.clipboard.writeText(codeText);
+			showToastNotification('Code copied to clipboard!', 'success');
+		} catch (err) {
+			console.error('Failed to copy code:', err);
+			// Fallback for older browsers
+			const textArea = document.createElement('textarea');
+			textArea.value = codeText;
+			document.body.appendChild(textArea);
+			textArea.select();
+			document.execCommand('copy');
+			document.body.removeChild(textArea);
+			showToastNotification('Code copied to clipboard!', 'success');
+		}
+	}
+
+	// Function to process rendered HTML and add copy buttons to code blocks
+	function processCodeBlocks(container: HTMLElement) {
+		const codeBlocks = container.querySelectorAll('pre code');
+		codeBlocks.forEach((codeBlock) => {
+			const pre = codeBlock.parentElement;
+			if (!pre || pre.querySelector('.copy-button')) return; // Already processed
+			
+			// Get the language from the class
+			const languageClass = Array.from(codeBlock.classList).find(cls => cls.startsWith('language-'));
+			const language = languageClass ? languageClass.replace('language-', '') : '';
+			
+			// Set data attribute for CSS pseudo-element
+			pre.setAttribute('data-language', language || 'text');
+			
+			// Create copy button
+			const copyButton = document.createElement('button');
+			copyButton.className = 'copy-button';
+			copyButton.innerHTML = '📋';
+			copyButton.title = 'Copy code';
+			
+			// Add click handler
+			copyButton.addEventListener('click', async () => {
+				const codeText = codeBlock.textContent || '';
+				await copyCodeToClipboard(codeText);
+				
+				// Visual feedback
+				copyButton.innerHTML = '✅';
+				copyButton.classList.add('copied');
+				copyButton.title = 'Copied!';
+				
+				// Reset after 2 seconds
+				setTimeout(() => {
+					copyButton.innerHTML = '📋';
+					copyButton.classList.remove('copied');
+					copyButton.title = 'Copy code';
+				}, 2000);
+			});
+			
+			pre.appendChild(copyButton);
+		});
+	}
 </script>
 
 <svelte:head>
 	<title>Vanar AI Assistant - The Chain That Thinks</title>
+	<style>
+		/* Markdown content styling */
+		.prose {
+			line-height: 1.6;
+		}
+		
+		.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+			margin-top: 1.5em;
+			margin-bottom: 0.5em;
+			font-weight: 600;
+			color: #1f2937;
+		}
+		
+		.prose h1 { font-size: 1.5em; }
+		.prose h2 { font-size: 1.25em; }
+		.prose h3 { font-size: 1.125em; }
+		
+		.prose p {
+			margin-bottom: 1em;
+		}
+		
+		.prose ul, .prose ol {
+			margin-bottom: 1em;
+			padding-left: 1.5em;
+		}
+		
+		.prose li {
+			margin-bottom: 0.25em;
+		}
+		
+		.prose strong {
+			font-weight: 600;
+			color: #1f2937;
+		}
+		
+		.prose em {
+			font-style: italic;
+		}
+		
+		.prose code {
+			background-color: #f3f4f6;
+			padding: 0.125rem 0.25rem;
+			border-radius: 0.25rem;
+			font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+			font-size: 0.875em;
+		}
+		
+		.prose pre {
+			background-color: #1f2937;
+			color: #f9fafb;
+			padding: 1rem;
+			border-radius: 0.5rem;
+			overflow-x: auto;
+			margin: 1em 0;
+		}
+		
+		.prose pre code {
+			background-color: transparent;
+			padding: 0;
+			color: inherit;
+		}
+		
+		/* Enhanced code block styling with copy button */
+		.prose pre {
+			position: relative;
+			background-color: #1f2937;
+			color: #f9fafb;
+			padding: 1rem;
+			border-radius: 0.5rem;
+			overflow-x: auto;
+			margin: 1em 0;
+			border: 1px solid #374151;
+		}
+		
+		.prose pre::before {
+			content: attr(data-language);
+			position: absolute;
+			top: 0.5rem;
+			right: 3rem;
+			font-size: 0.75rem;
+			color: #9ca3af;
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+			background-color: #374151;
+			padding: 0.25rem 0.5rem;
+			border-radius: 0.25rem;
+			z-index: 10;
+			pointer-events: none;
+		}
+		
+		.prose pre .copy-button {
+			position: absolute;
+			top: 0.5rem;
+			right: 0.5rem;
+			background-color: #374151;
+			color: #9ca3af;
+			border: none;
+			padding: 0.25rem 0.5rem;
+			border-radius: 0.25rem;
+			font-size: 0.75rem;
+			cursor: pointer;
+			transition: all 0.2s ease;
+			z-index: 10;
+			min-width: 2rem;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+		
+		.prose pre .copy-button:hover {
+			background-color: #4b5563;
+			color: #f9fafb;
+		}
+		
+		.prose pre .copy-button:active {
+			transform: scale(0.95);
+		}
+		
+		.prose pre .copy-button.copied {
+			background-color: #059669;
+			color: #f9fafb;
+		}
+		
+		/* Inline code styling */
+		.prose code:not(pre code) {
+			background-color: #f3f4f6;
+			padding: 0.125rem 0.25rem;
+			border-radius: 0.25rem;
+			font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+			font-size: 0.875em;
+			color: #1f2937;
+			border: 1px solid #e5e7eb;
+		}
+		
+		/* Prism.js syntax highlighting overrides */
+		.prose pre .token.comment,
+		.prose pre .token.prolog,
+		.prose pre .token.doctype,
+		.prose pre .token.cdata {
+			color: #6b7280;
+		}
+		
+		.prose pre .token.punctuation {
+			color: #e5e7eb;
+		}
+		
+		.prose pre .token.property,
+		.prose pre .token.tag,
+		.prose pre .token.boolean,
+		.prose pre .token.number,
+		.prose pre .token.constant,
+		.prose pre .token.symbol {
+			color: #93c5fd;
+		}
+		
+		.prose pre .token.selector,
+		.prose pre .token.attr-name,
+		.prose pre .token.string,
+		.prose pre .token.char,
+		.prose pre .token.builtin {
+			color: #86efac;
+		}
+		
+		.prose pre .token.operator,
+		.prose pre .token.entity,
+		.prose pre .token.url,
+		.prose pre .language-css .token.string,
+		.prose pre .style .token.string {
+			color: #fbbf24;
+		}
+		
+		.prose pre .token.atrule,
+		.prose pre .token.attr-value,
+		.prose pre .token.keyword {
+			color: #c084fc;
+		}
+		
+		.prose pre .token.function,
+		.prose pre .token.class-name {
+			color: #fca5a5;
+		}
+		
+		.prose pre .token.regex,
+		.prose pre .token.important,
+		.prose pre .token.variable {
+			color: #f9a8d4;
+		}
+		
+		.prose blockquote {
+			border-left: 4px solid #e5e7eb;
+			padding-left: 1rem;
+			margin: 1em 0;
+			color: #6b7280;
+			font-style: italic;
+		}
+		
+		.prose table {
+			width: 100%;
+			border-collapse: collapse;
+			margin: 1em 0;
+			font-size: 0.875em;
+			overflow-x: auto;
+			display: block;
+		}
+		
+		.prose th, .prose td {
+			border: 1px solid #e5e7eb;
+			padding: 0.5rem 0.75rem;
+			text-align: left;
+			min-width: 100px;
+		}
+		
+		.prose th {
+			background-color: #f9fafb;
+			font-weight: 600;
+			color: #374151;
+			white-space: nowrap;
+		}
+		
+		.prose tr:nth-child(even) {
+			background-color: #f9fafb;
+		}
+		
+		.prose tr:hover {
+			background-color: #f3f4f6;
+		}
+		
+		/* Mobile table responsiveness */
+		@media (max-width: 640px) {
+			.prose table {
+				font-size: 0.75em;
+			}
+			
+			.prose th, .prose td {
+				padding: 0.25rem 0.5rem;
+				min-width: 80px;
+			}
+		}
+		
+		/* Mobile code block responsiveness */
+		@media (max-width: 640px) {
+			.prose pre {
+				padding: 0.75rem;
+				font-size: 0.75em;
+			}
+			
+			.prose pre::before {
+				font-size: 0.625rem;
+				padding: 0.125rem 0.375rem;
+				top: 0.375rem;
+				right: 2.5rem;
+			}
+			
+			.prose pre .copy-button {
+				padding: 0.125rem 0.375rem;
+				font-size: 0.625rem;
+				top: 0.375rem;
+				right: 0.375rem;
+			}
+		}
+		
+		.prose a {
+			color: #3b82f6;
+			text-decoration: underline;
+		}
+		
+		.prose a:hover {
+			color: #2563eb;
+		}
+		
+		.prose hr {
+			border: none;
+			border-top: 1px solid #e5e7eb;
+			margin: 2em 0;
+		}
+	</style>
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50">
@@ -1039,10 +1456,10 @@
 												{#if messageItem.sender === 'ai'}
 													{#if messageItem.isStreaming}
 														<!-- Streaming AI Response -->
-														<div class="text-sm leading-relaxed text-gray-800">
+														<div class="text-sm leading-relaxed text-gray-800 prose prose-sm max-w-none" bind:this={aiResponseContainer}>
 															{#if messageItem.aiResponse && messageItem.aiResponse.length > 0}
 																<!-- Show partial response with cursor -->
-																<span>{messageItem.aiResponse}</span>
+																<span>{@html renderMarkdown(messageItem.aiResponse)}</span>
 																<span class="inline-block w-0.5 h-4 bg-indigo-500 animate-pulse ml-1"></span>
 															{:else}
 																<!-- Show placeholder while waiting for first chunk -->
@@ -1062,8 +1479,8 @@
 														</div>
 													{:else if messageItem.aiResponse && messageItem.aiResponse.length > 0}
 														<!-- Final AI Response -->
-														<div class="text-sm leading-relaxed text-gray-800">
-															<span>{messageItem.aiResponse}</span>
+														<div class="text-sm leading-relaxed text-gray-800 prose prose-sm max-w-none" bind:this={aiResponseContainer}>
+															{@html renderMarkdown(messageItem.aiResponse)}
 														</div>
 														
 														<!-- Timestamp -->
@@ -1412,6 +1829,30 @@ on:click={closeDeleteModal}>
 					>
 						Cancel
 					</button>
+				</div>
+			</div>
+		</div>
+	{/if}
+	
+	<!-- Toast Notification -->
+	{#if $showToast}
+		<div class="fixed top-4 right-4 z-50 transform transition-all duration-300 ease-out">
+			<div class="rounded-lg shadow-lg border px-4 py-3 max-w-sm {$toastType === 'success' ? 'bg-green-50 border-green-200 text-green-800' : $toastType === 'error' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-800'}">
+				<div class="flex items-center space-x-2">
+					{#if $toastType === 'success'}
+						<svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+							<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+						</svg>
+					{:else if $toastType === 'error'}
+						<svg class="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+							<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+						</svg>
+					{:else}
+						<svg class="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+							<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+						</svg>
+					{/if}
+					<span class="text-sm font-medium">{$toastMessage}</span>
 				</div>
 			</div>
 		</div>
