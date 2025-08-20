@@ -1,5 +1,22 @@
 import type { Conversation, ChatMessage, User } from './schema';
 
+/**
+ * Build a compact transcript from the most recent messages.
+ * Output format is plain text lines prefixed with "User:" or "Vanar:".
+ */
+export function buildRecentTranscript(messages: ChatMessage[]): string {
+  if (!messages || messages.length === 0) return '';
+  let out = '';
+  for (const m of messages) {
+    if (m.sender === 'user') {
+      out += `User: ${m.content}\n`;
+    } else if (m.sender === 'ai') {
+      out += `Vanar: ${m.aiResponse ?? ''}\n`;
+    }
+  }
+  return out.trim();
+}
+
 // Types for the required JSON structure
 export interface ChatMessageResponse {
   messageId: string;

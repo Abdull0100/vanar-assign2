@@ -65,6 +65,9 @@ export const conversations = pgTable('conversations', {
 		.notNull()
 		.references(() => users.id, { onDelete: 'cascade' }),
 	roomName: text('roomName').notNull(), // Changed from 'title' to 'roomName'
+	// Rolling summary of older parts of the conversation to keep context compact
+	summary: text('summary'),
+	summaryUpdatedAt: timestamp('summaryUpdatedAt', { mode: 'date' }),
 	createdAt: timestamp('createdAt').defaultNow().notNull(),
 	updatedAt: timestamp('updatedAt').defaultNow().notNull()
 });

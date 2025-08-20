@@ -2,6 +2,7 @@ import { json, type RequestHandler } from '@sveltejs/kit';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { db } from '$lib/db';
 import { chatMessages, conversations } from '$lib/db/schema';
+import { buildRecentTranscript } from '$lib/db/chatUtils';
 import { eq, inArray, and } from 'drizzle-orm';
 import { AuthError, ValidationError, handleApiError } from '$lib/errors';
 
@@ -30,7 +31,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		const body = await request.json();
 		const message: string = body.message;
-		const history: HistoryTurn[] | undefined = Array.isArray(body.history) ? body.history : undefined;
+		const _history: HistoryTurn[] | undefined = Array.isArray(body.history) ? body.history : undefined;
 		const conversationId: string | undefined = body.conversationId;
 		const session = await locals.getSession?.();
 
@@ -94,15 +95,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			});
 		}
 
-		// Build conversation transcript from history (limit to recent turns)
-		let transcript = '';
-		if (history && history.length > 0) {
-			const recent = history.slice(-20); // keep last 20 pairs
-			for (const turn of recent) {
-				if (turn.message) transcript += `User: ${turn.message}\n`;
-				if (turn.response) transcript += `Vanar: ${turn.response}\n`;
-			}
-		}
+		// Build conversation context from DB: stored summary + last 10 messages
+		// Fetch last 10 messages for compact context
+		const recentDbMessages = await db.query.chatMessages.findMany({
+			where: eq(chatMessages.conversationId, conversation.id),
+			orderBy: (chatMessages, { desc }) => [desc(chatMessages.createdAt)],
+			limit: 10
+		});
+		const recentChronological = [...recentDbMessages].reverse();
+		const transcript = buildRecentTranscript(recentChronological as any);
 
 		const systemInstruction = `You are Vanar, an advanced AI Chat Bot similar to Gemini and ChatGPT.
 
@@ -119,8 +120,9 @@ Capabilities:
 - Prefer structured, skimmable responses when helpful.
 `;
 
-		// Compose the final prompt including transcript and the new user message
-		const prompt = `${transcript ? `Conversation so far:\n${transcript}\n` : ''}User: ${message}\nVanar:`;
+		// Compose the final prompt including the stored summary (if any) and recent transcript
+		const summaryText = (conversation as any).summary as string | null;
+		const prompt = `${summaryText ? `Conversation Summary (for context, do not repeat):\n${summaryText}\n\n` : ''}${transcript ? `Recent Messages:\n${transcript}\n\n` : ''}User: ${message}\nVanar:`;
 
 		try {
 			// Generate AI response with streaming
@@ -161,6 +163,37 @@ Capabilities:
 							sender: 'ai',
 							aiResponse: fullResponse // Store AI response in aiResponse field
 						});
+						// Update conversation updatedAt
+						await db.update(conversations)
+							.set({ updatedAt: new Date() })
+							.where(eq(conversations.id, conversation.id));
+
+						// Periodically update rolling summary every 10 messages
+						try {
+							const totalMessages = await db.query.chatMessages.findMany({
+								where: eq(chatMessages.conversationId, conversation.id),
+								columns: { id: true }
+							});
+							if (totalMessages.length % 10 === 0 && genAI) {
+								const recentForSummary = await db.query.chatMessages.findMany({
+									where: eq(chatMessages.conversationId, conversation.id),
+									orderBy: (chatMessages, { desc }) => [desc(chatMessages.createdAt)],
+									limit: 16
+								});
+								const recentForSummaryChrono = [...recentForSummary].reverse();
+								const recentTranscript = buildRecentTranscript(recentForSummaryChrono as any);
+								const summaryText = (conversation as any).summary as string | null;
+								const modelForSummary = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+								const summaryPrompt = `You maintain a concise, rolling summary of a chat between User and Vanar.\n\nExisting summary (may be empty):\n${summaryText || '(none)'}\n\nNew recent messages to incorporate (chronological):\n${recentTranscript}\n\nUpdate the summary in 5-10 short bullet points capturing key facts, decisions, tasks, user preferences, and unresolved questions.\n- Max 200 words.\n- Do not include timestamps or salutations.\n- Do not quote large passages; paraphrase.\n- Keep it neutral and factual.\n- Output only the updated summary.`;
+								const summaryResult = await modelForSummary.generateContent(summaryPrompt);
+								const updatedSummary = summaryResult.response.text();
+								await db.update(conversations)
+									.set({ summary: updatedSummary, summaryUpdatedAt: new Date() })
+									.where(eq(conversations.id, conversation.id));
+							}
+						} catch (e) {
+							console.warn('Summary update skipped:', e);
+						}
 						controller.close();
 					} catch (error) {
 						console.error('Streaming error:', error);
@@ -343,6 +376,13 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 					roomName,
 					updatedAt: new Date()
 				})
+				.where(eq(conversations.id, conversationId));
+		}
+
+		// Optional: allow updating summary via PUT for admin/tools
+		if (typeof body.summary === 'string') {
+			await db.update(conversations)
+				.set({ summary: body.summary, summaryUpdatedAt: new Date(), updatedAt: new Date() })
 				.where(eq(conversations.id, conversationId));
 		}
 
