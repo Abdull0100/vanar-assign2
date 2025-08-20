@@ -144,9 +144,22 @@
 	async function selectConversation(id: string) {
 		currentConversationId.set(id);
 		
-		// Don't try to load messages for temporary conversations
+		// First check if we have messages in the conversations store
+		const existingConv = $conversations.find(conv => conv.id === id);
+		if (existingConv && existingConv.messages && existingConv.messages.length > 0) {
+			messages.set(existingConv.messages);
+			debouncedSaveToStorage();
+			return;
+		}
+		
+		// For temporary conversations, load messages from the conversations store
 		if (id.startsWith('temp-')) {
-			messages.set([]);
+			const tempConv = $conversations.find(conv => conv.id === id);
+			if (tempConv) {
+				messages.set(tempConv.messages || []);
+			} else {
+				messages.set([]);
+			}
 			debouncedSaveToStorage();
 			return;
 		}
@@ -158,6 +171,14 @@
 				const data = await response.json();
 				if (data.messages && Array.isArray(data.messages)) {
 					messages.set(data.messages);
+					// Update the conversations store with the loaded messages
+					conversations.update(convs => 
+						convs.map(conv => 
+							conv.id === id 
+								? { ...conv, messages: data.messages }
+								: conv
+						)
+					);
 				} else {
 					messages.set([]);
 				}
@@ -198,7 +219,12 @@
 			conversations.update(convs => 
 				convs.map(conv => 
 					conv.id === $currentConversationId 
-						? { ...conv, messages: [...$messages], updatedAt: new Date().toISOString() }
+						? { 
+							...conv, 
+							messages: [...$messages], 
+							updatedAt: new Date().toISOString(),
+							messageCount: $messages.length
+						}
 						: conv
 				)
 			);
@@ -351,11 +377,11 @@
 										// Update conversation ID if it's new
 										if (data.conversationId && $currentConversationId !== data.conversationId) {
 											if ($currentConversationId) {
-												// Update existing conversation in the list
+												// Update existing conversation in the list, preserving messages
 												conversations.update(convs => 
 													convs.map(conv => 
 														conv.id === $currentConversationId 
-															? { ...conv, id: data.conversationId }
+															? { ...conv, id: data.conversationId, messages: $messages }
 															: conv
 													)
 												);
@@ -390,16 +416,16 @@
 					// Update conversation ID if it's new
 					if (data.conversationId && $currentConversationId !== data.conversationId) {
 						if ($currentConversationId) {
-							// Update existing conversation in the list
-							conversations.update(convs => 
-								convs.map(conv => 
+							// Update existing conversation in the list, preserving messages
+							conversations.update(conversations => 
+								conversations.map(conv => 
 									conv.id === $currentConversationId 
-										? { ...conv, id: data.conversationId }
+										? { ...conv, id: data.conversationId, messages: $messages }
 										: conv
 								)
 							);
 						}
-						
+		
 						currentConversationId.set(data.conversationId);
 						
 						// Refresh conversations list to show the new conversation
@@ -618,7 +644,14 @@
 					const tempConversations = $conversations.filter(conv => conv.id.startsWith('temp-'));
 					const mergedConversations = [...tempConversations, ...nonEmptyDbConversations];
 					
-					conversations.set(mergedConversations);
+					// Ensure temporary conversations keep their messages
+					const preservedTempConversations = tempConversations.map(tempConv => ({
+						...tempConv,
+						messages: tempConv.messages || []
+					}));
+					
+					const finalMergedConversations = [...preservedTempConversations, ...nonEmptyDbConversations];
+					conversations.set(finalMergedConversations);
 					
 					// Set current conversation if none is selected
 					if (!$currentConversationId && mergedConversations.length > 0) {
@@ -756,7 +789,7 @@
 					<div class="p-4 border-b border-gray-200 flex items-center justify-between">
 						<div>
 							<h3 class="text-lg font-semibold text-gray-900">Chat Rooms</h3>
-							<p class="text-sm text-gray-500">Start new chats and revisit old ones</p>
+							<!-- <p class="text-sm text-gray-500">Chat History</p> -->
 						</div>
 						<div class="flex space-x-2">
 							<button 
