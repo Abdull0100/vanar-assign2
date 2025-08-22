@@ -103,7 +103,7 @@
 								class="dark-button text-lg px-8 py-4 group relative overflow-hidden"
 							>
 								<span class="relative z-10 flex items-center">
-									🚀 Get Started
+									Get Started
 									<svg class="ml-2 w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
 									</svg>
@@ -115,7 +115,7 @@
 								class="dark-button-secondary text-lg px-8 py-4 group relative overflow-hidden"
 							>
 								<span class="relative z-10 flex items-center">
-									🔐 Sign In
+									Sign In
 									<svg class="ml-2 w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
 									</svg>
@@ -128,7 +128,7 @@
 								class="dark-button text-lg px-8 py-4 group relative overflow-hidden"
 							>
 								<span class="relative z-10 flex items-center">
-									🚀 Go to Dashboard
+									Go to Dashboard
 									<svg class="ml-2 w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
 									</svg>
