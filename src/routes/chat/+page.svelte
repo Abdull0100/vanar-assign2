@@ -874,7 +874,7 @@
 			margin-top: 1.5em;
 			margin-bottom: 0.5em;
 			font-weight: 600;
-			color: #1f2937;
+			color: #f1f5f9;
 		}
 		
 		.prose h1 { font-size: 1.5em; }
@@ -896,7 +896,7 @@
 		
 		.prose strong {
 			font-weight: 600;
-			color: #1f2937;
+			color: #e2e8f0;
 		}
 		
 		.prose em {
@@ -989,13 +989,13 @@
 		
 		/* Inline code styling */
 		.prose code:not(pre code) {
-			background-color: #f3f4f6;
+			background-color: rgba(139, 92, 246, 0.2);
 			padding: 0.125rem 0.25rem;
 			border-radius: 0.25rem;
 			font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
 			font-size: 0.875em;
-			color: #1f2937;
-			border: 1px solid #e5e7eb;
+			color: #e2e8f0;
+			border: 1px solid rgba(139, 92, 246, 0.3);
 		}
 		
 		/* Prism.js syntax highlighting overrides */
