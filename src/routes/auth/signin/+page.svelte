@@ -112,7 +112,7 @@
 		<!-- Sign In Card -->
 		<div class="dark-card animate-slide-in">
 			<div class="text-center mb-8">
-				<div class="text-4xl mb-4 animate-bot-glow">🤖</div>
+				<!-- <div class="text-4xl mb-4 animate-bot-glow">🤖</div> -->
 				<h2 class="text-3xl font-bold text-white mb-2">Welcome Back</h2>
 				<p class="text-gray-300">Sign in to your account to continue</p>
 			</div>
@@ -181,7 +181,7 @@
 						<div class="loading-robot mr-2">🤖</div>
 						<span class="loading-text">Signing in...</span>
 					{:else}
-						🔐 Sign In
+						Sign In
 					{/if}
 				</button>
 			</form>
@@ -201,7 +201,16 @@
 						on:click={() => handleOAuthSignIn('google')}
 						class="dark-button-secondary flex items-center justify-center"
 					>
-						<span class="mr-2">🔍</span>
+						<span class="mr-2"><svg xmlns="http://www.w3.org/2000/svg" 
+     width="24" height="24" 
+     viewBox="0 0 48 48" 
+     fill="none" 
+     stroke="white" 
+     stroke-width="2" 
+     stroke-linecap="round" 
+     stroke-linejoin="round">
+  <path d="M44.5 20H24v8.5h11.9C34.8 33.6 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 3.1l6.4-6.4C34.6 4.9 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21c10.5 0 20-7.6 20-21 0-1.3-.1-2.2-.5-4z"/>
+</svg></span>
 						Google
 					</button>
 
@@ -209,7 +218,7 @@
 						on:click={() => handleOAuthSignIn('github')}
 						class="dark-button-secondary flex items-center justify-center"
 					>
-						<span class="mr-2">🐙</span>
+						<span class="mr-2"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg></span>
 						GitHub
 					</button>
 				</div>
