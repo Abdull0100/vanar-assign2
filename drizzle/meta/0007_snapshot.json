@@ -1,6 +1,6 @@
 {
-  "id": "944adf48-0034-4c67-ac4d-4ea77943dcf5",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "7aa54124-a394-4906-ab4d-c3033d353169",
+  "prevId": "4bc857a6-f8fc-4e63-891e-6743ecd1a9de",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -235,12 +235,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "aiResponse": {
-          "name": "aiResponse",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "createdAt": {
           "name": "createdAt",
           "type": "timestamp",
@@ -306,6 +300,33 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "isPublic": {
+          "name": "isPublic",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "roomType": {
+          "name": "roomType",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'general'"
+        },
+        "maxParticipants": {
+          "name": "maxParticipants",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
         },
         "summary": {
           "name": "summary",

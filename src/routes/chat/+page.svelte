@@ -10,7 +10,6 @@
 	type ChatMessage = {
 		id: string;
 		content: string;
-		sender: 'user' | 'ai';
 		aiResponse: string | null;
 		createdAt: string;
 		isStreaming?: boolean;
@@ -149,12 +148,34 @@
 		debouncedSaveToStorage();
 	}
 
+	// Function to transform database messages to the new single-row format
+	function transformDatabaseMessages(dbMessages: any[]): ChatMessage[] {
+		if (!dbMessages || !Array.isArray(dbMessages)) return [];
+		
+		console.log('Transforming database messages:', dbMessages.length, 'messages');
+		
+		// In the new schema, each database row is already a Q&A pair
+		// Just transform them to the ChatMessage format
+		const transformedMessages: ChatMessage[] = dbMessages.map(msg => ({
+			id: msg.id,
+			content: msg.content || '',
+			aiResponse: msg.aiResponse,
+			createdAt: msg.createdAt,
+			isStreaming: false
+		}));
+		
+		console.log('Transformed to:', transformedMessages.length, 'Q&A pairs');
+		return transformedMessages;
+	}
+
 	async function selectConversation(id: string) {
+		console.log('Selecting conversation:', id);
 		currentConversationId.set(id);
 		
 		// First check if we have messages in the conversations store
 		const existingConv = $conversations.find(conv => conv.id === id);
 		if (existingConv && existingConv.messages && existingConv.messages.length > 0) {
+			console.log('Using existing messages from store:', existingConv.messages.length);
 			messages.set(existingConv.messages);
 			debouncedSaveToStorage();
 			return;
@@ -164,8 +185,10 @@
 		if (id.startsWith('temp-')) {
 			const tempConv = $conversations.find(conv => conv.id === id);
 			if (tempConv) {
+				console.log('Loading temporary conversation messages:', tempConv.messages?.length || 0);
 				messages.set(tempConv.messages || []);
 			} else {
+				console.log('No temporary conversation found, setting empty messages');
 				messages.set([]);
 			}
 			debouncedSaveToStorage();
@@ -173,24 +196,34 @@
 		}
 		
 		// Load messages for this conversation from the database
+		console.log('Loading messages from database for conversation:', id);
 		try {
 			const response = await fetch(`/api/chat?conversationId=${id}`);
 			if (response.ok) {
 				const data = await response.json();
+				console.log('Database response:', data);
+				
 				if (data.messages && Array.isArray(data.messages)) {
-					messages.set(data.messages);
+					// Transform the database messages to the new single-row Q&A format
+					const transformedMessages = transformDatabaseMessages(data.messages);
+					messages.set(transformedMessages);
+					
 					// Update the conversations store with the loaded messages
 					conversations.update(convs => 
 						convs.map(conv => 
 							conv.id === id 
-								? { ...conv, messages: data.messages }
+								? { ...conv, messages: transformedMessages, messageCount: transformedMessages.length }
 								: conv
 						)
 					);
+					
+					console.log(`Loaded ${transformedMessages.length} messages for conversation ${id}`);
 				} else {
+					console.log(`No messages found for conversation ${id}`);
 					messages.set([]);
 				}
 			} else {
+				console.error(`Failed to load messages for conversation ${id}:`, response.status);
 				messages.set([]);
 			}
 		} catch (err) {
@@ -253,8 +286,8 @@
 		...conv,
 		// Pre-compute formatted date to avoid recalculation on every render
 		formattedDate: new Date(conv.updatedAt || conv.createdAt).toLocaleDateString(),
-		// Pre-compute message count display
-		messageCountDisplay: conv.messages.length === 1 ? '1 message' : `${conv.messages.length} messages`
+		// Pre-compute message count display - each message is now a Q&A pair
+		messageCountDisplay: conv.messages.length === 1 ? '1 Q&A pair' : `${conv.messages.length} Q&A pairs`
 	}));
 
 	// Watch for message changes and sync to conversation (debounced)
@@ -278,40 +311,37 @@
 			await new Promise(resolve => setTimeout(resolve, 0));
 		}
 
-		// Create user message
-		const userMessage: ChatMessage = {
+		// Create a single message row that will store both user content and AI response
+		const chatMessage: ChatMessage = {
 			id: generateId(),
-			content: messageContent,
-			sender: 'user',
-			aiResponse: '',
-			createdAt: new Date().toISOString()
-		};
-
-		// Create AI message placeholder
-		const aiMessage: ChatMessage = {
-			id: generateId(),
-			content: '',
-			sender: 'ai',
-			aiResponse: '',
+			content: messageContent, // User query/context
+			aiResponse: null, // Initially null, will be filled when AI responds
 			createdAt: new Date().toISOString(),
-			isStreaming: true
+			isStreaming: true // Indicates this message is waiting for AI response
 		};
 
-		// Optimistic update - add both messages immediately
-		messages.update(msgs => [...msgs, userMessage, aiMessage]);
+		console.log('Creating single message:', chatMessage.id, 'with content:', messageContent.substring(0, 50));
+
+		// Add the single message to the messages array
+		messages.update(msgs => {
+			console.log('Current messages before adding:', msgs.length);
+			const newMessages = [...msgs, chatMessage];
+			console.log('Messages after adding:', newMessages.length);
+			return newMessages;
+		});
 
 		// Auto-scroll immediately after adding messages
 		setTimeout(scrollToBottom, 50);
 
 		// Update conversation room name if it's the first message
-		if ($messages.length === 2) { // Just added user + AI messages
+		if ($messages.length === 1) { // Just added the first message
 			updateConversationRoomName(messageContent.length > 40 ? messageContent.slice(0, 40) + '…' : messageContent);
 		}
 
 		try {
 			const history = $messages
-				.filter(m => m.sender === 'user' && m.aiResponse) // Only completed message pairs
-				.slice(0, -2) // Exclude the current pair we just added
+				.filter(m => m.aiResponse) // Only completed messages with AI responses
+				.slice(0, -1) // Exclude the current message we just added
 				.map(m => ({ message: m.content, response: m.aiResponse }));
 
 			// Don't send temporary conversation IDs to the API
@@ -352,17 +382,17 @@
 										if (data.error.includes('rate limit') || data.error.includes('quota') || data.error.includes('high demand')) {
 											startRetryCountdown(60);
 										}
-										// Remove the AI message on error
-										messages.update(msgs => msgs.filter(m => m.id !== aiMessage.id));
+										// Remove the message on error
+										messages.update(msgs => msgs.filter(m => m.id !== chatMessage.id));
 										break;
 									}
 									
 									if (data.chunk) {
 										streamedResponse += data.chunk;
-										// Update AI message with streaming response
+										// Update message with streaming response
 										messages.update(msgs => 
 											msgs.map(msg => 
-												msg.id === aiMessage.id 
+												msg.id === chatMessage.id 
 													? { ...msg, aiResponse: streamedResponse }
 													: msg
 											)
@@ -373,10 +403,10 @@
 									}
 									
 									if (data.done) {
-										// Finalize AI message
+										// Finalize message
 										messages.update(msgs => 
 											msgs.map(msg => 
-												msg.id === aiMessage.id 
+												msg.id === chatMessage.id 
 													? { ...msg, isStreaming: false }
 													: msg
 											)
@@ -412,10 +442,10 @@
 				// Handle JSON response
 				const data = await response.json();
 				if (response.ok) {
-					// Update AI message with response
+					// Update message with response
 					messages.update(msgs => 
 						msgs.map(msg => 
-							msg.id === aiMessage.id 
+							msg.id === chatMessage.id 
 								? { ...msg, aiResponse: data.response, isStreaming: false }
 								: msg
 						)
@@ -441,15 +471,15 @@
 					}
 				} else {
 					error.set(data.error || 'Failed to get response from AI');
-					// Remove AI message on error
-					messages.update(msgs => msgs.filter(m => m.id !== aiMessage.id));
+					// Remove message on error
+					messages.update(msgs => msgs.filter(m => m.id !== chatMessage.id));
 				}
 			}
 		} catch (err) {
 			console.error('Chat error:', err);
 			error.set('An error occurred while sending message. Please try again.');
-			// Remove AI message on error
-			messages.update(msgs => msgs.filter(m => m.id !== aiMessage.id));
+			// Remove message on error
+			messages.update(msgs => msgs.filter(m => m.id !== chatMessage.id));
 		} finally {
 			loading.set(false);
 		}
@@ -505,9 +535,9 @@
 		
 		// Update conversation room name if needed
 		if (messageIndex === 0 && $messages.length > 0) {
-			const firstUserMessage = $messages.find(m => m.sender === 'user');
-			if (firstUserMessage) {
-				updateConversationRoomName(firstUserMessage.content.length > 40 ? firstUserMessage.content.slice(0, 40) + '…' : firstUserMessage.content);
+			const firstMessage = $messages[0]; // First message in the conversation
+			if (firstMessage) {
+				updateConversationRoomName(firstMessage.content.length > 40 ? firstMessage.content.slice(0, 40) + '…' : firstMessage.content);
 			}
 		}
 		
@@ -1162,7 +1192,7 @@
 							on:click={() => goto('/chat')}
 							class="inline-flex items-center border-b-2 border-indigo-500 px-1 pt-1 text-sm font-medium text-gray-900"
 						>
-							Vanar AI
+							AI Chat
 						</button>
 						<button
 							on:click={() => goto('/profile')}
@@ -1198,31 +1228,31 @@
 	</nav>
 
 	<!-- Chat Interface -->
-	<div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-		<div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+	<div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+		<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6 h-[calc(100vh-8rem)] min-h-[600px]">
 			<!-- Chat History Sidebar -->
-			<div class="lg:col-span-1">
-				<div class="rounded-xl bg-white shadow-lg h-full">
-					<div class="p-4 border-b border-gray-200 flex items-center justify-between">
+			<div class="lg:col-span-1 order-2 lg:order-1">
+				<div class="rounded-xl bg-white shadow-lg h-full flex flex-col">
+					<div class="p-3 lg:p-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
 						<div>
-							<h3 class="text-lg font-semibold text-gray-900">Chat Rooms</h3>
-							<!-- <p class="text-sm text-gray-500">Chat History</p> -->
+							<h3 class="text-base lg:text-lg font-semibold text-gray-900">Chat Rooms</h3>
 						</div>
 						<div class="flex space-x-2">
 							<button 
 								on:click={newConversation} 
-								class="group relative inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ease-out hover:scale-105 hover:from-indigo-700 hover:via-purple-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-white" 
+								class="group relative inline-flex items-center justify-center px-3 lg:px-4 py-2 lg:py-2.5 text-xs lg:text-sm font-medium text-white bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ease-out hover:scale-105 hover:from-indigo-700 hover:via-purple-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-white" 
 								aria-label="Start a new conversation room"
 							>
-								<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2 transition-transform duration-300 group-hover:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2 transition-transform duration-300 group-hover:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
 								</svg>
-								New Room
+								<span class="hidden sm:inline">New Room</span>
+								<span class="sm:hidden">+</span>
 								<div class="absolute inset-0 rounded-xl bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 							</button>
 						</div>
 					</div>
-					<div class="p-4 max-h-96 overflow-y-auto" style="contain: layout style paint;">
+					<div class="p-3 lg:p-4 flex-1 overflow-y-auto" style="contain: layout style paint;">
 						{#if $error && ($error.includes('rate limit') || $error.includes('quota') || $error.includes('high demand'))}
 							<div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
 								<div class="flex items-start text-yellow-800">
@@ -1243,14 +1273,14 @@
 						{/if}
 						
 						{#if memoizedConversations.length === 0}
-							<div class="text-center py-12">
-								<div class="h-16 w-16 rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 flex items-center justify-center mx-auto mb-4">
-									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-500"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+							<div class="text-center py-8 lg:py-12">
+								<div class="h-12 w-12 lg:h-16 lg:w-16 rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 flex items-center justify-center mx-auto mb-4">
+									<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-500"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
 								</div>
-								<h3 class="text-lg font-semibold text-gray-900 mb-2">No chat rooms yet</h3>
-								<p class="text-sm text-gray-500 mb-4">Create your first room to start chatting with Vanar AI</p>
-								<button on:click={newConversation} class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-medium rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg" aria-label="Create your first chat room">
-									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+								<h3 class="text-base lg:text-lg font-semibold text-gray-900 mb-2">No chat rooms yet</h3>
+								<p class="text-xs lg:text-sm text-gray-500 mb-4">Create your first room to start chatting with Vanar AI</p>
+								<button on:click={newConversation} class="inline-flex items-center px-3 lg:px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs lg:text-sm font-medium rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg" aria-label="Create your first chat room">
+									<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
 									Create Room
 								</button>
 							</div>
@@ -1258,8 +1288,8 @@
 							{#each memoizedConversations as conv (conv.id)}
 								{#key conv.id}
 								<div 
-									class="w-full mb-3 p-4 rounded-lg transition-all duration-200 cursor-pointer border {$currentConversationId === conv.id ? 'bg-indigo-50 border-indigo-200 shadow-md' : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm'}" 
-									on:click={() => selectConversation(conv.id)}
+									class="w-full mb-2 lg:mb-3 p-3 lg:p-4 rounded-lg transition-all duration-200 cursor-pointer border {$currentConversationId === conv.id ? 'bg-indigo-50 border-indigo-200 shadow-md' : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm'}" 
+									on:click={() => { console.log('Clicked conversation:', conv.id, conv.roomName); selectConversation(conv.id); }}
 									on:keydown={(e) => e.key === 'Enter' && selectConversation(conv.id)}
 									role="button"
 									tabindex="0"
@@ -1267,14 +1297,14 @@
 									aria-pressed={$currentConversationId === conv.id}
 								>
 									<div class="flex items-center justify-between">
-										<p class="text-sm font-medium text-gray-800 truncate flex-1 mr-3">{conv.roomName}</p>
+										<p class="text-xs lg:text-sm font-medium text-gray-800 truncate flex-1 mr-2 lg:mr-3">{conv.roomName}</p>
 										<button 
 											on:click={(e) => { e.stopPropagation(); deleteConversation(conv.id).catch(console.error); }} 
-											class="group relative text-red-500 hover:text-red-700 text-xs p-2 rounded-lg hover:bg-red-50 transition-all duration-300 flex-shrink-0 border border-red-200 hover:border-red-300 hover:shadow-md hover:scale-110"
+											class="group relative text-red-500 hover:text-red-700 text-xs p-1.5 lg:p-2 rounded-lg hover:bg-red-50 transition-all duration-300 flex-shrink-0 border border-red-200 hover:border-red-300 hover:shadow-md hover:scale-110"
 											title="Delete conversation"
 											aria-label="Delete conversation: {conv.roomName}"
 										>
-											<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-300 group-hover:rotate-12" aria-hidden="true">
+											<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-300 group-hover:rotate-12" aria-hidden="true">
 												<path d="M3 6h18"/>
 												<path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
 												<path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
@@ -1290,13 +1320,13 @@
 					
 					<!-- Clear All History Button -->
 					{#if memoizedConversations.length > 0}
-						<div class="p-4 border-t border-gray-200">
+						<div class="p-3 lg:p-4 border-t border-gray-200 flex-shrink-0">
 							<button
 								on:click={clearAllChatHistory}
-								class="w-full group relative inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 hover:border-red-300 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+								class="w-full group relative inline-flex items-center justify-center px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 hover:border-red-300 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
 								aria-label="Clear all chat history"
 							>
-								<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2">
+								<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2">
 									<path d="M3 6h18"/>
 									<path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
 									<path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
@@ -1309,40 +1339,40 @@
 			</div>
 
 			<!-- Main Chat Interface -->
-			<div class="lg:col-span-3">
-				<div class="rounded-xl bg-white shadow-lg overflow-hidden">
+			<div class="lg:col-span-3 order-1 lg:order-2">
+				<div class="rounded-xl bg-white shadow-lg overflow-hidden h-full flex flex-col">
 					<!-- Chat Header -->
-					<div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4">
+					<div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-4 lg:px-6 py-3 lg:py-4 flex-shrink-0">
 						<div class="flex items-center justify-between">
 							<div class="flex items-center">
-								<div class="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center mr-3">
-									<img src="/src/lib/assets/images-removebg-preview.png" alt="Vanar Chain" class="w-8 h-8" />
+								<div class="h-8 w-8 lg:h-10 lg:w-10 rounded-full bg-white/20 flex items-center justify-center mr-2 lg:mr-3">
+									<img src="/src/lib/assets/images-removebg-preview.png" alt="Vanar Chain" class="w-6 h-6 lg:w-8 lg:h-8" />
 								</div>
 								<div>
-									<h2 class="text-lg font-semibold text-white">Vanar AI Assistant</h2>
-									<p class="text-sm text-indigo-200">The Chain That Thinks • Powered by Vanar</p>
+									<h2 class="text-base lg:text-lg font-semibold text-white">Vanar AI Assistant</h2>
+									<p class="text-xs lg:text-sm text-indigo-200">The Chain That Thinks • Powered by Vanar</p>
 								</div>
 							</div>
 							<div class="flex items-center space-x-2">
 								{#if $error && ($error.includes('rate limit') || $error.includes('quota') || $error.includes('high demand'))}
 									<div class="h-2 w-2 rounded-full bg-yellow-400 animate-pulse"></div>
-									<span class="text-sm text-yellow-200">
+									<span class="text-xs lg:text-sm text-yellow-200">
 										{retryCountdown > 0 ? `Busy (${getTimeUntilRetry()})` : 'Service Busy'}
 									</span>
 								{:else if $error}
 									<div class="h-2 w-2 rounded-full bg-red-400 animate-pulse"></div>
-									<span class="text-sm text-red-200">Service Error</span>
+									<span class="text-xs lg:text-sm text-red-200">Service Error</span>
 								{:else}
 									<div class="h-2 w-2 rounded-full bg-green-400"></div>
-									<span class="text-sm text-white">Online</span>
+									<span class="text-xs lg:text-sm text-white">Online</span>
 								{/if}
 							</div>
 						</div>
 					</div>
 
-					<!-- Messages Container -->
-					<div class="relative">
-						<div bind:this={messagesContainer} class="min-h-[400px] max-h-[70vh] overflow-y-auto p-6 bg-gradient-to-b from-gray-50 to-white scroll-smooth">
+					<!-- Messages Container - Scrollable Area -->
+					<div class="flex-1 overflow-y-auto bg-gradient-to-b from-gray-50 to-white">
+						<div bind:this={messagesContainer} class="p-4 lg:p-6">
 						{#if $messages.length === 0}
 							<div class="flex flex-col items-center justify-center h-full text-center">
 								<div class="h-24 w-24 rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 flex items-center justify-center mb-4">
@@ -1419,12 +1449,13 @@
 						{:else}
 							<!-- Messages hint -->
 							<div class="mb-4 text-center">
-								<p class="text-xs text-gray-400 italic">💡 Hover over messages to delete individual ones • All deletions provide guaranteed permanent erasure from all systems</p>
+								<p class="text-xs text-gray-400 italic">💡 Each message represents a complete Q&A pair • All deletions provide guaranteed permanent erasure from all systems</p>
 							</div>
 							{#each $messages as messageItem, idx (messageItem.id)}
-								<!-- User Message -->
-								{#if messageItem.sender === 'user'}
-									<div class="flex justify-end mb-2 group hover:bg-gray-50 rounded-lg p-1 -m-1 transition-colors duration-200">
+								<!-- Single Q&A Pair -->
+								<div class="mb-6 group hover:bg-gray-50 rounded-lg p-1 -m-1 transition-colors duration-200">
+									<!-- User Message -->
+									<div class="flex justify-end mb-2">
 										<div class="flex items-end space-x-2 max-w-xl relative">
 											<div class="rounded-2xl rounded-br-sm bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 text-white shadow-lg">
 												<p class="text-sm leading-relaxed">{messageItem.content}</p>
@@ -1432,91 +1463,65 @@
 											<div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
 												<span class="text-sm">👤</span>
 											</div>
-											<!-- Delete button for user message -->
-											<button
-												on:click={() => deleteMessage(idx)}
-												class="absolute -top-2 -left-2 opacity-0 group-hover:opacity-100 transition-all duration-300 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-lg hover:shadow-xl hover:scale-125 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-												aria-label="Delete message"
-												title="Delete message"
-											>
-												<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-300 group-hover:rotate-90">
-													<path d="M18 6L6 18M6 6l12 12"/>
-												</svg>
-											</button>
 										</div>
 									</div>
-								{:else}
+
 									<!-- AI Response -->
-									<div class="flex justify-start mb-6 group hover:bg-gray-50 rounded-lg p-1 -m-1 transition-colors duration-200">
+									<div class="flex justify-start">
 										<div class="flex items-end space-x-2 max-w-xl relative">
 											<div class="h-8 w-8 rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 flex items-center justify-center flex-shrink-0">
 												<img src="/src/lib/assets/images-removebg-preview.png" alt="Vanar Chain" class="w-5 h-5" />
 											</div>
 											<div class="rounded-2xl rounded-bl-sm bg-white px-4 py-3 shadow-lg border border-gray-100">
-												{#if messageItem.sender === 'ai'}
-													{#if messageItem.isStreaming}
-														<!-- Streaming AI Response -->
-														<div class="text-sm leading-relaxed text-gray-800 prose prose-sm max-w-none" bind:this={aiResponseContainer}>
-															{#if messageItem.aiResponse && messageItem.aiResponse.length > 0}
-																<!-- Show partial response with cursor -->
-																<span>{@html renderMarkdown(messageItem.aiResponse)}</span>
-																<span class="inline-block w-0.5 h-4 bg-indigo-500 animate-pulse ml-1"></span>
-															{:else}
-																<!-- Show placeholder while waiting for first chunk -->
-																
-																<span class="inline-block w-0.5 h-4 bg-indigo-500 animate-pulse ml-1"></span>
-															{/if}
+												{#if messageItem.isStreaming}
+													<!-- Streaming AI Response -->
+													<div class="text-sm leading-relaxed text-gray-800 prose prose-sm max-w-none" bind:this={aiResponseContainer}>
+														{#if messageItem.aiResponse && messageItem.aiResponse.length > 0}
+															<!-- Show partial response with cursor -->
+															<span>{@html renderMarkdown(messageItem.aiResponse)}</span>
+															<span class="inline-block w-0.5 h-4 bg-indigo-500 animate-pulse ml-1"></span>
+														{:else}
+															<!-- Show placeholder while waiting for first chunk -->
+															<span class="inline-block w-0.5 h-4 bg-indigo-500 animate-pulse ml-1"></span>
+														{/if}
+													</div>
+													
+													<!-- Streaming status indicator -->
+													<div class="flex items-center mt-2 space-x-2">
+														<div class="flex items-center space-x-1">
+															<div class="h-2 w-2 rounded-full bg-indigo-400 animate-pulse"></div>
+															<div class="h-2 w-2 rounded-full bg-indigo-400 animate-pulse" style="animation-delay: 0.2s"></div>
+															<div class="h-2 w-2 rounded-full bg-indigo-400 animate-pulse" style="animation-delay: 0.4s"></div>
 														</div>
-														
-														<!-- Streaming status indicator -->
-														<div class="flex items-center mt-2 space-x-2">
-															<div class="flex items-center space-x-1">
-																<div class="h-2 w-2 rounded-full bg-indigo-400 animate-pulse"></div>
-																<div class="h-2 w-2 rounded-full bg-indigo-400 animate-pulse" style="animation-delay: 0.2s"></div>
-																<div class="h-2 w-2 rounded-full bg-indigo-400 animate-pulse" style="animation-delay: 0.4s"></div>
-															</div>
-															<span class="text-xs text-indigo-600 font-medium">Vanar AI is typing...</span>
-														</div>
-													{:else if messageItem.aiResponse && messageItem.aiResponse.length > 0}
-														<!-- Final AI Response -->
-														<div class="text-sm leading-relaxed text-gray-800 prose prose-sm max-w-none" bind:this={aiResponseContainer}>
-															{@html renderMarkdown(messageItem.aiResponse)}
-														</div>
-														
-														<!-- Timestamp -->
-														<p class="mt-2 text-xs text-gray-400">
-															{new Date(messageItem.createdAt).toLocaleTimeString()}
-														</p>
-													{:else}
-														<!-- No response yet -->
-														<div class="text-sm text-gray-400 italic">
-															No response received
-														</div>
-													{/if}
+														<span class="text-xs text-indigo-600 font-medium">Vanar AI is typing...</span>
+													</div>
+												{:else if messageItem.aiResponse && messageItem.aiResponse.length > 0}
+													<!-- Final AI Response -->
+													<div class="text-sm leading-relaxed text-gray-800 prose prose-sm max-w-none" bind:this={aiResponseContainer}>
+														{@html renderMarkdown(messageItem.aiResponse)}
+													</div>
+													
+													<!-- Timestamp -->
+													<p class="mt-2 text-xs text-gray-400">
+														{new Date(messageItem.createdAt).toLocaleTimeString()}
+													</p>
 												{:else}
-													<!-- User message content is handled elsewhere -->
+													<!-- No response yet -->
+													<div class="text-sm text-gray-400 italic">
+														No response received
+													</div>
 												{/if}
 											</div>
-											<!-- Delete button for AI response -->
-											<button
-												on:click={() => deleteMessage(idx)}
-												class="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-all duration-300 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-lg hover:shadow-xl hover:scale-125 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-												aria-label="Delete message"
-												title="Delete message"
-											>
-												<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-300 group-hover:rotate-90">
-													<path d="M18 6L6 18M6 6l12 12"/>
-												</svg>
-											</button>
 										</div>
 									</div>
-								{/if}
+								</div>
 							{/each}
 						{/if}
+						</div>
 					</div>
 					
 					<!-- Scroll to Bottom Button -->
-					{#if $messages.length > 2 && !isAtBottom()}
+					{#if $messages.length > 1 && !isAtBottom()}
 						<button
 							on:click={scrollToBottom}
 							class="absolute bottom-4 right-4 p-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full shadow-lg border border-indigo-400 hover:border-indigo-500 transition-all duration-200 animate-bounce"
@@ -1528,9 +1533,8 @@
 							</svg>
 						</button>
 					{/if}
-				</div>
 
-				<!-- Error Display -->
+					<!-- Error Display -->
 					{#if $error}
 						<div class="px-6 pb-4">
 							<div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
@@ -1611,7 +1615,7 @@
 					{/if}
 
 					<!-- Message Input -->
-					<div class="border-t border-gray-200 bg-white p-6">
+					<div class="border-t border-gray-200 bg-white p-4 lg:p-6 flex-shrink-0">
 						{#if $error && ($error.includes('rate limit') || $error.includes('quota') || $error.includes('high demand'))}
 							<div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
 								<div class="flex items-center text-yellow-800">
@@ -1619,7 +1623,7 @@
 										<circle cx="12" cy="12" r="10"/>
 										<path d="M12 6v6l4 2"/>
 									</svg>
-									<span class="text-sm">
+									<span class="text-xs lg:text-sm">
 										<strong>Service Status:</strong> AI service is currently busy
 										{#if retryCountdown > 0}
 											• Retry available in: {getTimeUntilRetry()}
@@ -1628,7 +1632,7 @@
 								</div>
 							</div>
 						{/if}
-						<div class="flex space-x-4">
+						<div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
 							<div class="flex-1">
 								<div class="relative">
 									<textarea
@@ -1642,12 +1646,13 @@
 											focus:border-indigo-500 focus:ring-indigo-500 pr-12 bg-gray-50
 											focus:bg-white transition-all duration-200 ease-in-out
 											disabled:opacity-75 disabled:cursor-not-allowed
-											px-4 py-3
+											px-3 lg:px-4 py-2 lg:py-3
 											leading-normal
 											text-gray-800
 											placeholder-gray-400
 											scroll-pb-3 scroll-pt-3
 											whitespace-pre-wrap
+											text-sm lg:text-base
 										"
 										aria-label="Type your message to Vanar AI"
 										aria-disabled={$loading}
@@ -1662,18 +1667,19 @@
 								<button
 									on:click={sendMessage}
 									disabled={$loading || !messageText.trim() || messageText.length > 2000}
-									class="group relative inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-6 py-3 text-white font-medium hover:from-indigo-700 hover:via-purple-700 hover:to-indigo-800 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300 ease-out hover:scale-105 hover:shadow-xl shadow-lg"
+									class="group relative inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-4 lg:px-6 py-2 lg:py-3 text-white text-sm lg:text-base font-medium hover:from-indigo-700 hover:via-purple-700 hover:to-indigo-800 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300 ease-out hover:scale-105 hover:shadow-xl shadow-lg"
 									aria-label="Send message to Vanar AI"
 								>
 									<span class="flex items-center">
 										{#if $loading}
-											<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+											<svg class="animate-spin -ml-1 mr-2 lg:mr-3 h-4 w-4 lg:h-5 lg:w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
 												<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
 												<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
 											</svg>
-											Processing...
+											<span class="hidden sm:inline">Processing...</span>
+											<span class="sm:hidden">...</span>
 										{:else}
-											✨ Send
+											✨ <span class="hidden sm:inline ml-1">Send</span>
 										{/if}
 									</span>
 									<div class="absolute inset-0 rounded-xl bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -1681,7 +1687,7 @@
 								{#if messageText.trim()}
 									<button
 										on:click={() => { messageText = ''; }}
-										class="group relative inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-gray-100 via-gray-200 to-gray-300 px-6 py-2 text-gray-600 hover:from-gray-200 hover:via-gray-300 hover:to-gray-400 transition-all duration-300 ease-out hover:scale-105 hover:shadow-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+										class="group relative inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-gray-100 via-gray-200 to-gray-300 px-4 lg:px-6 py-2 text-gray-600 hover:from-gray-200 hover:via-gray-300 hover:to-gray-400 transition-all duration-300 ease-out hover:scale-105 hover:shadow-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
 										aria-label="Clear message input"
 									>
 										<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 transition-transform duration-300 group-hover:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">

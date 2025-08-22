@@ -1,0 +1,1 @@
+ALTER TABLE "chatMessages" ADD COLUMN "aiResponse" text;

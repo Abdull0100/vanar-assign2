@@ -3,6 +3,7 @@ import { sendAdminPromotionEmail, sendAdminDemotionEmail } from '$lib/email';
 import { db } from '$lib/db';
 import { users } from '$lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { trackRoleChange } from '$lib/activityTracker';
 
 export const PATCH: RequestHandler = async ({ request, params, locals }) => {
 	try {
@@ -39,10 +40,26 @@ export const PATCH: RequestHandler = async ({ request, params, locals }) => {
 			return json({ error: 'User not found' }, { status: 404 });
 		}
 
+		// Don't update if role is the same
+		if (userBefore.role === role) {
+			return json({ message: 'User role is already set to this value' });
+		}
+
 		await db.update(users).set({ role }).where(eq(users.id, userId as string));
 
 		// Fetch the user after update
 		const [userAfter] = await db.select().from(users).where(eq(users.id, userId as string));
+
+		// Track the admin action
+		await trackRoleChange(
+			session.user.id,
+			userId as string,
+			userBefore.role,
+			role,
+			userBefore.email,
+			locals.request?.headers.get('x-forwarded-for') || locals.request?.headers.get('x-real-ip'),
+			locals.request?.headers.get('user-agent')
+		);
 
 		// If the role was changed to admin, send the promotion email
 		if (userBefore && userAfter && userBefore.role !== 'admin' && userAfter.role === 'admin' && userAfter.email) {

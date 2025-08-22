@@ -3,6 +3,7 @@ import { sendAccountDeletionEmail } from '$lib/email';
 import { db } from '$lib/db';
 import { users, sessions, accounts, chatMessages } from '$lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { trackUserDelete } from '$lib/activityTracker';
 
 export const DELETE: RequestHandler = async ({ params, locals }) => {
 	try {
@@ -34,6 +35,15 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		if (!userToDelete) {
 			return json({ error: 'User not found' }, { status: 404 });
 		}
+
+		// Track the admin action before deletion
+		await trackUserDelete(
+			session.user.id,
+			userId as string,
+			userToDelete.email,
+			locals.request?.headers.get('x-forwarded-for') || locals.request?.headers.get('x-real-ip'),
+			locals.request?.headers.get('user-agent')
+		);
 
 		// Delete related data first to handle foreign key constraints
 		// Delete sessions (these don't have cascade delete)

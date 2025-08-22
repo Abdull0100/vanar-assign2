@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid, integer, primaryKey } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, uuid, integer, primaryKey, boolean, jsonb } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 export const users = pgTable('users', {
@@ -61,18 +61,19 @@ export const passwordResetTokens = pgTable('passwordResetTokens', {
 // Conversations table - represents chat rooms
 export const conversations = pgTable('conversations', {
 	id: uuid('id').primaryKey().defaultRandom(),
+	roomName: text('roomName').notNull(),
 	userId: uuid('userId')
 		.notNull()
 		.references(() => users.id, { onDelete: 'cascade' }),
-	roomName: text('roomName').notNull(), // Changed from 'title' to 'roomName'
-	// Rolling summary of older parts of the conversation to keep context compact
-	summary: text('summary'),
-	summaryUpdatedAt: timestamp('summaryUpdatedAt', { mode: 'date' }),
+	summary: text('summary'), // Rolling summary of conversation
+	summaryUpdatedAt: timestamp('summaryUpdatedAt'), // When summary was last updated
 	createdAt: timestamp('createdAt').defaultNow().notNull(),
 	updatedAt: timestamp('updatedAt').defaultNow().notNull()
 });
 
-// Chat messages table - each message is separate and linked to a conversation
+// Chat messages table - each row represents a complete Q&A pair
+// When aiResponse is NULL: it's a user message waiting for AI response
+// When aiResponse has content: it's a complete Q&A pair with user context + AI response
 export const chatMessages = pgTable('chatMessages', {
 	id: uuid('id').primaryKey().defaultRandom(), // This is messageId
 	conversationId: uuid('conversationId')
@@ -81,10 +82,73 @@ export const chatMessages = pgTable('chatMessages', {
 	userId: uuid('userId')
 		.notNull()
 		.references(() => users.id, { onDelete: 'cascade' }),
-	content: text('content').notNull(), // User query or empty string for AI
-	sender: text('sender').notNull(), // 'user' or 'ai'
-	aiResponse: text('aiResponse'), // AI response text (null for user messages, text for AI)
-	createdAt: timestamp('createdAt').defaultNow().notNull() // This is timestamp
+	content: text('content').notNull(), // User query/context
+	aiResponse: text('aiResponse'), // AI response text (null for pending user messages, text for complete Q&A pairs)
+	previousId: uuid('previousId'), // ID of previous chat in same room for conversation flow
+	createdAt: timestamp('createdAt').defaultNow().notNull(), // Timestamp of the Q&A pair
+	updatedAt: timestamp('updatedAt').defaultNow().notNull() // When message was last updated
+});
+
+// User Sessions table - tracks user login sessions
+export const userSessions = pgTable('userSessions', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	userId: uuid('userId')
+		.notNull()
+		.references(() => users.id, { onDelete: 'cascade' }),
+	sessionToken: text('sessionToken').notNull(),
+	ipAddress: text('ipAddress'),
+	userAgent: text('userAgent'),
+	loginTime: timestamp('loginTime', { mode: 'date' }).defaultNow().notNull(),
+	logoutTime: timestamp('logoutTime', { mode: 'date' }),
+	isActive: boolean('isActive').default(true).notNull(),
+	createdAt: timestamp('createdAt').defaultNow().notNull()
+});
+
+// User Activities table - tracks all user actions
+export const userActivities = pgTable('userActivities', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	userId: uuid('userId')
+		.notNull()
+		.references(() => users.id, { onDelete: 'cascade' }),
+	activityType: text('activityType').notNull(), // 'chat_message', 'profile_update', 'password_change', 'login', 'logout', etc.
+	description: text('description').notNull(),
+	metadata: jsonb('metadata'), // Store additional data like chat count, profile changes, etc.
+	ipAddress: text('ipAddress'),
+	userAgent: text('userAgent'),
+	createdAt: timestamp('createdAt').defaultNow().notNull()
+});
+
+// Admin Actions table - tracks all admin actions
+export const adminActions = pgTable('adminActions', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	adminId: uuid('adminId')
+		.notNull()
+		.references(() => users.id, { onDelete: 'cascade' }),
+	targetUserId: uuid('targetUserId')
+		.references(() => users.id, { onDelete: 'set null' }), // The user affected by the action (optional for system-wide actions)
+	actionType: text('actionType').notNull(), // 'user_delete', 'user_disable', 'user_enable', 'role_change', 'user_ban', etc.
+	description: text('description').notNull(),
+	metadata: jsonb('metadata'), // Store additional data like previous values, reason, etc.
+	ipAddress: text('ipAddress'),
+	userAgent: text('userAgent'),
+	createdAt: timestamp('createdAt').defaultNow().notNull()
+});
+
+// User Stats table - aggregated user statistics
+export const userStats = pgTable('userStats', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	userId: uuid('userId')
+		.notNull()
+		.unique()
+		.references(() => users.id, { onDelete: 'cascade' }),
+	totalChatMessages: integer('totalChatMessages').default(0).notNull(),
+	totalConversations: integer('totalConversations').default(0).notNull(),
+	lastActivity: timestamp('lastActivity', { mode: 'date' }),
+	lastLogin: timestamp('lastLogin', { mode: 'date' }),
+	profileUpdateCount: integer('profileUpdateCount').default(0).notNull(),
+	passwordChangeCount: integer('passwordChangeCount').default(0).notNull(),
+	createdAt: timestamp('createdAt').defaultNow().notNull(),
+	updatedAt: timestamp('updatedAt').defaultNow().notNull()
 });
 
 // Relations
@@ -92,7 +156,12 @@ export const usersRelations = relations(users, ({ many }) => ({
 	accounts: many(accounts),
 	sessions: many(sessions),
 	conversations: many(conversations),
-	chatMessages: many(chatMessages)
+	chatMessages: many(chatMessages),
+	userSessions: many(userSessions),
+	userActivities: many(userActivities),
+	adminActions: many(adminActions, { relationName: 'adminActions' }),
+	targetedAdminActions: many(adminActions, { relationName: 'targetedAdminActions' }),
+	userStats: many(userStats)
 }));
 
 export const accountsRelations = relations(accounts, ({ one }) => ({
@@ -125,5 +194,39 @@ export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
 	conversation: one(conversations, {
 		fields: [chatMessages.conversationId],
 		references: [conversations.id]
+	})
+}));
+
+export const userSessionsRelations = relations(userSessions, ({ one }) => ({
+	user: one(users, {
+		fields: [userSessions.userId],
+		references: [users.id]
+	})
+}));
+
+export const userActivitiesRelations = relations(userActivities, ({ one }) => ({
+	user: one(users, {
+		fields: [userActivities.userId],
+		references: [users.id]
+	})
+}));
+
+export const adminActionsRelations = relations(adminActions, ({ one }) => ({
+	admin: one(users, {
+		fields: [adminActions.adminId],
+		references: [users.id],
+		relationName: 'adminActions'
+	}),
+	targetUser: one(users, {
+		fields: [adminActions.targetUserId],
+		references: [users.id],
+		relationName: 'targetedAdminActions'
+	})
+}));
+
+export const userStatsRelations = relations(userStats, ({ one }) => ({
+	user: one(users, {
+		fields: [userStats.userId],
+		references: [users.id]
 	})
 }));
