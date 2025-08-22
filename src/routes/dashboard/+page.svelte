@@ -81,7 +81,6 @@
 					<div class="flex items-center">
 						<div class="flex-shrink-0">
 							<h1 class="text-xl font-bold text-white flex items-center gap-2">
-								<span class="text-2xl animate-bot-glow">🤖</span>
 								Auth App
 							</h1>
 						</div>
@@ -90,21 +89,18 @@
 								on:click={() => navigateTo('/dashboard')}
 								class="nav-link active"
 							>
-								<span class="nav-icon">📊</span>
 								Dashboard
 							</button>
 							<button
 								on:click={() => navigateTo('/chat')}
 								class="nav-link"
 							>
-								<span class="nav-icon">💬</span>
 								AI Chat
 							</button>
 							<button
 								on:click={() => navigateTo('/profile')}
 								class="nav-link"
 							>
-								<span class="nav-icon">👤</span>
 								Profile
 							</button>
 							{#if user?.role === 'admin'}
