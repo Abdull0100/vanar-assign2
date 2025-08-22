@@ -1207,16 +1207,23 @@
 		<div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
 			<!-- Chat History Sidebar -->
 			<div class="lg:col-span-1">
-				<div class="rounded-xl bg-white shadow-lg h-full">
-					<div class="p-4 border-b border-gray-200 flex items-center justify-between">
-						<div>
-							<h3 class="text-lg font-semibold text-gray-900">Chat Rooms</h3>
-							<!-- <p class="text-sm text-gray-500">Chat History</p> -->
+				<div class="rounded-2xl bg-gradient-to-br from-white via-gray-50 to-white shadow-2xl border border-gray-100 h-full backdrop-blur-sm">
+					<div class="p-6 border-b border-gray-200/60 flex items-center justify-between bg-gradient-to-r from-gray-50/50 to-white/50 rounded-t-2xl">
+						<div class="flex items-center space-x-3">
+							<div class="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
+								<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+								</svg>
+							</div>
+							<div>
+								<h3 class="text-lg font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">Chat Rooms</h3>
+								<p class="text-xs text-gray-500 font-medium">Your conversations</p>
+							</div>
 						</div>
 						<div class="flex space-x-2">
 							<button 
 								on:click={newConversation} 
-								class="group relative inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ease-out hover:scale-105 hover:from-indigo-700 hover:via-purple-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-white" 
+								class="group relative inline-flex items-center justify-center px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ease-out hover:scale-105 hover:from-indigo-600 hover:via-purple-600 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-white transform hover:-translate-y-0.5" 
 								aria-label="Start a new conversation room"
 							>
 								<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2 transition-transform duration-300 group-hover:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1227,7 +1234,7 @@
 							</button>
 						</div>
 					</div>
-					<div class="p-4 max-h-96 overflow-y-auto" style="contain: layout style paint;">
+					<div class="p-6 max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100" style="contain: layout style paint;">
 						{#if $error && ($error.includes('rate limit') || $error.includes('quota') || $error.includes('high demand'))}
 							<div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
 								<div class="flex items-start text-yellow-800">
@@ -1249,13 +1256,13 @@
 						
 						{#if memoizedConversations.length === 0}
 							<div class="text-center py-12">
-								<div class="h-16 w-16 rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 flex items-center justify-center mx-auto mb-4">
-									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-500"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+								<div class="h-20 w-20 rounded-2xl bg-gradient-to-br from-indigo-100 via-purple-100 to-indigo-200 flex items-center justify-center mx-auto mb-6 shadow-lg border border-indigo-200/50">
+									<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-600"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
 								</div>
-								<h3 class="text-lg font-semibold text-gray-900 mb-2">No chat rooms yet</h3>
-								<p class="text-sm text-gray-500 mb-4">Create your first room to start chatting with Vanar AI</p>
-								<button on:click={newConversation} class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-medium rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg" aria-label="Create your first chat room">
-									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+								<h3 class="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-3">No chat rooms yet</h3>
+								<p class="text-sm text-gray-600 mb-6 leading-relaxed">Create your first room to start chatting with Vanar AI</p>
+								<button on:click={newConversation} class="group inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-semibold rounded-xl hover:from-indigo-600 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5" aria-label="Create your first chat room">
+									<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 transition-transform duration-300 group-hover:rotate-90" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
 									Create Room
 								</button>
 							</div>
@@ -1263,7 +1270,7 @@
 							{#each memoizedConversations as conv (conv.id)}
 								{#key conv.id}
 								<div 
-									class="w-full mb-3 p-4 rounded-lg transition-all duration-200 cursor-pointer border {$currentConversationId === conv.id ? 'bg-indigo-50 border-indigo-200 shadow-md' : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm'}" 
+									class="group w-full mb-4 p-4 rounded-xl transition-all duration-300 cursor-pointer border-2 {$currentConversationId === conv.id ? 'bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-300 shadow-lg shadow-indigo-100/50' : 'bg-white/80 border-gray-200 hover:bg-gradient-to-r hover:from-gray-50 hover:to-white hover:border-gray-300 hover:shadow-md hover:shadow-gray-200/50'}" 
 									on:click={() => selectConversation(conv.id)}
 									on:keydown={(e) => e.key === 'Enter' && selectConversation(conv.id)}
 									role="button"
@@ -1272,19 +1279,29 @@
 									aria-pressed={$currentConversationId === conv.id}
 								>
 									<div class="flex items-center justify-between">
-										<p class="text-sm font-medium text-gray-800 truncate flex-1 mr-3">{conv.roomName}</p>
+										<div class="flex items-center space-x-3 flex-1 min-w-0">
+											<div class="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center flex-shrink-0 {$currentConversationId === conv.id ? 'shadow-md' : 'shadow-sm'}">
+												<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-600">
+													<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+												</svg>
+											</div>
+											<div class="min-w-0 flex-1">
+												<p class="text-sm font-semibold text-gray-800 truncate leading-tight">{$currentConversationId === conv.id ? conv.roomName : conv.roomName}</p>
+												<p class="text-xs text-gray-500 mt-0.5">{$currentConversationId === conv.id ? 'Active' : conv.messageCountDisplay}</p>
+											</div>
+										</div>
 										<button 
 											on:click={(e) => { e.stopPropagation(); deleteConversation(conv.id).catch(console.error); }} 
-											class="group relative text-red-500 hover:text-red-700 text-xs p-2 rounded-lg hover:bg-red-50 transition-all duration-300 flex-shrink-0 border border-red-200 hover:border-red-300 hover:shadow-md hover:scale-110"
+											class="group/delete relative text-gray-400 hover:text-red-500 text-xs p-2 rounded-lg hover:bg-red-50 transition-all duration-300 flex-shrink-0 border border-transparent hover:border-red-200 hover:shadow-md hover:scale-110 opacity-0 group-hover:opacity-100"
 											title="Delete conversation"
 											aria-label="Delete conversation: {conv.roomName}"
 										>
-											<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-300 group-hover:rotate-12" aria-hidden="true">
+											<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-300 group-hover/delete:rotate-12" aria-hidden="true">
 												<path d="M3 6h18"/>
 												<path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
 												<path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
 											</svg>
-											<div class="absolute inset-0 rounded-lg bg-gradient-to-r from-red-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+											<div class="absolute inset-0 rounded-lg bg-gradient-to-r from-red-500/10 to-transparent opacity-0 group-hover/delete:opacity-100 transition-opacity duration-300"></div>
 										</button>
 									</div>
 								</div>
@@ -1295,13 +1312,13 @@
 					
 					<!-- Clear All History Button -->
 					{#if memoizedConversations.length > 0}
-						<div class="p-4 border-t border-gray-200">
+						<div class="p-6 border-t border-gray-200/60 bg-gradient-to-r from-gray-50/30 to-white/30 rounded-b-2xl">
 							<button
 								on:click={clearAllChatHistory}
-								class="w-full group relative inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 hover:border-red-300 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+								class="w-full group relative inline-flex items-center justify-center px-4 py-3 text-sm font-semibold text-red-600 bg-gradient-to-r from-red-50 to-red-100 border-2 border-red-200 rounded-xl hover:from-red-100 hover:to-red-200 hover:border-red-300 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transform hover:-translate-y-0.5 shadow-sm hover:shadow-md"
 								aria-label="Clear all chat history"
 							>
-								<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2">
+								<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 transition-transform duration-300 group-hover:rotate-12">
 									<path d="M3 6h18"/>
 									<path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
 									<path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
@@ -1431,7 +1448,7 @@
 								{#if messageItem.sender === 'user'}
 									<div class="flex justify-end mb-2 group hover:bg-gray-50 rounded-lg p-1 -m-1 transition-colors duration-200">
 										<div class="flex items-end space-x-2 max-w-xl relative">
-											<div class="rounded-2xl rounded-br-sm bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 text-white shadow-lg">
+											<div class="rounded-2xl rounded-br-sm bg-gradient-to-r from-slate-800 to-gray-900 px-4 py-3 text-white shadow-lg border border-slate-700">
 												<p class="text-sm leading-relaxed">{messageItem.content}</p>
 											</div>
 											<div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
@@ -1457,11 +1474,11 @@
 											<div class="h-8 w-8 rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 flex items-center justify-center flex-shrink-0">
 												<img src="/src/lib/assets/images-removebg-preview.png" alt="Vanar Chain" class="w-5 h-5" />
 											</div>
-											<div class="rounded-2xl rounded-bl-sm bg-white px-4 py-3 shadow-lg border border-gray-100">
+											<div class="rounded-2xl rounded-bl-sm bg-slate-100 px-4 py-3 shadow-lg border border-slate-200">
 												{#if messageItem.sender === 'ai'}
 													{#if messageItem.isStreaming}
 														<!-- Streaming AI Response -->
-														<div class="text-sm leading-relaxed text-gray-800 prose prose-sm max-w-none" bind:this={aiResponseContainer}>
+														<div class="text-sm leading-relaxed text-slate-800 prose prose-sm max-w-none" bind:this={aiResponseContainer}>
 															{#if messageItem.aiResponse && messageItem.aiResponse.length > 0}
 																<!-- Show partial response with cursor -->
 																<span>{@html renderMarkdown(messageItem.aiResponse)}</span>
@@ -1484,7 +1501,7 @@
 														</div>
 													{:else if messageItem.aiResponse && messageItem.aiResponse.length > 0}
 														<!-- Final AI Response -->
-														<div class="text-sm leading-relaxed text-gray-800 prose prose-sm max-w-none" bind:this={aiResponseContainer}>
+														<div class="text-sm leading-relaxed text-slate-800 prose prose-sm max-w-none" bind:this={aiResponseContainer}>
 															{@html renderMarkdown(messageItem.aiResponse)}
 														</div>
 														
