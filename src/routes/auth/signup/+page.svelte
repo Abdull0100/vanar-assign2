@@ -107,7 +107,7 @@
 		<!-- Sign Up Card -->
 		<div class="dark-card animate-slide-in">
 			<div class="text-center mb-8">
-				<div class="text-4xl mb-4 animate-bot-glow">🚀</div>
+				<!-- <div class="text-4xl mb-4 animate-bot-glow">🚀</div> -->
 				<h2 class="text-3xl font-bold text-white mb-2">Join Us</h2>
 				<p class="text-gray-300">Create your account to get started</p>
 			</div>
@@ -190,7 +190,7 @@
 							<div class="loading-robot mr-2">🤖</div>
 							<span class="loading-text">Creating account...</span>
 						{:else}
-							🚀 Create Account
+							Create Account
 						{/if}
 					</button>
 				</form>
@@ -210,7 +210,7 @@
 							on:click={() => handleOAuthSignIn('google')}
 							class="dark-button-secondary flex items-center justify-center"
 						>
-							<span class="mr-2">🔍</span>
+							<span class="mr-2"><svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" fill-rule="evenodd" clip-rule="evenodd" stroke-linejoin="round" stroke-miterlimit="2"><path d="M32.582 370.734C15.127 336.291 5.12 297.425 5.12 256c0-41.426 10.007-80.291 27.462-114.735C74.705 57.484 161.047 0 261.12 0c69.12 0 126.836 25.367 171.287 66.793l-73.31 73.309c-26.763-25.135-60.276-38.168-97.977-38.168-66.56 0-123.113 44.917-143.36 105.426-5.12 15.36-8.146 31.65-8.146 48.64 0 16.989 3.026 33.28 8.146 48.64l-.303.232h.303c20.247 60.51 76.8 105.426 143.36 105.426 34.443 0 63.534-9.31 86.341-24.67 27.23-18.152 45.382-45.148 51.433-77.032H261.12v-99.142h241.105c3.025 16.757 4.654 34.211 4.654 52.364 0 77.963-27.927 143.592-76.334 188.276-42.356 39.098-100.305 61.905-169.425 61.905-100.073 0-186.415-57.483-228.538-141.032v-.233z" fill="#fff"/></svg></span>
 							Google
 						</button>
 
@@ -218,7 +218,7 @@
 							on:click={() => handleOAuthSignIn('github')}
 							class="dark-button-secondary flex items-center justify-center"
 						>
-							<span class="mr-2">🐙</span>
+							<span class="mr-2"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github-icon lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg></span>
 							GitHub
 						</button>
 					</div>
