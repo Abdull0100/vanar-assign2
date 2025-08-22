@@ -21,16 +21,16 @@
 	<title>Auth App - Full Authentication & AI Chat</title>
 </svelte:head>
 
-<div class="min-h-screen bg-animated relative overflow-hidden">
+<div class="min-h-screen bg-animated relative">
 	<!-- Animated Background Elements -->
-	<div class="absolute inset-0 overflow-hidden">
+	<div class="absolute inset-0">
 		<div class="absolute top-20 left-20 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl animate-float"></div>
 		<div class="absolute bottom-20 right-20 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-float" style="animation-delay: 2s;"></div>
 		<div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-indigo-500/5 rounded-full blur-2xl animate-pulse"></div>
 	</div>
 
 	<!-- Navigation -->
-	<nav class="chatbot-nav relative z-10">
+	<nav class="chatbot-nav relative z-20">
 		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 			<div class="flex h-16 justify-between items-center">
 				<div class="flex items-center">
@@ -79,25 +79,16 @@
 	</nav>
 
 	<!-- Hero Section -->
-	<div class="relative overflow-hidden bg-white">
+	<div class="relative z-10">
 		<div class="mx-auto max-w-7xl">
-			<div
-			
-				class="relative z-10 bg-white pb-8 sm:pb-16 md:pb-20 lg:w-full lg:max-w-2xl lg:pb-28 xl:pb-32"
-			>
-				<main
-					class="mx-auto mt-10 max-w-7xl px-4 sm:mt-12 sm:px-6 md:mt-16 lg:mt-20 lg:px-8 xl:mt-28"
-				>
-					<div class="sm:text-center lg:text-left">
-						<h1
-							class="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl md:text-6xl"
-						>
+			<div class="relative z-10 pb-8 sm:pb-16 md:pb-20 lg:w-full lg:max-w-2xl lg:pb-28 xl:pb-32">
+				<main class="mx-auto mt-10 max-w-7xl px-4 sm:mt-12 sm:px-6 md:mt-16 lg:mt-20 lg:px-8 xl:mt-28">
+					<div class="sm:text-center lg:text-left relative">
+						<h1 class="text-4xl font-extrabold tracking-tight text-white sm:text-5xl md:text-6xl">
 							<span class="block xl:inline">Full Authentication</span>
-							<span class="block text-indigo-600 xl:inline"> & AI Chat</span>
+							<span class="block text-indigo-400 xl:inline"> & AI Chat</span>
 						</h1>
-						<p
-							class="mt-3 text-base text-gray-500 sm:mx-auto sm:mt-5 sm:max-w-xl sm:text-lg md:mt-5 md:text-xl lg:mx-0"
-						>
+						<p class="mt-3 text-base text-gray-300 sm:mx-auto sm:mt-5 sm:max-w-xl sm:text-lg md:mt-5 md:text-xl lg:mx-0">
 							A complete authentication system with OAuth providers, email verification, password
 							reset, and an AI-powered chat interface using Google Gemini.
 						</p>
@@ -106,7 +97,7 @@
 								<div class="rounded-md shadow">
 									<button
 										on:click={() => navigateTo('/auth/signup')}
-										class="flex w-full items-center justify-center rounded-md border border-transparent bg-indigo-600 px-8 py-3 text-base font-medium text-white hover:bg-indigo-700 md:px-10 md:py-4 md:text-lg"
+										class="flex w-full items-center justify-center rounded-md border border-transparent bg-indigo-600 px-8 py-3 text-base font-medium text-white hover:bg-indigo-700 md:px-10 md:py-4 md:text-lg transition-all duration-300 transform hover:scale-105"
 									>
 										Get Started
 									</button>
@@ -114,7 +105,7 @@
 								<div class="mt-3 sm:mt-0 sm:ml-3">
 									<button
 										on:click={() => navigateTo('/auth/signin')}
-										class="flex w-full items-center justify-center rounded-md border border-transparent bg-indigo-100 px-8 py-3 text-base font-medium text-indigo-700 hover:bg-indigo-200 md:px-10 md:py-4 md:text-lg"
+										class="flex w-full items-center justify-center rounded-md border border-white/20 bg-transparent px-8 py-3 text-base font-medium text-white hover:bg-white/10 md:px-10 md:py-4 md:text-lg transition-all duration-300"
 									>
 										Sign In
 									</button>
@@ -123,7 +114,7 @@
 								<div class="rounded-md shadow">
 									<button
 										on:click={() => navigateTo('/dashboard')}
-										class="flex w-full items-center justify-center rounded-md border border-transparent bg-indigo-600 px-8 py-3 text-base font-medium text-white hover:bg-indigo-700 md:px-10 md:py-4 md:text-lg"
+										class="flex w-full items-center justify-center rounded-md border border-transparent bg-indigo-600 px-8 py-3 text-base font-medium text-white hover:bg-indigo-700 md:px-10 md:py-4 md:text-lg transition-all duration-300 transform hover:scale-105"
 									>
 										Go to Dashboard
 									</button>
@@ -136,9 +127,9 @@
 						<div class="absolute -bottom-4 -right-4 w-12 h-12 bg-gradient-to-br from-pink-400 to-red-500 rounded-full opacity-20 animate-float" style="animation-delay: 2s;"></div>
 						
 						<!-- Glow effect -->
-						<div class="absolute inset-0 bg-gradient-to-r from-indigo-500/30 via-purple-500/30 to-pink-500/30 rounded-3xl blur-2xl -z-10 animate-pulse"></div>
+						<div class="absolute inset-0 bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-pink-500/20 rounded-3xl blur-2xl -z-10 animate-pulse"></div>
 					</div>
-				</div>
+				</main>
 			</div>
 		</div>
 	</div>
