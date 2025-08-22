@@ -1,6 +1,6 @@
 {
-  "id": "944adf48-0034-4c67-ac4d-4ea77943dcf5",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "87eaf83b-cc15-48c1-a160-1b77297d1780",
+  "prevId": "944adf48-0034-4c67-ac4d-4ea77943dcf5",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -223,11 +223,17 @@
           "primaryKey": false,
           "notNull": true
         },
-        "content": {
-          "name": "content",
+        "userMessage": {
+          "name": "userMessage",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
+        },
+        "aiResponse": {
+          "name": "aiResponse",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "sender": {
           "name": "sender",
@@ -235,9 +241,9 @@
           "primaryKey": false,
           "notNull": true
         },
-        "aiResponse": {
-          "name": "aiResponse",
-          "type": "text",
+        "previousMsgId": {
+          "name": "previousMsgId",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },

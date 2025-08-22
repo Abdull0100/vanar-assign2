@@ -79,73 +79,56 @@
 	</nav>
 
 	<!-- Hero Section -->
-	<div class="relative z-10">
-		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20">
-			<div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-				<!-- Left Content -->
-				<div class="text-left animate-slide-in">
-					<h1 class="text-5xl md:text-7xl font-bold text-white mb-6">
-						<span class="block bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-							Full Authentication
-						</span>
-						<span class="block text-4xl md:text-6xl mt-2">
-							& AI Chat
-						</span>
-					</h1>
-					<p class="text-xl text-gray-300 max-w-2xl mb-8 leading-relaxed">
-						A complete authentication system with OAuth providers, email verification, password
-						reset, and an AI-powered chat interface using Google Gemini.
-					</p>
-					<div class="flex flex-col sm:flex-row gap-4 items-start">
-						{#if !session?.user}
-							<button
-								on:click={() => navigateTo('/auth/signup')}
-								class="dark-button text-lg px-8 py-4 group relative overflow-hidden"
-							>
-								<span class="relative z-10 flex items-center">
-									🚀 Get Started
-									<svg class="ml-2 w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
-									</svg>
-								</span>
-								<div class="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-							</button>
-							<button
-								on:click={() => navigateTo('/auth/signin')}
-								class="dark-button-secondary text-lg px-8 py-4 group relative overflow-hidden"
-							>
-								<span class="relative z-10 flex items-center">
-									🔐 Sign In
-									<svg class="ml-2 w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
-									</svg>
-								</span>
-								<div class="absolute inset-0 bg-gradient-to-r from-gray-600 to-gray-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-							</button>
-						{/if}
-					</div>
-				</div>
-				
-				<!-- Right Content - GIF Display -->
-				<div class="flex justify-center lg:justify-end animate-fade-in" style="animation-delay: 0.3s;">
-					<div class="relative">
-						<!-- Main GIF Container -->
-						<div class="relative w-80 h-80 lg:w-96 lg:h-96 rounded-3xl bg-gradient-to-br from-indigo-500/20 via-purple-500/20 to-pink-500/20 backdrop-blur-sm border border-white/20 shadow-2xl overflow-hidden">
-							<img 
-								src="/4bcb1fb72d1d08efa44efa5ceb712ec7.gif" 
-								alt="Vanar AI Assistant" 
-								class="w-full h-full object-cover rounded-3xl"
-							/>
-							<!-- Overlay gradient -->
-							<div class="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
-							
-							<!-- Floating elements -->
-							<div class="absolute top-4 right-4 w-8 h-8 bg-green-500/80 rounded-full flex items-center justify-center animate-pulse">
-								<div class="w-2 h-2 bg-white rounded-full"></div>
-							</div>
-							<div class="absolute bottom-4 left-4 w-6 h-6 bg-blue-500/80 rounded-full flex items-center justify-center animate-bounce" style="animation-delay: 1s;">
-								<div class="w-1.5 h-1.5 bg-white rounded-full"></div>
-							</div>
+	<div class="relative overflow-hidden bg-white">
+		<div class="mx-auto max-w-7xl">
+			<div
+			
+				class="relative z-10 bg-white pb-8 sm:pb-16 md:pb-20 lg:w-full lg:max-w-2xl lg:pb-28 xl:pb-32"
+			>
+				<main
+					class="mx-auto mt-10 max-w-7xl px-4 sm:mt-12 sm:px-6 md:mt-16 lg:mt-20 lg:px-8 xl:mt-28"
+				>
+					<div class="sm:text-center lg:text-left">
+						<h1
+							class="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl md:text-6xl"
+						>
+							<span class="block xl:inline">Full Authentication</span>
+							<span class="block text-indigo-600 xl:inline"> & AI Chat</span>
+						</h1>
+						<p
+							class="mt-3 text-base text-gray-500 sm:mx-auto sm:mt-5 sm:max-w-xl sm:text-lg md:mt-5 md:text-xl lg:mx-0"
+						>
+							A complete authentication system with OAuth providers, email verification, password
+							reset, and an AI-powered chat interface using Google Gemini.
+						</p>
+						<div class="mt-5 sm:mt-8 sm:flex sm:justify-center lg:justify-start">
+							{#if !session?.user}
+								<div class="rounded-md shadow">
+									<button
+										on:click={() => navigateTo('/auth/signup')}
+										class="flex w-full items-center justify-center rounded-md border border-transparent bg-indigo-600 px-8 py-3 text-base font-medium text-white hover:bg-indigo-700 md:px-10 md:py-4 md:text-lg"
+									>
+										Get Started
+									</button>
+								</div>
+								<div class="mt-3 sm:mt-0 sm:ml-3">
+									<button
+										on:click={() => navigateTo('/auth/signin')}
+										class="flex w-full items-center justify-center rounded-md border border-transparent bg-indigo-100 px-8 py-3 text-base font-medium text-indigo-700 hover:bg-indigo-200 md:px-10 md:py-4 md:text-lg"
+									>
+										Sign In
+									</button>
+								</div>
+							{:else}
+								<div class="rounded-md shadow">
+									<button
+										on:click={() => navigateTo('/dashboard')}
+										class="flex w-full items-center justify-center rounded-md border border-transparent bg-indigo-600 px-8 py-3 text-base font-medium text-white hover:bg-indigo-700 md:px-10 md:py-4 md:text-lg"
+									>
+										Go to Dashboard
+									</button>
+								</div>
+							{/if}
 						</div>
 						
 						<!-- Decorative elements -->

@@ -1,0 +1,1 @@
+ALTER TABLE "chatMessages" ALTER COLUMN "aiResponse" SET NOT NULL;

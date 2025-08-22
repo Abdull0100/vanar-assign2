@@ -1,6 +1,6 @@
 {
-  "id": "944adf48-0034-4c67-ac4d-4ea77943dcf5",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "4bc857a6-f8fc-4e63-891e-6743ecd1a9de",
+  "prevId": "884e8847-dde0-41ea-9433-3c3b60c66b39",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -234,12 +234,6 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
-        },
-        "aiResponse": {
-          "name": "aiResponse",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         },
         "createdAt": {
           "name": "createdAt",

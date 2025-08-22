@@ -1,106 +1,111 @@
-import type { Conversation, ChatMessage, User } from './schema';
+import type { InferSelectModel } from 'drizzle-orm';
+import { users, conversations, chatMessages } from './schema';
+
+// Create types from the schema tables
+type User = InferSelectModel<typeof users>;
+type Conversation = InferSelectModel<typeof conversations>;
+type ChatMessage = InferSelectModel<typeof chatMessages>;
+
+/**
+ * Build a compact transcript from the most recent messages.
+ * Output format is plain text lines prefixed with "User:" or "Vanar:".
+ * Each row represents a complete Q&A pair.
+ */
+export function buildRecentTranscript(messages: ChatMessage[]): string {
+  if (!messages || messages.length === 0) return '';
+  let out = '';
+  for (const m of messages) {
+    // Each row contains user context + AI response
+    out += `User: ${m.content}\n`;
+    if (m.aiResponse) {
+      out += `Vanar: ${m.aiResponse}\n`;
+    }
+  }
+  return out.trim();
+}
 
 // Types for the required JSON structure
+// Each message represents a complete Q&A pair
 export interface ChatMessageResponse {
-  messageId: string;
-  content: string;
-  timestamp: string;
-  sender: 'user' | 'ai';
-  aiResponse: string | null;
+	messageId: string;
+	content: string; // User query/context
+	timestamp: string;
+	// sender: 'user' | 'ai'; // Removed
+	aiResponse: string | null; // AI response (null if pending, text if complete)
+	previousId: string | null; // Link to previous chat in same room
+	updatedAt: string; // When message was last updated
 }
 
 export interface ConversationResponse {
-  conversationId: string;
-  roomName: string;
-  messages: ChatMessageResponse[];
+	id: string;
+	roomName: string;
+	userId: string;
+	summary: string | null;
+	summaryUpdatedAt: string | null;
+	createdAt: string;
+	updatedAt: string;
+	messageCount: number;
 }
 
 export interface ChatHistoryResponse {
-  userId: string;
-  conversations: ConversationResponse[];
+	conversations: ConversationResponse[];
 }
 
 /**
  * Transform database data into the required JSON structure
  */
-export function transformChatHistory(
-  user: User,
-  conversations: (Conversation & { messages: ChatMessage[] })[]
-): ChatHistoryResponse {
-  return {
-    userId: user.id,
-    conversations: conversations.map(conv => ({
-      conversationId: conv.id,
-      roomName: conv.roomName,
-      messages: conv.messages.map(msg => ({
-        messageId: msg.id,
-        content: msg.content,
-        timestamp: msg.createdAt.toISOString(),
-        sender: msg.sender as 'user' | 'ai',
-        aiResponse: msg.aiResponse
-      }))
-    }))
-  };
+export function transformChatHistory(dbConversations: any[]): ChatHistoryResponse {
+	return {
+		conversations: dbConversations.map(conv => transformConversation(conv))
+	};
+}
+
+export function transformConversation(dbConversation: any): ConversationResponse {
+	return {
+		id: dbConversation.id,
+		roomName: dbConversation.roomName,
+		userId: dbConversation.userId,
+		summary: dbConversation.summary,
+		summaryUpdatedAt: dbConversation.summaryUpdatedAt,
+		createdAt: dbConversation.createdAt,
+		updatedAt: dbConversation.updatedAt,
+		messageCount: dbConversation.messages?.length || 0
+	};
+}
+
+export function transformChatMessage(dbMessage: any): ChatMessageResponse {
+	return {
+		messageId: dbMessage.id,
+		content: dbMessage.content,
+		timestamp: dbMessage.createdAt,
+		aiResponse: dbMessage.aiResponse,
+		previousId: dbMessage.previousId,
+		updatedAt: dbMessage.updatedAt
+	};
 }
 
 /**
- * Transform a single conversation with its messages
- */
-export function transformConversation(
-  conversation: Conversation & { messages: ChatMessage[] }
-): ConversationResponse {
-  return {
-    conversationId: conversation.id,
-    roomName: conversation.roomName,
-    messages: conversation.messages.map(msg => ({
-      messageId: msg.id,
-      content: msg.content,
-      timestamp: msg.createdAt.toISOString(),
-      sender: msg.sender as 'user' | 'ai',
-      aiResponse: msg.aiResponse
-    }))
-  };
-}
-
-/**
- * Transform a single chat message
- */
-export function transformChatMessage(message: ChatMessage): ChatMessageResponse {
-  return {
-    messageId: message.id,
-    content: message.content,
-    timestamp: message.createdAt.toISOString(),
-    sender: message.sender as 'user' | 'ai',
-    aiResponse: message.aiResponse
-  };
-}
-
-/**
- * Create a new conversation structure
- */
-export function createConversationStructure(
-  userId: string,
-  roomName: string,
-  messages: ChatMessage[] = []
-): ConversationResponse {
-  return {
-    conversationId: '', // Will be set by database
-    roomName,
-    messages: messages.map(transformChatMessage)
-  };
-}
-
-/**
- * Create a new message structure
+ * Create a new message structure for a Q&A pair
  */
 export function createMessageStructure(
-  content: string,
-  sender: 'user' | 'ai',
-  aiResponse: string | null = null
-): Omit<ChatMessageResponse, 'messageId' | 'timestamp'> {
-  return {
-    content,
-    sender,
-    aiResponse
-  };
+	content: string, // User query/context
+	aiResponse: string | null = null, // AI response (null initially, filled when AI responds)
+	previousId: string | null = null // Link to previous chat in same room
+): Omit<ChatMessageResponse, 'messageId' | 'timestamp' | 'updatedAt'> {
+	return {
+		content,
+		aiResponse,
+		previousId
+	};
+}
+
+export function createEmptyConversation(): Omit<ConversationResponse, 'id' | 'messageCount'> {
+	return {
+		roomName: '',
+		userId: '', // Will be set by database
+		summary: null,
+		summaryUpdatedAt: null,
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString()
+	};
 }
