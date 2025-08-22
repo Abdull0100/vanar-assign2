@@ -11,25 +11,29 @@
 				return {
 					title: "Page Not Found",
 					message: "The page you're looking for doesn't exist or has been moved.",
-					icon: "🔍"
+					icon: "🤖",
+					animation: "animate-bounce"
 				};
 			case 403:
 				return {
 					title: "Access Forbidden",
 					message: "You don't have permission to access this resource.",
-					icon: "🚫"
+					icon: "🚫",
+					animation: "animate-pulse"
 				};
 			case 500:
 				return {
 					title: "Server Error",
-					message: "Something went wrong on our end. Our developers are working on it!",
-					icon: "⚠️"
+					message: "Something went wrong on our end. Our AI assistant is working on it!",
+					icon: "⚠️",
+					animation: "animate-shake"
 				};
 			default:
 				return {
 					title: "Something Went Wrong",
 					message: "An unexpected error occurred. Don't worry, our team is on it!",
-					icon: "😕"
+					icon: "😕",
+					animation: "animate-float"
 				};
 		}
 	}
@@ -53,121 +57,112 @@
 	<title>Error {status || 500} - Auth App</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center px-4">
-	<div class="max-w-2xl w-full text-center">
-		<!-- Error Icon and Animation -->
+<div class="min-h-screen bg-animated relative overflow-hidden flex items-center justify-center px-4">
+	<!-- Animated Background Elements -->
+	<div class="absolute inset-0 overflow-hidden">
+		<div class="absolute top-20 left-20 w-72 h-72 bg-red-500/10 rounded-full blur-3xl animate-float"></div>
+		<div class="absolute bottom-20 right-20 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl animate-float" style="animation-delay: 2s;"></div>
+		<div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-yellow-500/5 rounded-full blur-2xl animate-pulse"></div>
+	</div>
+
+	<div class="relative z-10 max-w-2xl w-full text-center">
+		<!-- Error Robot -->
 		<div class="mb-8">
-			<div class="inline-flex items-center justify-center w-32 h-32 rounded-full bg-gradient-to-br from-red-100 to-orange-100 mb-6 animate-bounce">
-				<span class="text-6xl">{errorInfo.icon}</span>
+			<div class="error-robot mb-6 {errorInfo.animation}">
+				{errorInfo.icon}
 			</div>
 		</div>
 
-		<!-- Error Code -->
+		<!-- Error Status -->
 		<div class="mb-6">
-			<h1 class="text-8xl font-bold bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent mb-2">
+			<h1 class="error-status mb-4">
 				{status || 500}
 			</h1>
-			<h2 class="text-3xl font-bold text-gray-900 mb-4">
+			<h2 class="text-3xl font-bold text-white mb-4">
 				{errorInfo.title}
 			</h2>
 		</div>
 
 		<!-- Error Message -->
 		<div class="mb-8">
-			<p class="text-xl text-gray-600 mb-4">
+			<p class="error-details mb-6">
 				{errorInfo.message}
 			</p>
 			
 			<!-- Development Details (only show in dev) -->
-					{#if error && import.meta.env.DEV}
-			<details class="mt-6 text-left">
-				<summary class="cursor-pointer text-sm text-gray-500 hover:text-gray-700 mb-2">
-					🔧 Developer Information
-				</summary>
-				<div class="bg-gray-100 rounded-lg p-4 text-sm font-mono text-gray-800 overflow-auto">
-					<strong>Error:</strong> {error.message || 'Unknown error'}<br>
-					{#if (error as any).stack}
-						<strong>Stack:</strong><br>
-						<pre class="whitespace-pre-wrap text-xs mt-2">{(error as any).stack}</pre>
-					{/if}
-				</div>
-			</details>
-		{/if}
+			{#if error && import.meta.env.DEV}
+				<details class="mt-6 text-left">
+					<summary class="cursor-pointer text-sm text-gray-400 hover:text-gray-300 mb-2">
+						🔧 Developer Information
+					</summary>
+					<div class="dark-card text-sm font-mono text-gray-300 overflow-auto">
+						<strong>Error:</strong> {error.message || 'Unknown error'}<br>
+						{#if (error as any).stack}
+							<strong>Stack:</strong><br>
+							<pre class="whitespace-pre-wrap text-xs mt-2">{(error as any).stack}</pre>
+						{/if}
+					</div>
+				</details>
+			{/if}
 		</div>
 
 		<!-- Action Buttons -->
 		<div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
 			<button
 				on:click={goHome}
-				class="group inline-flex items-center px-6 py-3 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+				class="dark-button"
 			>
-				<span class="mr-2 group-hover:animate-pulse">🏠</span>
-				Go to Homepage
+				🏠 Go Home
 			</button>
-
 			<button
 				on:click={goBack}
-				class="group inline-flex items-center px-6 py-3 rounded-lg bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition-all duration-200 border border-gray-300"
+				class="dark-button-secondary"
 			>
-				<span class="mr-2 group-hover:animate-pulse">←</span>
-				Go Back
+				⬅️ Go Back
 			</button>
-
-			{#if status && status >= 500}
-				<button
-					on:click={refreshPage}
-					class="group inline-flex items-center px-6 py-3 rounded-lg bg-green-100 text-green-700 font-medium hover:bg-green-200 transition-all duration-200 border border-green-300"
-				>
-					<span class="mr-2 group-hover:animate-spin">🔄</span>
-					Try Again
-				</button>
-			{/if}
+			<button
+				on:click={refreshPage}
+				class="dark-button-secondary"
+			>
+				🔄 Refresh
+			</button>
 		</div>
 
-		<!-- Support Information -->
-		<div class="mt-12 p-6 bg-white/70 backdrop-blur-sm rounded-xl border border-gray-200 shadow-lg">
-			<h3 class="text-lg font-semibold text-gray-900 mb-3 flex items-center justify-center">
-				<span class="mr-2">🛠️</span>
-				Need Help?
-			</h3>
-			<p class="text-gray-600 mb-4">
-				If you continue experiencing issues, our development team is here to help!
-			</p>
-			
-			<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-				<div class="flex items-center justify-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-					<span class="mr-2">📧</span>
-					<span class="text-blue-800">Contact Support</span>
-				</div>
-				<div class="flex items-center justify-center p-3 bg-green-50 rounded-lg border border-green-200">
-					<span class="mr-2">📚</span>
-					<span class="text-green-800">Documentation</span>
-				</div>
-				<div class="flex items-center justify-center p-3 bg-purple-50 rounded-lg border border-purple-200">
-					<span class="mr-2">💬</span>
-					<span class="text-purple-800">Live Chat</span>
+		<!-- Helpful Suggestions -->
+		<div class="mt-12">
+			<div class="dark-card">
+				<h3 class="text-lg font-semibold text-white mb-4">Need Help?</h3>
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+					<div class="text-left">
+						<p class="text-gray-400 mb-2">Try these solutions:</p>
+						<ul class="text-gray-300 space-y-1">
+							<li>• Check the URL for typos</li>
+							<li>• Clear your browser cache</li>
+							<li>• Try a different browser</li>
+						</ul>
+					</div>
+					<div class="text-left">
+						<p class="text-gray-400 mb-2">Still having issues?</p>
+						<ul class="text-gray-300 space-y-1">
+							<li>• Contact our support team</li>
+							<li>• Check our status page</li>
+							<li>• Report this issue</li>
+						</ul>
+					</div>
 				</div>
 			</div>
-		</div>
-
-		<!-- Status Message -->
-		<div class="mt-8 text-sm text-gray-500">
-			<div class="flex items-center justify-center space-x-2">
-				<div class="h-2 w-2 bg-green-400 rounded-full animate-pulse"></div>
-				<span>System Status: All services operational</span>
-			</div>
-			<p class="mt-2">
-				Error ID: {Math.random().toString(36).substr(2, 9).toUpperCase()} • 
-				Time: {new Date().toLocaleString()}
-			</p>
 		</div>
 	</div>
 </div>
 
 <style>
-	/* Custom animations */
-	@keyframes float {
-		0%, 100% { transform: translateY(0px); }
-		50% { transform: translateY(-10px); }
+	@keyframes shake {
+		0%, 100% { transform: translateX(0); }
+		10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+		20%, 40%, 60%, 80% { transform: translateX(5px); }
+	}
+
+	.animate-shake {
+		animation: shake 0.5s ease-in-out;
 	}
 </style>

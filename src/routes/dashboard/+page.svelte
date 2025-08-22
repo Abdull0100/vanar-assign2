@@ -14,6 +14,13 @@
 	};
 	let loadingStats = true;
 
+	// Mock analytics data for charts
+	let analyticsData = {
+		messagesSent: [12, 19, 15, 25, 22, 30, 28],
+		activeUsers: [8, 12, 10, 18, 15, 22, 20],
+		loginTrends: [5, 8, 6, 12, 10, 15, 14]
+	};
+
 	onMount(() => {
 		// Only redirect if we're sure there's no session data
 		if ($page.data.session === null) {
@@ -59,268 +66,233 @@
 </svelte:head>
 
 {#if user}
-	<div class="min-h-screen bg-gray-50">
+	<div class="min-h-screen bg-animated relative overflow-hidden">
+		<!-- Animated Background Elements -->
+		<div class="absolute inset-0 overflow-hidden">
+			<div class="absolute top-20 left-20 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl animate-float"></div>
+			<div class="absolute bottom-20 right-20 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-float" style="animation-delay: 2s;"></div>
+			<div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-indigo-500/5 rounded-full blur-2xl animate-pulse"></div>
+		</div>
+
 		<!-- Navigation -->
-		<nav class="bg-white shadow">
+		<nav class="chatbot-nav relative z-10">
 			<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-				<div class="flex h-16 justify-between">
-					<div class="flex">
-						<div class="flex flex-shrink-0 items-center">
-							<h1 class="text-xl font-bold text-gray-900">Auth App</h1>
+				<div class="flex h-16 justify-between items-center">
+					<div class="flex items-center">
+						<div class="flex-shrink-0">
+							<h1 class="text-xl font-bold text-white flex items-center gap-2">
+								<span class="text-2xl animate-bot-glow">🤖</span>
+								Auth App
+							</h1>
 						</div>
 						<div class="hidden sm:ml-6 sm:flex sm:space-x-8">
 							<button
 								on:click={() => navigateTo('/dashboard')}
-								class="inline-flex items-center border-b-2 border-indigo-500 px-1 pt-1 text-sm font-medium text-gray-900"
+								class="nav-link active"
 							>
+								<span class="nav-icon">📊</span>
 								Dashboard
 							</button>
 							<button
 								on:click={() => navigateTo('/chat')}
-								class="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
+								class="nav-link"
 							>
+								<span class="nav-icon">💬</span>
 								AI Chat
 							</button>
 							<button
 								on:click={() => navigateTo('/profile')}
-								class="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
+								class="nav-link"
 							>
+								<span class="nav-icon">👤</span>
 								Profile
 							</button>
 							{#if user?.role === 'admin'}
 								<button
 									on:click={() => navigateTo('/admin')}
-									class="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
+									class="nav-link"
 								>
+									<span class="nav-icon">⚙️</span>
 									Admin Panel
 								</button>
 							{/if}
 						</div>
 					</div>
-					<div class="flex items-center">
-						<div class="ml-3">
-							<div class="flex items-center space-x-4">
-								<span class="text-sm text-gray-700">Welcome, {user?.name || user?.email}</span>
-								<button
-									on:click={handleSignOut}
-									class="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
-								>
-									Sign Out
-								</button>
-							</div>
-						</div>
+					<div class="flex items-center space-x-4">
+						<span class="text-sm text-gray-300">
+							Welcome, {user.name || user.email}
+						</span>
+						<button
+							on:click={handleSignOut}
+							class="dark-button-secondary"
+						>
+							🚪 Sign Out
+						</button>
 					</div>
 				</div>
 			</div>
 		</nav>
 
 		<!-- Main Content -->
-		<div class="mx-auto max-w-7xl py-6 sm:px-6 lg:px-8">
+		<div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 			<!-- Hero Section -->
-			<div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-blue-700 px-8 py-12 text-white shadow-2xl">
-				<div class="absolute inset-0 bg-black/20"></div>
-				<div class="relative z-10">
-					<div class="flex items-center justify-between">
-						<div>
-							<h1 class="text-4xl font-bold mb-2">Welcome back, {user?.name || 'User'}!</h1>
-							<p class="text-xl text-indigo-100">
-								You're signed in as {user?.email}
-							</p>
-							<div class="mt-4 inline-flex items-center rounded-full bg-white/20 backdrop-blur-sm px-4 py-2">
-								<div class="h-2 w-2 rounded-full bg-green-400 mr-2"></div>
-								<span class="text-sm font-medium">
-									{user?.role === 'admin' ? '👑 Administrator' : '👤 User'}
-								</span>
-							</div>
-						</div>
-						<div class="hidden md:block">
-							<div class="h-32 w-32 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center">
-								<span class="text-5xl">🚀</span>
-							</div>
-						</div>
-					</div>
-				</div>
+			<div class="text-center mb-12 animate-slide-in">
+				<h1 class="text-4xl md:text-6xl font-bold text-white mb-4">
+					Welcome to Your
+					<span class="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+						Dashboard
+					</span>
+				</h1>
+				<p class="text-xl text-gray-300 max-w-3xl mx-auto">
+					Manage your account, track your activity, and explore the AI chat features.
+				</p>
 			</div>
 
 			<!-- Quick Actions -->
-			<div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-				<!-- AI Chat Card -->
-				<div class="group relative overflow-hidden rounded-xl bg-white p-6 shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-					<div class="absolute inset-0 bg-gradient-to-r from-blue-50 to-indigo-50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-					<div class="relative z-10">
-						<div class="flex items-center mb-4">
-							<div class="h-12 w-12 rounded-lg bg-blue-100 flex items-center justify-center mr-4">
-								<span class="text-2xl">🤖</span>
-							</div>
-							<div>
-								<h3 class="text-lg font-semibold text-gray-900">AI Assistant</h3>
-								<p class="text-sm text-gray-500">Powered by Gemini</p>
-							</div>
-						</div>
-						<p class="text-gray-600 mb-4">Chat with our intelligent AI assistant for help, creativity, and problem-solving.</p>
-						<button
-							on:click={() => navigateTo('/chat')}
-							class="w-full rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-white font-medium hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl"
-						>
-							Start Conversation
-						</button>
-					</div>
+			<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+				<div class="dark-card text-center animate-fade-in" style="animation-delay: 0.1s;">
+					<div class="text-4xl mb-4 animate-float">💬</div>
+					<h3 class="text-xl font-semibold text-white mb-2">Start Chatting</h3>
+					<p class="text-gray-300 mb-4">Connect with our AI assistant powered by Google Gemini</p>
+					<button
+						on:click={() => navigateTo('/chat')}
+						class="dark-button"
+					>
+						Open Chat
+					</button>
 				</div>
 
-				<!-- Profile Card -->
-				<div class="group relative overflow-hidden rounded-xl bg-white p-6 shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-					<div class="absolute inset-0 bg-gradient-to-r from-green-50 to-emerald-50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-					<div class="relative z-10">
-						<div class="flex items-center mb-4">
-							<div class="h-12 w-12 rounded-lg bg-green-100 flex items-center justify-center mr-4">
-								<span class="text-2xl">👤</span>
-							</div>
-							<div>
-								<h3 class="text-lg font-semibold text-gray-900">Profile Settings</h3>
-								<p class="text-sm text-gray-500">Manage account</p>
-							</div>
-						</div>
-						<p class="text-gray-600 mb-4">Update your profile information, change password, and manage account settings.</p>
-						<button
-							on:click={() => navigateTo('/profile')}
-							class="w-full rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 px-4 py-3 text-white font-medium hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl"
-						>
-							Edit Profile
-						</button>
-					</div>
+				<div class="dark-card text-center animate-fade-in" style="animation-delay: 0.2s;">
+					<div class="text-4xl mb-4 animate-float" style="animation-delay: 1s;">👤</div>
+					<h3 class="text-xl font-semibold text-white mb-2">Profile Settings</h3>
+					<p class="text-gray-300 mb-4">Update your profile information and preferences</p>
+					<button
+						on:click={() => navigateTo('/profile')}
+						class="dark-button"
+					>
+						Edit Profile
+					</button>
 				</div>
 
-				<!-- Admin Panel (Admin Only) -->
-				{#if user?.role === 'admin'}
-					<div class="group relative overflow-hidden rounded-xl bg-white p-6 shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-						<div class="absolute inset-0 bg-gradient-to-r from-purple-50 to-pink-50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-						<div class="relative z-10">
-							<div class="flex items-center mb-4">
-								<div class="h-12 w-12 rounded-lg bg-purple-100 flex items-center justify-center mr-4">
-									<span class="text-2xl">👑</span>
-								</div>
-								<div>
-									<h3 class="text-lg font-semibold text-gray-900">Admin Dashboard</h3>
-									<p class="text-sm text-gray-500">System management</p>
-								</div>
-							</div>
-							<p class="text-gray-600 mb-4">Access administrative tools, manage users, and view system analytics.</p>
-							<button
-								on:click={() => navigateTo('/admin')}
-								class="w-full rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-3 text-white font-medium hover:from-purple-700 hover:to-pink-700 transition-all duration-200 shadow-lg hover:shadow-xl"
-							>
-								Open Admin Panel
-							</button>
-						</div>
-					</div>
-				{:else}
-					<!-- User Role Card -->
-					<div class="group relative overflow-hidden rounded-xl bg-white p-6 shadow-lg">
-						<div class="relative z-10">
-							<div class="flex items-center mb-4">
-								<div class="h-12 w-12 rounded-lg bg-gray-100 flex items-center justify-center mr-4">
-									<span class="text-2xl">📊</span>
-								</div>
-								<div>
-									<h3 class="text-lg font-semibold text-gray-900">Your Role</h3>
-									<p class="text-sm text-gray-500">Current access level</p>
-								</div>
-							</div>
-							<p class="text-gray-600 mb-4">You have standard user access. Contact an administrator for role upgrades.</p>
-							<div class="w-full rounded-lg bg-gray-100 px-4 py-3 text-gray-600 font-medium text-center">
-								Standard User
-							</div>
-						</div>
-					</div>
-				{/if}
+				<div class="dark-card text-center animate-fade-in" style="animation-delay: 0.3s;">
+					<div class="text-4xl mb-4 animate-float" style="animation-delay: 2s;">🔐</div>
+					<h3 class="text-xl font-semibold text-white mb-2">Security</h3>
+					<p class="text-gray-300 mb-4">Manage your account security and authentication</p>
+					<button
+						on:click={() => navigateTo('/profile')}
+						class="dark-button-secondary"
+					>
+						Security Settings
+					</button>
+				</div>
 			</div>
 
-			<!-- Quick Stats (if admin) -->
-			{#if user?.role === 'admin'}
-				<div class="mt-8">
-					<h2 class="text-2xl font-bold text-gray-900 mb-6">System Overview</h2>
-					<div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-						<div class="rounded-xl bg-white p-6 shadow-lg">
-							<div class="flex items-center">
-								<div class="h-12 w-12 rounded-lg bg-blue-100 flex items-center justify-center">
-									<span class="text-xl">👥</span>
-								</div>
-								<div class="ml-4">
-									<h3 class="text-sm font-medium text-gray-500">Total Users</h3>
-									<div class="text-2xl font-bold text-gray-900">
-										{#if loadingStats}
-											<div class="h-6 w-12 bg-gray-200 animate-pulse rounded"></div>
-										{:else}
-											{stats.totalUsers}
-										{/if}
-									</div>
-								</div>
+			<!-- Analytics Section -->
+			<div class="mb-12">
+				<h2 class="text-3xl font-bold text-white mb-8 text-center">Analytics Overview</h2>
+				
+				<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+					<div class="analytics-card animate-fade-in" style="animation-delay: 0.1s;">
+						<div class="flex items-center justify-between">
+							<div>
+								<p class="text-gray-400 text-sm">Total Messages</p>
+								<p class="text-3xl font-bold text-white">{stats.totalMessages}</p>
 							</div>
+							<div class="text-3xl animate-pulse">💬</div>
 						</div>
-						<div class="rounded-xl bg-white p-6 shadow-lg">
-							<div class="flex items-center">
-								<div class="h-12 w-12 rounded-lg bg-green-100 flex items-center justify-center">
-									<span class="text-xl">💬</span>
-								</div>
-								<div class="ml-4">
-									<h3 class="text-sm font-medium text-gray-500">Chat Messages</h3>
-									<div class="text-2xl font-bold text-gray-900">
-										{#if loadingStats}
-											<div class="h-6 w-12 bg-gray-200 animate-pulse rounded"></div>
-										{:else}
-											{stats.totalMessages}
-										{/if}
-									</div>
-								</div>
+					</div>
+
+					<div class="analytics-card animate-fade-in" style="animation-delay: 0.2s;">
+						<div class="flex items-center justify-between">
+							<div>
+								<p class="text-gray-400 text-sm">Active Users</p>
+								<p class="text-3xl font-bold text-white">{stats.totalUsers}</p>
 							</div>
+							<div class="text-3xl animate-pulse">👥</div>
 						</div>
-						<div class="rounded-xl bg-white p-6 shadow-lg">
-							<div class="flex items-center">
-								<div class="h-12 w-12 rounded-lg bg-purple-100 flex items-center justify-center">
-									<span class="text-xl">👑</span>
-								</div>
-								<div class="ml-4">
-									<h3 class="text-sm font-medium text-gray-500">Admins</h3>
-									<div class="text-2xl font-bold text-gray-900">
-										{#if loadingStats}
-											<div class="h-6 w-12 bg-gray-200 animate-pulse rounded"></div>
-										{:else}
-											{stats.adminUsers}
-										{/if}
-									</div>
-								</div>
+					</div>
+
+					<div class="analytics-card animate-fade-in" style="animation-delay: 0.3s;">
+						<div class="flex items-center justify-between">
+							<div>
+								<p class="text-gray-400 text-sm">System Status</p>
+								<p class="text-3xl font-bold text-green-400">{stats.systemStatus}</p>
 							</div>
-						</div>
-						<div class="rounded-xl bg-white p-6 shadow-lg">
-							<div class="flex items-center">
-								<div class="h-12 w-12 rounded-lg bg-yellow-100 flex items-center justify-center">
-									<span class="text-xl">⚡</span>
-								</div>
-								<div class="ml-4">
-									<h3 class="text-sm font-medium text-gray-500">System Status</h3>
-									<div class="text-2xl font-bold {stats.systemStatus === 'online' ? 'text-green-600' : 'text-red-600'}">
-										{#if loadingStats}
-											<div class="h-6 w-16 bg-gray-200 animate-pulse rounded"></div>
-										{:else}
-											{stats.systemStatus === 'online' ? 'Online' : 'Offline'}
-										{/if}
-									</div>
-								</div>
-							</div>
+							<div class="text-3xl animate-pulse">🟢</div>
 						</div>
 					</div>
 				</div>
-			{/if}
+
+				<!-- Charts -->
+				<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+					<div class="dark-card animate-fade-in" style="animation-delay: 0.4s;">
+						<h3 class="text-xl font-semibold text-white mb-4">Messages Sent (Last 7 Days)</h3>
+						<div class="chart-container">
+							<div class="bar-chart">
+								{#each analyticsData.messagesSent as value, i}
+									<div 
+										class="bar" 
+										style="height: {(value / 30) * 100}%; width: 12%;"
+									></div>
+								{/each}
+							</div>
+						</div>
+					</div>
+
+					<div class="dark-card animate-fade-in" style="animation-delay: 0.5s;">
+						<h3 class="text-xl font-semibold text-white mb-4">Active Users Trend</h3>
+						<div class="chart-container">
+							<svg class="w-full h-full" viewBox="0 0 100 30">
+								<path 
+									class="line-path"
+									d="M 0,{30 - (analyticsData.activeUsers[0] / 22) * 30} 
+										L 14,{30 - (analyticsData.activeUsers[1] / 22) * 30} 
+										L 28,{30 - (analyticsData.activeUsers[2] / 22) * 30} 
+										L 42,{30 - (analyticsData.activeUsers[3] / 22) * 30} 
+										L 56,{30 - (analyticsData.activeUsers[4] / 22) * 30} 
+										L 70,{30 - (analyticsData.activeUsers[5] / 22) * 30} 
+										L 84,{30 - (analyticsData.activeUsers[6] / 22) * 30}"
+									fill="none"
+								/>
+							</svg>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- System Overview -->
+			<div class="dark-card animate-fade-in" style="animation-delay: 0.6s;">
+				<h3 class="text-2xl font-semibold text-white mb-6">System Overview</h3>
+				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+					<div class="text-center">
+						<div class="text-3xl mb-2 animate-pulse">🚀</div>
+						<p class="text-gray-400 text-sm">Performance</p>
+						<p class="text-white font-semibold">Excellent</p>
+					</div>
+					<div class="text-center">
+						<div class="text-3xl mb-2 animate-pulse">🔒</div>
+						<p class="text-gray-400 text-sm">Security</p>
+						<p class="text-white font-semibold">Protected</p>
+					</div>
+					<div class="text-center">
+						<div class="text-3xl mb-2 animate-pulse">📡</div>
+						<p class="text-gray-400 text-sm">Connectivity</p>
+						<p class="text-white font-semibold">Stable</p>
+					</div>
+					<div class="text-center">
+						<div class="text-3xl mb-2 animate-pulse">🤖</div>
+						<p class="text-gray-400 text-sm">AI Status</p>
+						<p class="text-white font-semibold">Online</p>
+					</div>
+				</div>
+			</div>
 		</div>
 	</div>
 {:else}
-	<!-- Loading state while checking session -->
-	<div class="flex min-h-screen items-center justify-center bg-gray-50">
-		<div class="text-center">
-			<div
-				class="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-indigo-600"
-			></div>
-			<p class="text-gray-600">Checking authentication...</p>
+	<div class="min-h-screen bg-animated flex items-center justify-center">
+		<div class="dark-card text-center">
+			<div class="loading-robot mb-4">🤖</div>
+			<div class="loading-text">Loading...</div>
 		</div>
 	</div>
 {/if}

@@ -1142,56 +1142,61 @@
 	</style>
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50">
+<div class="min-h-screen bg-animated">
 	<!-- Navigation -->
-	<nav class="bg-white shadow">
+	<nav class="chatbot-nav">
 		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 			<div class="flex h-16 justify-between">
-				<div class="flex">
-					<div class="flex flex-shrink-0 items-center">
-						<h1 class="text-xl font-bold text-gray-900">Auth App</h1>
+				<div class="flex items-center">
+					<div class="flex-shrink-0">
+						<h1 class="text-xl font-bold text-white flex items-center gap-2">
+							<span class="text-2xl animate-bot-glow">🤖</span>
+							Auth App
+						</h1>
 					</div>
 					<div class="hidden sm:ml-6 sm:flex sm:space-x-8">
 						<button
 							on:click={() => goto('/dashboard')}
-							class="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
+							class="nav-link"
 						>
+							<span class="nav-icon">📊</span>
 							Dashboard
 						</button>
 						<button
 							on:click={() => goto('/chat')}
-							class="inline-flex items-center border-b-2 border-indigo-500 px-1 pt-1 text-sm font-medium text-gray-900"
+							class="nav-link active"
 						>
-							Vanar AI
+							<span class="nav-icon">💬</span>
+							AI Chat
 						</button>
 						<button
 							on:click={() => goto('/profile')}
-							class="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
+							class="nav-link"
 						>
+							<span class="nav-icon">👤</span>
 							Profile
 						</button>
 						{#if user?.role === 'admin'}
 							<button
 								on:click={() => goto('/admin')}
-								class="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
+								class="nav-link"
 							>
+								<span class="nav-icon">⚙️</span>
 								Admin Panel
 							</button>
 						{/if}
 					</div>
 				</div>
-				<div class="flex items-center">
-					<div class="ml-3">
-						<div class="flex items-center space-x-4">
-							<span class="text-sm text-gray-700">Welcome, {user?.name || user?.email}</span>
-							<button
-								on:click={handleSignOut}
-								class="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
-							>
-								Sign Out
-							</button>
-						</div>
-					</div>
+				<div class="flex items-center space-x-4">
+					<span class="text-sm text-gray-300">
+						Welcome, {user.name || user.email}
+					</span>
+					<button
+						on:click={handleSignOut}
+						class="dark-button-secondary"
+					>
+						🚪 Sign Out
+					</button>
 				</div>
 			</div>
 		</div>
@@ -1345,8 +1350,8 @@
 						<div bind:this={messagesContainer} class="min-h-[400px] max-h-[70vh] overflow-y-auto p-6 bg-gradient-to-b from-gray-50 to-white scroll-smooth">
 						{#if $messages.length === 0}
 							<div class="flex flex-col items-center justify-center h-full text-center">
-								<div class="h-24 w-24 rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 flex items-center justify-center mb-4">
-									<span class="text-4xl">💬</span>
+								<div class="h-32 w-32 rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 flex items-center justify-center mb-4">
+									<img src="/4bcb1fb72d1d08efa44efa5ceb712ec7.gif" alt="Vanar AI" class="w-24 h-24 rounded-lg" />
 								</div>
 								<br>
 								<h3 class="text-xl font-semibold text-gray-900 mb-2">Welcome to Vanar AI Assistant</h3>
