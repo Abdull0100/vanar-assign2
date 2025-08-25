@@ -6,7 +6,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui/card';
-	import { Lock, Mail, Bot } from 'lucide-svelte';
+
     export let data: any;
 
 	let session = data.session;
@@ -27,10 +27,7 @@
 			<div class="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
 				<!-- Left Side - Hero Content -->
 				<div class="text-center lg:text-left">
-					<!-- Badge -->
-					<Badge variant="secondary" class="mb-8 inline-flex items-center gap-2 px-3 py-1 text-sm font-medium bg-violet-100 text-violet-700 border border-violet-200 rounded-xl">
-						🚀 New: AI Chat Powered by Gemini
-					</Badge>
+
 
 					<!-- Main Heading -->
 					<h1 class="scroll-m-20 text-4xl font-bold tracking-tight text-neutral-800 lg:text-6xl xl:text-7xl">
@@ -171,7 +168,9 @@
 				<Card class="border border-blue-200 shadow-md bg-blue-50 hover:shadow-lg transition-all duration-300 group rounded-xl">
 					<CardHeader class="pb-4">
 						<div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-blue-200 transition-colors duration-200">
-							<Lock class="w-6 h-6 text-blue-600" />
+							<svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+							</svg>
 						</div>
 						<CardTitle class="text-xl font-semibold text-neutral-800">Secure Authentication</CardTitle>
 					</CardHeader>
@@ -186,7 +185,9 @@
 				<Card class="border border-emerald-200 shadow-md bg-emerald-50 hover:shadow-lg transition-all duration-300 group rounded-xl">
 					<CardHeader class="pb-4">
 						<div class="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-emerald-200 transition-colors duration-200">
-							<Mail class="w-6 h-6 text-emerald-600" />
+							<svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+							</svg>
 						</div>
 						<CardTitle class="text-xl font-semibold text-neutral-800">Email Verification</CardTitle>
 					</CardHeader>
@@ -201,7 +202,9 @@
 				<Card class="border border-pink-200 shadow-md bg-pink-50 hover:shadow-lg transition-all duration-300 group rounded-xl">
 					<CardHeader class="pb-4">
 						<div class="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-pink-200 transition-colors duration-200">
-							<Bot class="w-6 h-6 text-pink-600" />
+							<svg class="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+							</svg>
 						</div>
 						<CardTitle class="text-xl font-semibold text-neutral-800">AI Chat Interface</CardTitle>
 					</CardHeader>

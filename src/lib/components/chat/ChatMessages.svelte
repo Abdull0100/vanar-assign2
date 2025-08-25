@@ -21,11 +21,7 @@
 	let editingMessageId: string | null = null;
 	let editText: string = '';
 
-	function isAtBottom() {
-		if (!messagesContainer) return true;
-		const { scrollTop, scrollHeight, clientHeight } = messagesContainer;
-		return scrollTop + clientHeight >= scrollHeight - 10;
-	}
+
 
 	function scrollToBottom() {
 		if (messagesContainer) {
@@ -33,6 +29,12 @@
 				messagesContainer.scrollTop = messagesContainer.scrollHeight;
 			});
 		}
+	}
+
+	function isAtBottom() {
+		if (!messagesContainer) return true;
+		const { scrollTop, scrollHeight, clientHeight } = messagesContainer;
+		return scrollTop + clientHeight >= scrollHeight - 50; // Increased tolerance
 	}
 
 	function smartScrollToBottom() {
@@ -158,8 +160,8 @@
 	}
 </script>
 
-<div class="flex-1 overflow-y-auto bg-gradient-to-b from-gray-50 to-white">
-	<div bind:this={messagesContainer} class="p-4 lg:p-6">
+<div class="flex-1 overflow-y-auto bg-gradient-to-b from-gray-50 to-white h-full">
+	<div bind:this={messagesContainer} class="p-4 lg:p-6 h-full overflow-y-auto">
 		{#if messages.length === 0}
 			{#if initializing}
 				<div class="flex items-center justify-center h-32 text-gray-400 text-sm">Loading chat…</div>
@@ -207,7 +209,7 @@
 									</div>
 								</div>
 							{:else}
-								<div class="rounded-2xl rounded-br-sm bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 text-white shadow-lg">
+								<div class="rounded-2xl rounded-br-sm bg-gradient-to-r from-indigo-300 to-violet-300 px-4 py-3 text-indigo-900 shadow-lg">
 									<p class="text-sm leading-relaxed">{messageItem.content}</p>
 								</div>
 							{/if}
@@ -322,7 +324,7 @@
 	{#if messages.length > 1 && !isAtBottom()}
 		<button
 			on:click={scrollToBottom}
-			class="absolute bottom-4 right-4 p-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full shadow-lg border border-indigo-400 hover:border-indigo-500 transition-all duration-200 animate-bounce"
+			class="absolute bottom-4 right-4 p-2 bg-gradient-to-r from-indigo-300 to-violet-300 hover:from-indigo-400 hover:to-violet-400 text-indigo-900 rounded-full shadow-lg border border-indigo-200 hover:border-indigo-300 transition-all duration-200 animate-bounce"
 			aria-label="Scroll to bottom"
 		>
 			<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

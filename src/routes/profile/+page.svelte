@@ -208,12 +208,18 @@
 	<title>Profile - Auth App</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gradient-to-br from-yellow-50 via-gray-50 to-indigo-50">
+<div class="min-h-screen bg-gradient-to-br from-indigo-50 via-violet-50 to-pink-50 relative overflow-hidden">
+	<!-- Animated background elements -->
+	<div class="absolute inset-0 overflow-hidden pointer-events-none">
+		<div class="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-indigo-200 blur-3xl opacity-60 animate-pulse"></div>
+		<div class="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-violet-200 blur-3xl opacity-60 animate-pulse" style="animation-delay: 2s"></div>
+		<div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 h-96 w-96 rounded-full bg-pink-200 blur-3xl opacity-40 animate-pulse" style="animation-delay: 4s"></div>
+	</div>
 	<!-- Navigation -->
 	<Navigation user={user ?? null} currentPage="profile" />
 
 	<!-- Main Content -->
-	<main class="mx-auto max-w-7xl py-6 sm:px-6 lg:px-8">
+	<main class="relative z-10 mx-auto max-w-7xl py-6 sm:px-6 lg:px-8">
 		<div class="px-4 py-6 sm:px-0">
 			<!-- Hero Section -->
 			<ProfileHero {user} />
@@ -222,16 +228,16 @@
 				{#if loading}
 					<div class="py-8 text-center">
 						<div
-							class="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-indigo-600"
+							class="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-indigo-400"
 						></div>
-						<p class="mt-2 text-gray-600">Loading profile...</p>
+						<p class="mt-2 text-neutral-600">Loading profile...</p>
 					</div>
 				{:else}
 					<div class="grid gap-6 lg:grid-cols-3">
 						<div class="lg:col-span-2">
 							<ProfileAccountOverview {user} bind:name bind:email {error} {success} {saving} onSubmit={updateProfile}>
 								<svelte:fragment slot="actions">
-									<button type="button" on:click={() => { name = user?.name || ''; error = ''; success = ''; }} class="inline-flex items-center rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors">
+									<button type="button" on:click={() => { name = user?.name || ''; error = ''; success = ''; }} class="inline-flex items-center rounded-lg bg-indigo-100 px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-200 transition-colors">
 										<span class="mr-2">↩️</span>
 										Reset
 									</button>
@@ -245,9 +251,9 @@
 						>
 							<svelte:fragment slot="danger">
 								<div class="mb-4">
-									<h4 class="text-sm font-medium text-red-900 mb-1">Delete Account</h4>
+									<h4 class="text-sm font-medium text-red-800 mb-1">Delete Account</h4>
 									<p class="text-sm text-red-600 mb-3">Permanently delete your account and all associated data. This action cannot be undone.</p>
-									<button on:click={openDeleteAccountModal} class="w-full rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors">Delete Account</button>
+									<button on:click={openDeleteAccountModal} class="w-full rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white hover:bg-red-600 transition-colors">Delete Account</button>
 								</div>
 							</svelte:fragment>
 						</ProfileSidebar>

@@ -11,75 +11,103 @@
 	export let initializing: boolean = false;
 </script>
 
-<div class="lg:col-span-1 order-2 lg:order-1">
-	<div class="rounded-xl bg-white shadow-md border border-indigo-100 h-full flex flex-col">
-		<div class="p-3 lg:p-4 border-b border-indigo-200 flex items-center justify-between flex-shrink-0">
-			<div>
-				<h3 class="text-base lg:text-lg font-semibold text-gray-900">Chat Rooms</h3>
+<div class="h-full flex flex-col bg-white">
+	<!-- Modern Header with Logo -->
+	<div class="p-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+		<div class="flex items-center">
+			<div class="w-8 h-8 bg-gradient-to-r from-indigo-300 to-violet-300 rounded-lg flex items-center justify-center mr-3 vanar-logo transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-indigo-300/50 group">
+				<img src="/src/lib/assets/images-removebg-preview.png" alt="Vanar" class="w-5 h-5 object-contain group-hover:rotate-12 transition-transform duration-300" />
 			</div>
-			<div class="flex space-x-2">
-				<button 
-					on:click={onNewConversation} 
-					class="group relative inline-flex items-center justify-center px-3 lg:px-4 py-2 lg:py-2.5 text-xs lg:text-sm font-medium text-indigo-900 bg-indigo-300 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 ease-out hover:scale-105 hover:bg-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-white" 
-					aria-label="Start a new conversation room"
-				>
-					<svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2 transition-transform duration-300 group-hover:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-					</svg>
-					<span class="hidden sm:inline">New Room</span>
-					<span class="sm:hidden">+</span>
-					<div class="absolute inset-0 rounded-xl bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-				</button>
+			<div class="group">
+				<h3 class="text-lg font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors duration-300">Vanar AI</h3>
 			</div>
 		</div>
-		<div class="p-3 lg:p-4 flex-1 overflow-y-auto" style="contain: layout style paint;">
-			{#if error && (error.includes('rate limit') || error.includes('quota') || error.includes('high demand'))}
-				<div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-					<div class="flex items-start text-yellow-800">
-						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 mt-0.5 flex-shrink-0">
+		<button 
+			class="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+			aria-label="Toggle sidebar"
+		>
+			<svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+			</svg>
+		</button>
+	</div>
+
+	<!-- Navigation Links -->
+	<div class="p-4 border-b border-gray-200">
+		<button 
+			on:click={onNewConversation} 
+			class="w-full flex items-center px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100 transition-colors group"
+		>
+			<svg class="w-4 h-4 mr-3 text-gray-500 group-hover:text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+			</svg>
+			New chat
+		</button>
+		<button class="w-full flex items-center px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100 transition-colors group">
+			<svg class="w-4 h-4 mr-3 text-gray-500 group-hover:text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+			</svg>
+			Search chats
+		</button>
+		<button class="w-full flex items-center px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100 transition-colors group">
+			<svg class="w-4 h-4 mr-3 text-gray-500 group-hover:text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+			</svg>
+			Library
+		</button>
+	</div>
+	<!-- Chats Section -->
+	<div class="p-4">
+		<h4 class="text-sm font-semibold text-gray-900 mb-3">Chats</h4>
+		<div class="flex-1 overflow-y-auto" style="contain: layout style paint;">
+		{#if error && (error.includes('rate limit') || error.includes('quota') || error.includes('high demand'))}
+			<div class="mb-6 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-xl shadow-sm">
+				<div class="flex items-start text-yellow-800">
+					<div class="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
+						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 							<circle cx="12" cy="12" r="10"/>
 							<path d="M12 6v6l4 2"/>
 						</svg>
-						<div class="text-xs">
-							<strong>Service Notice:</strong> AI service is currently experiencing high demand.
-							{#if retryCountdown > 0}
-								<br><span class="text-yellow-700">Retry available in: {getTimeUntilRetry()}</span>
-							{:else}
-								<br>This usually resolves within a few minutes.
-							{/if}
-						</div>
+					</div>
+					<div class="text-sm">
+						<strong class="block mb-1">Service Notice</strong>
+						<p class="text-yellow-700 mb-2">AI service is currently experiencing high demand.</p>
+						{#if retryCountdown > 0}
+							<p class="text-yellow-600 font-medium">Retry available in: {getTimeUntilRetry()}</p>
+						{:else}
+							<p class="text-yellow-600">This usually resolves within a few minutes.</p>
+						{/if}
 					</div>
 				</div>
-			{/if}
-			
-			{#if memoizedConversations.length === 0}
-				{#if initializing}
-					<div class="py-8 lg:py-12">
-						<div class="h-3 w-24 bg-gray-200 rounded mb-4 animate-pulse"></div>
-						<div class="space-y-2">
-							<div class="h-10 bg-gray-100 rounded animate-pulse"></div>
-							<div class="h-10 bg-gray-100 rounded animate-pulse"></div>
-							<div class="h-10 bg-gray-100 rounded animate-pulse"></div>
-						</div>
+			</div>
+		{/if}
+		
+		{#if memoizedConversations.length === 0}
+			{#if initializing}
+				<div class="space-y-3">
+					<div class="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
+					<div class="space-y-2">
+						<div class="h-10 bg-gray-100 rounded animate-pulse"></div>
+						<div class="h-10 bg-gray-100 rounded animate-pulse"></div>
+						<div class="h-10 bg-gray-100 rounded animate-pulse"></div>
 					</div>
-				{:else}
-				<div class="text-center py-8 lg:py-12">
-					<div class="h-12 w-12 lg:h-16 lg:w-16 rounded-full bg-indigo-100 flex items-center justify-center mx-auto mb-4">
-						<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-600"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-					</div>
-					<h3 class="text-base lg:text-lg font-semibold text-neutral-800 mb-2">No chat rooms yet</h3>
-					<p class="text-xs lg:text-sm text-neutral-500 mb-4">Create your first room to start chatting with Vanar AI</p>
-					<button on:click={onNewConversation} class="inline-flex items-center px-3 lg:px-4 py-2 bg-indigo-300 text-indigo-900 text-xs lg:text-sm font-medium rounded-xl hover:bg-indigo-400 transition-all duration-200 shadow-md hover:shadow-lg" aria-label="Create your first chat room">
-						<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-						Create Room
-					</button>
 				</div>
-				{/if}
 			{:else}
+			<div class="text-center py-8">
+				<div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+					<svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+					</svg>
+				</div>
+				<p class="text-sm text-gray-500">No conversations yet</p>
+			</div>
+			{/if}
+		{:else}
+			<div class="space-y-1">
 				{#each memoizedConversations as conv (conv.id)}
 					{#key conv.id}
 					<div 
-						class="w-full mb-2 lg:mb-3 p-3 lg:p-4 rounded-xl transition-all duration-200 cursor-pointer border {currentConversationId === conv.id ? 'bg-indigo-50 border-indigo-200 shadow-md' : 'bg-white border-indigo-100 hover:bg-indigo-50 hover:border-indigo-200 hover:shadow-sm'}" 
+						class="group relative w-full px-3 py-2 rounded-lg transition-all duration-200 cursor-pointer {currentConversationId === conv.id ? 'bg-gray-100' : 'hover:bg-gray-50'}" 
 						on:click={() => onSelectConversation(conv.id)}
 						on:keydown={(e) => e.key === 'Enter' && onSelectConversation(conv.id)}
 						role="button"
@@ -88,45 +116,77 @@
 						aria-pressed={currentConversationId === conv.id}
 					>
 						<div class="flex items-center justify-between">
-							<p class="text-xs lg:text-sm font-medium text-gray-800 truncate flex-1 mr-2 lg:mr-3">{conv.roomName}</p>
+							<div class="flex items-center flex-1 min-w-0">
+								<div class="w-6 h-6 bg-gradient-to-r from-indigo-300 to-violet-300 rounded flex items-center justify-center mr-3 flex-shrink-0">
+									<svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+									</svg>
+								</div>
+								<div class="min-w-0 flex-1">
+									<p class="text-sm text-gray-700 truncate">{conv.roomName}</p>
+								</div>
+							</div>
 							<button 
 								on:click={(e) => { e.stopPropagation(); onDeleteConversation(conv.id); }} 
-								class="group relative text-red-500 hover:text-red-700 text-xs p-1.5 lg:p-2 rounded-lg hover:bg-red-50 transition-all duration-300 flex-shrink-0 border border-red-200 hover:border-red-300 hover:shadow-md hover:scale-110"
+								class="group/delete relative text-gray-400 hover:text-red-500 p-1 rounded opacity-0 group-hover:opacity-100 transition-all duration-200"
 								title="Delete conversation"
 								aria-label="Delete conversation: {conv.roomName}"
 							>
-								<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform duration-300 group-hover:rotate-12" aria-hidden="true">
+								<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 									<path d="M3 6h18"/>
 									<path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
 									<path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
 								</svg>
-								<div class="absolute inset-0 rounded-lg bg-gradient-to-r from-red-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 							</button>
 						</div>
 					</div>
 					{/key}
 				{/each}
-			{/if}
-		</div>
-		
-		<!-- Clear All History Button -->
-		{#if memoizedConversations.length > 0}
-			<div class="p-3 lg:p-4 border-t border-indigo-200 flex-shrink-0">
-				<button
-					on:click={onClearAll}
-					class="w-full group relative inline-flex items-center justify-center px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 hover:border-red-300 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-					aria-label="Clear all chat history"
-				>
-					<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2">
-						<path d="M3 6h18"/>
-						<path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
-						<path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
-					</svg>
-					Clear All History
-				</button>
-			</div>
+						</div>
 		{/if}
+		</div>
 	</div>
+		
+	<!-- Clear All History Button -->
+	{#if memoizedConversations.length > 0}
+		<div class="p-4 border-t border-gray-200">
+			<button
+				on:click={onClearAll}
+				class="w-full flex items-center px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100 transition-colors group"
+				aria-label="Clear all chat history"
+			>
+				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3 text-gray-500 group-hover:text-gray-700">
+					<path d="M3 6h18"/>
+					<path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+					<path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+				</svg>
+				Clear all conversations
+			</button>
+		</div>
+	{/if}
 </div>
 
-
+<style>
+	@keyframes float {
+		0%, 100% { transform: translateY(0px); }
+		50% { transform: translateY(-3px); }
+	}
+	
+	@keyframes glow {
+		0%, 100% { box-shadow: 0 0 5px rgba(99, 102, 241, 0.3); }
+		50% { box-shadow: 0 0 15px rgba(139, 92, 246, 0.6); }
+	}
+	
+	@keyframes spin-slow {
+		from { transform: rotate(0deg); }
+		to { transform: rotate(360deg); }
+	}
+	
+	.vanar-logo {
+		animation: float 3s ease-in-out infinite, glow 2s ease-in-out infinite;
+	}
+	
+	.vanar-logo:hover {
+		animation: spin-slow 2s linear infinite, glow 1s ease-in-out infinite;
+	}
+</style>
