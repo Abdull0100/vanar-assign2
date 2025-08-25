@@ -369,6 +369,24 @@ export function createChatStore(userId: string | null) {
 		debouncedSaveToStorage();
 	}
 
+	function editMessage(messageId: string, newContent: string) {
+		messages.update((msgs) => 
+			msgs.map((m) => 
+				m.id === messageId ? { ...m, content: newContent } : m
+			)
+		);
+		// Update the conversation as well
+		const id = getValue(currentConversationId);
+		if (id) {
+			conversations.update((convs) => 
+				convs.map((c) => 
+					c.id === id ? { ...c, messages: getValue(messages), updatedAt: new Date().toISOString() } : c
+				)
+			);
+		}
+		debouncedSaveToStorage();
+	}
+
 	function getValue<T>(store: Writable<T>): T {
 		let v: T;
 		store.subscribe((val) => (v = val))();
@@ -405,7 +423,8 @@ export function createChatStore(userId: string | null) {
 		confirmDeleteConversation,
 		openDeleteAllModal,
 		closeDeleteAllModal,
-		confirmDeleteAllConversations
+		confirmDeleteAllConversations,
+		editMessage
 	};
 }
 

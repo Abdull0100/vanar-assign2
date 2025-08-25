@@ -42,7 +42,8 @@
 		confirmDeleteConversation,
 		openDeleteAllModal,
 		closeDeleteAllModal,
-		confirmDeleteAllConversations
+		confirmDeleteAllConversations,
+		editMessage
 	} = store;
 
 	let messageText = '';
@@ -95,6 +96,7 @@
 						bind:this={chatMessagesRef}
 						messages={$messages}
 						{initializing}
+						onEditMessage={editMessage}
 					/>
 					{#if $error}
 						<ChatErrorBanner

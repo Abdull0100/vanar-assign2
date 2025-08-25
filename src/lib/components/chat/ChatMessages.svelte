@@ -13,10 +13,13 @@
 
 	export let messages: Array<{ id: string; content: string; aiResponse: string | null; createdAt: string; isStreaming?: boolean }>= [];
 	export let initializing: boolean = false;
+	export let onEditMessage: ((messageId: string, newContent: string) => void) | null = null;
 
 	let aiResponseContainer: HTMLElement;
 	let messagesContainer: HTMLElement;
 	let copiedMessageId: string | null = null;
+	let editingMessageId: string | null = null;
+	let editText: string = '';
 
 	function isAtBottom() {
 		if (!messagesContainer) return true;
@@ -127,6 +130,32 @@
 			setTimeout(() => { copiedMessageId = null; }, 2000);
 		} catch {}
 	}
+
+	async function copyUserMessage(messageId: string, text: string) {
+		try {
+			await navigator.clipboard.writeText(text || '');
+			copiedMessageId = messageId;
+			setTimeout(() => { copiedMessageId = null; }, 2000);
+		} catch {}
+	}
+
+	function startEditMessage(messageId: string, currentText: string) {
+		editingMessageId = messageId;
+		editText = currentText;
+	}
+
+	function cancelEdit() {
+		editingMessageId = null;
+		editText = '';
+	}
+
+	function saveEdit(messageId: string) {
+		if (onEditMessage && editText.trim()) {
+			onEditMessage(messageId, editText.trim());
+		}
+		editingMessageId = null;
+		editText = '';
+	}
 </script>
 
 <div class="flex-1 overflow-y-auto bg-gradient-to-b from-gray-50 to-white">
@@ -154,14 +183,74 @@
 				<div class="mb-6 group hover:bg-gray-50 rounded-lg p-1 -m-1 transition-colors duration-200">
 					<div class="flex justify-end mb-2">
 						<div class="flex items-end space-x-2 max-w-xl relative">
-							<div class="rounded-2xl rounded-br-sm bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 text-white shadow-lg">
-								<p class="text-sm leading-relaxed">{messageItem.content}</p>
-							</div>
+							{#if editingMessageId === messageItem.id}
+								<div class="rounded-2xl rounded-br-sm bg-white border-2 border-indigo-600 px-4 py-3 shadow-lg flex-1">
+									<textarea 
+										bind:value={editText}
+										class="w-full text-sm leading-relaxed resize-none border-none outline-none bg-transparent"
+										rows="3"
+										placeholder="Edit your message..."
+									></textarea>
+									<div class="flex justify-end space-x-2 mt-2">
+										<button 
+											on:click={cancelEdit}
+											class="px-3 py-1 text-xs rounded border border-gray-300 hover:bg-gray-50 text-gray-700"
+										>
+											Cancel
+										</button>
+										<button 
+											on:click={() => saveEdit(messageItem.id)}
+											class="px-3 py-1 text-xs rounded bg-indigo-600 hover:bg-indigo-700 text-white"
+										>
+											Save
+										</button>
+									</div>
+								</div>
+							{:else}
+								<div class="rounded-2xl rounded-br-sm bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 text-white shadow-lg">
+									<p class="text-sm leading-relaxed">{messageItem.content}</p>
+								</div>
+							{/if}
 							<div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
 								<span class="text-sm">👤</span>
 							</div>
 						</div>
 					</div>
+					
+					<!-- User message action buttons -->
+					{#if editingMessageId !== messageItem.id}
+						<div class="flex justify-end mr-10 mb-1">
+							<div class="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+								<button 
+									on:click={() => copyUserMessage(messageItem.id + '_user', messageItem.content)}
+									class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors duration-150"
+									title="Copy"
+									aria-label="Copy message"
+								>
+									<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+										{#if copiedMessageId === messageItem.id + '_user'}
+											<path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+											<path d="M21 9v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+										{:else}
+											<rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2" fill="none"/>
+											<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2" fill="none"/>
+										{/if}
+									</svg>
+								</button>
+								<button 
+									on:click={() => startEditMessage(messageItem.id, messageItem.content)}
+									class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors duration-150"
+									title="Edit"
+									aria-label="Edit message"
+								>
+									<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+										<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+										<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+									</svg>
+								</button>
+							</div>
+						</div>
+					{/if}
 
 					<div class="flex justify-start">
 						<div class="flex items-end space-x-2 max-w-xl relative">
@@ -190,13 +279,6 @@
 									<div class="text-sm leading-relaxed text-gray-800 prose prose-sm max-w-none" bind:this={aiResponseContainer}>
 										{@html renderMarkdown(messageItem.aiResponse)}
 									</div>
-									<div class="mt-2 flex justify-end">
-										<button class="px-2 py-1 text-xs rounded border border-gray-300 hover:bg-gray-50 text-gray-700" aria-label="Copy full response"
-											on:click={() => copyResponse(messageItem.id, messageItem.aiResponse || '')}
-										>
-											{copiedMessageId === messageItem.id ? '✅' : '📋'}
-										</button>
-									</div>
 									<p class="mt-2 text-xs text-gray-400">
 										{new Date(messageItem.createdAt).toLocaleTimeString()}
 									</p>
@@ -208,6 +290,30 @@
 							</div>
 						</div>
 					</div>
+					
+					<!-- AI response action button -->
+					{#if messageItem.aiResponse && messageItem.aiResponse.length > 0 && !messageItem.isStreaming}
+						<div class="flex justify-start ml-10 mt-1">
+							<div class="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+								<button 
+									on:click={() => copyResponse(messageItem.id, messageItem.aiResponse || '')}
+									class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors duration-150"
+									title="Copy"
+									aria-label="Copy response"
+								>
+									<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+										{#if copiedMessageId === messageItem.id}
+											<path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+											<path d="M21 9v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+										{:else}
+											<rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2" fill="none"/>
+											<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2" fill="none"/>
+										{/if}
+									</svg>
+								</button>
+							</div>
+						</div>
+					{/if}
 				</div>
 			{/each}
 		{/if}
