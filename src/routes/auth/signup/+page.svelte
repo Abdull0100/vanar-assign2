@@ -1,7 +1,6 @@
 <script lang="ts">
 
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
 
 	let name = '';
 	let email = '';
@@ -11,8 +10,11 @@
 	let error = '';
 	let success = false;
 
-	$: if ($page.url.searchParams.get('error')) {
-		error = $page.url.searchParams.get('error') || '';
+	$: if (typeof window !== 'undefined') {
+		const params = new URLSearchParams(window.location.search);
+		if (params.get('error')) {
+			error = params.get('error') || '';
+		}
 	}
 
 	async function handleSignUp() {

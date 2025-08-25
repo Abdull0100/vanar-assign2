@@ -1,7 +1,6 @@
 <script lang="ts">
-	import { page } from '$app/stores';
-	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 
 	let status = 'verifying';
 	let message = 'Verifying your email...';
@@ -13,8 +12,10 @@
 	let resendError = '';
 	let resendSuccess = '';
 
-	onMount(async () => {
-		token = $page.url.searchParams.get('token') || '';
+	onMount(() => {
+		// Get the token from the current URL if it exists
+		const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+		const token = params.get('token') || '';
 
 		if (!token) {
 			status = 'no-token';

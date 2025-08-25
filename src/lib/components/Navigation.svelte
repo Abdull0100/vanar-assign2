@@ -1,16 +1,15 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import { signOut } from '@auth/sveltekit/client';
-
-	  export let user: { id: string; role: string; name?: string; email?: string } | null = null;
+	export let user: { id: string; role: string; name?: string | null; email?: string | null } | null = null;
 	export let currentPage: string = '';
 
 	async function handleSignOut() {
-		await signOut({ redirectTo: '/' });
-	}
-
-	function navigateTo(path: string) {
-		goto(path);
+		try {
+			await fetch('/api/auth/signout', { method: 'POST' });
+		} catch (e) {
+			// ignore errors; we'll still redirect
+		} finally {
+			window.location.assign('/');
+		}
 	}
 
 	function isCurrentPage(page: string): boolean {
@@ -29,28 +28,15 @@
 		<div class="flex h-16 justify-between">
 			<div class="flex">
 				<div class="flex flex-shrink-0 items-center">
-					<button
-						on:click={() => navigateTo('/')}
-						class="text-xl font-bold text-gray-900 hover:text-gray-700"
-					>
-						Auth App
-					</button>
+					<a href="/" class="text-xl font-bold text-gray-900 hover:text-gray-700">Auth App</a>
 				</div>
 				{#if user}
 					<div class="hidden sm:ml-6 sm:flex sm:space-x-8">
-						<button on:click={() => navigateTo('/dashboard')} class={getNavClass('dashboard')}>
-							Dashboard
-						</button>
-						<button on:click={() => navigateTo('/chat')} class={getNavClass('chat')}>
-							AI Chat
-						</button>
-						<button on:click={() => navigateTo('/profile')} class={getNavClass('profile')}>
-							Profile
-						</button>
+						<a href="/dashboard" class={getNavClass('dashboard')}>Dashboard</a>
+						<a href="/chat" class={getNavClass('chat')}>AI Chat</a>
+						<a href="/profile" class={getNavClass('profile')}>Profile</a>
 						{#if user?.role === 'admin'}
-							<button on:click={() => navigateTo('/admin')} class={getNavClass('admin')}>
-								Admin Panel
-							</button>
+							<a href="/admin" class={getNavClass('admin')}>Admin Panel</a>
 						{/if}
 					</div>
 				{/if}
@@ -72,18 +58,8 @@
 					</div>
 				{:else}
 					<div class="flex items-center space-x-4">
-						<button
-							on:click={() => navigateTo('/auth/signin')}
-							class="rounded-md px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700"
-						>
-							Sign In
-						</button>
-						<button
-							on:click={() => navigateTo('/auth/signup')}
-							class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-						>
-							Sign Up
-						</button>
+						<a href="/auth/signin" class="rounded-md px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Sign In</a>
+						<a href="/auth/signup" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Sign Up</a>
 					</div>
 				{/if}
 			</div>

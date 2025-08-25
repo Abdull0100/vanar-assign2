@@ -1,12 +1,11 @@
 <script lang="ts">
-	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 
 	let error = '';
 	let errorDescription = '';
 
 	$: {
-		const searchParams = $page.url.searchParams;
+		const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
 		error = searchParams.get('error') || 'Unknown error';
 
 		// Map common error codes to user-friendly messages

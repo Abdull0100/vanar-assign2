@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 
@@ -12,7 +11,7 @@
 	let isValidToken = false;
 
 	onMount(async () => {
-		token = $page.url.searchParams.get('token') || '';
+		token = (typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams()).get('token') || '';
 
 		if (!token) {
 			message = 'Invalid reset link';

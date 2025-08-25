@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 
@@ -9,9 +8,11 @@
 	let error = '';
 	let success = '';
 
-	$: token = $page.url.searchParams.get('token');
+	let token: string | null = null;
 
 	onMount(() => {
+		const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+		token = params.get('token');
 		if (!token) {
 			error = 'No reset token provided. Please use the link from your email.';
 		}

@@ -1,9 +1,18 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	export let data: any;
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
 
-	$: error = $page.error;
-	$: status = $page.status;
+	let status = data?.status || 500;
+	let error = data?.error;
+	let message = 'Verifying your email...';
+	let token = '';
+	let email = '';
+	let resendDisabled = false;
+	let resendCountdown = 60;
+	let resendLoading = false;
+	let resendError = '';
+	let resendSuccess = '';
 
 	function getErrorMessage(status: number) {
 		switch (status) {

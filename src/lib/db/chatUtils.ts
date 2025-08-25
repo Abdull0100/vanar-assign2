@@ -85,6 +85,27 @@ export function transformChatMessage(dbMessage: any): ChatMessageResponse {
 }
 
 /**
+ * Transform raw DB messages (rows) to the chat view model used by the UI store.
+ * Each row already represents a complete Q&A pair in the new schema.
+ */
+export function transformDbMessagesToView(dbMessages: any[]): Array<{
+  id: string;
+  content: string;
+  aiResponse: string | null;
+  createdAt: string;
+  isStreaming?: boolean;
+}> {
+  if (!dbMessages || !Array.isArray(dbMessages)) return [];
+  return dbMessages.map((msg: any) => ({
+    id: msg.id,
+    content: msg.content || '',
+    aiResponse: msg.aiResponse ?? null,
+    createdAt: msg.createdAt,
+    isStreaming: false
+  }));
+}
+
+/**
  * Create a new message structure for a Q&A pair
  */
 export function createMessageStructure(

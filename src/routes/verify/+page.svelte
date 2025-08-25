@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
 
 	onMount(() => {
 		// Get the token from the current URL if it exists
-		const token = $page.url.searchParams.get('token');
+		const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+		const token = params.get('token');
 		const redirectUrl = token ? `/auth/verify?token=${token}` : '/auth/verify';
 		goto(redirectUrl);
 	});

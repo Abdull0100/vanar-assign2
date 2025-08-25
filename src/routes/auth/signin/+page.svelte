@@ -1,20 +1,23 @@
 <script lang="ts">
 
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
 	import { browser } from '$app/environment';
+	export let data: any;
 
 	let email = '';
 	let password = '';
 	let loading = false;
 	let error = '';
 
-	$: if ($page.url.searchParams.get('error')) {
-		error = $page.url.searchParams.get('error') || '';
+	$: if (typeof window !== 'undefined') {
+		const params = new URLSearchParams(window.location.search);
+		if (params.get('error')) {
+			error = params.get('error') || '';
+		}
 	}
 
 	// Check if user is already signed in
-	$: if (browser && $page.data.session?.user) {
+	$: if (browser && data.session?.user) {
 		goto('/dashboard');
 	}
 

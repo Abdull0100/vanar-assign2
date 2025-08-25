@@ -15,6 +15,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	// Use Auth.js for API auth routes
 	if (event.url.pathname.startsWith('/api/auth/')) {
+		if (event.url.pathname === '/api/auth/signout') {
+			return resolve(event);
+		}
 		return authHandle({ event, resolve });
 	}
 
