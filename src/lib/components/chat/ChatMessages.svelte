@@ -1,12 +1,22 @@
 <script lang="ts">
 	import { marked } from 'marked';
 	import Prism from 'prismjs';
+	import 'prismjs/components/prism-markup';
+	import 'prismjs/components/prism-javascript';
+	import 'prismjs/components/prism-typescript';
+	import 'prismjs/components/prism-json';
+	import 'prismjs/components/prism-bash';
+	import 'prismjs/components/prism-python';
+	import 'prismjs/components/prism-css';
+	import 'prismjs/components/prism-markdown';
+	import 'prismjs/components/prism-sql';
 
 	export let messages: Array<{ id: string; content: string; aiResponse: string | null; createdAt: string; isStreaming?: boolean }>= [];
 	export let initializing: boolean = false;
 
 	let aiResponseContainer: HTMLElement;
 	let messagesContainer: HTMLElement;
+	let copiedMessageId: string | null = null;
 
 	function isAtBottom() {
 		if (!messagesContainer) return true;
@@ -50,12 +60,18 @@
 				.replace(/on\w+\s*=/gi, '');
 			const result = marked(sanitized);
 			if (typeof result === 'string') {
+				function decodeEntities(encoded: string): string {
+					const el = document.createElement('textarea');
+					el.innerHTML = encoded;
+					return el.value;
+				}
 				const highlightedResult = result.replace(
 					/<pre><code class="language-(\w+)">([\s\S]*?)<\/code><\/pre>/g,
 					(match, lang, code) => {
 						if (lang && Prism.languages[lang]) {
 							try {
-								const highlighted = Prism.highlight(code, Prism.languages[lang], lang);
+								const decoded = decodeEntities(code);
+								const highlighted = Prism.highlight(decoded, Prism.languages[lang], lang);
 								return `<pre><code class="language-${lang}">${highlighted}</code></pre>`;
 							} catch {}
 						}
@@ -102,6 +118,14 @@
 			});
 			pre.appendChild(copyButton);
 		});
+	}
+
+	async function copyResponse(messageId: string, text: string) {
+		try {
+			await navigator.clipboard.writeText(text || '');
+			copiedMessageId = messageId;
+			setTimeout(() => { copiedMessageId = null; }, 2000);
+		} catch {}
 	}
 </script>
 
@@ -166,6 +190,13 @@
 									<div class="text-sm leading-relaxed text-gray-800 prose prose-sm max-w-none" bind:this={aiResponseContainer}>
 										{@html renderMarkdown(messageItem.aiResponse)}
 									</div>
+									<div class="mt-2 flex justify-end">
+										<button class="px-2 py-1 text-xs rounded border border-gray-300 hover:bg-gray-50 text-gray-700" aria-label="Copy full response"
+											on:click={() => copyResponse(messageItem.id, messageItem.aiResponse || '')}
+										>
+											{copiedMessageId === messageItem.id ? '✅' : '📋'}
+										</button>
+									</div>
 									<p class="mt-2 text-xs text-gray-400">
 										{new Date(messageItem.createdAt).toLocaleTimeString()}
 									</p>
@@ -195,5 +226,47 @@
 		</button>
 	{/if}
 </div>
+
+<style>
+	:global(.prose pre) {
+		position: relative;
+		background-color: #1f2937; /* gray-800 */
+		border-radius: 0.5rem; /* rounded */
+		padding: 1rem 2.5rem 1rem 1rem; /* extra right padding for copy button */
+		overflow: auto;
+		border: 1px solid #374151; /* gray-700 */
+	}
+
+	:global(.prose pre code) {
+		background: transparent !important;
+		white-space: pre;
+		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+		font-size: 0.85rem;
+		color: #f9fafb; /* near-white text */
+	}
+
+	:global(.prose pre .copy-button) {
+		position: absolute;
+		top: 0.5rem;
+		right: 0.5rem;
+		background: rgba(255, 255, 255, 0.08);
+		color: #e5e7eb; /* gray-200 */
+		border: 1px solid rgba(255, 255, 255, 0.2);
+		padding: 0.25rem 0.5rem;
+		border-radius: 0.375rem; /* rounded-md */
+		font-size: 0.75rem; /* text-xs */
+		cursor: pointer;
+	}
+
+	:global(.prose pre .copy-button:hover) {
+		background: rgba(255, 255, 255, 0.12);
+	}
+
+	:global(.prose pre .copy-button.copied) {
+		background: rgba(16, 185, 129, 0.2); /* emerald */
+		border-color: #10b981; /* emerald-500 */
+		color: #ecfdf5;
+	}
+</style>
 
 
