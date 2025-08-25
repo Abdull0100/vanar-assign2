@@ -1,4 +1,10 @@
 <script lang="ts">
+	import * as Card from '$lib/components/ui/card';
+	import { Badge } from '$lib/components/ui/badge';
+	import { Button } from '$lib/components/ui/button';
+	import * as Table from '$lib/components/ui/table';
+	import * as Select from '$lib/components/ui/select';
+
 	export let users: Array<{
 		id: string;
 		name: string;
@@ -15,84 +21,105 @@
 	export let formatDateOnly: (d: string) => string;
 </script>
 
-<div class="overflow-hidden bg-white shadow sm:rounded-md">
-	<div class="px-4 py-5 sm:px-6">
-		<h3 class="text-lg leading-6 font-medium text-gray-900">User Management</h3>
-		<p class="mt-1 max-w-2xl text-sm text-gray-500">Manage user roles, status, and view detailed statistics</p>
-	</div>
-
-	<div class="overflow-x-auto">
-		<table class="min-w-full divide-y divide-gray-200">
-			<thead class="bg-gray-50">
-				<tr>
-					<th class="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">User</th>
-					<th class="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">Role</th>
-					<th class="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">Status</th>
-					<th class="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">Joined</th>
-					<th class="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">Actions</th>
-				</tr>
-			</thead>
-			<tbody class="divide-y divide-gray-200 bg-white">
+<Card.Root>
+	<Card.Header>
+		<Card.Title>User Management</Card.Title>
+		<Card.Description>Manage user roles, status, and view detailed statistics</Card.Description>
+	</Card.Header>
+	<Card.Content>
+		<Table.Root>
+			<Table.Header>
+				<Table.Row>
+					<Table.Head>User</Table.Head>
+					<Table.Head>Role</Table.Head>
+					<Table.Head>Status</Table.Head>
+					<Table.Head>Joined</Table.Head>
+					<Table.Head>Actions</Table.Head>
+				</Table.Row>
+			</Table.Header>
+			<Table.Body>
 				{#each users as userItem (userItem.id)}
-					<tr class="hover:bg-gray-50">
-						<td class="px-6 py-4 whitespace-nowrap">
+					<Table.Row>
+						<Table.Cell>
 							<div class="flex items-center">
 								<div class="h-10 w-10 flex-shrink-0">
-									<div class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-300">
-										<span class="text-sm font-medium text-gray-700">
+									<div class="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+										<span class="text-sm font-medium">
 											{userItem.name ? userItem.name.charAt(0).toUpperCase() : userItem.email.charAt(0).toUpperCase()}
 										</span>
 									</div>
 								</div>
 								<div class="ml-4">
-									<div class="text-sm font-medium text-gray-900">
+									<div class="text-sm font-medium">
 										{userItem.name || 'No name'}
 									</div>
-									<div class="text-sm text-gray-500">{userItem.email}</div>
+									<div class="text-sm text-foreground">{userItem.email}</div>
 								</div>
 							</div>
-						</td>
-						<td class="px-6 py-4 whitespace-nowrap">
+						</Table.Cell>
+						<Table.Cell>
 							{#if currentUser && userItem.id === currentUser.id}
 								<div class="flex items-center space-x-2">
-									<span class="text-sm font-medium text-gray-900">{userItem.role}</span>
-									<span class="text-xs text-gray-500">(Current user)</span>
+									<span class="text-sm font-medium">{userItem.role}</span>
+									<Badge variant="outline">Current user</Badge>
 								</div>
 							{:else}
-								<select
-									value={userItem.role}
-									on:change={(e) => onUpdateRole(userItem.id, (e.target as HTMLSelectElement).value)}
-									class="rounded-md border-gray-300 text-sm text-gray-900 focus:border-indigo-500 focus:ring-indigo-500"
-								>
-									<option value="user">User</option>
-									<option value="admin">Admin</option>
-								</select>
+								<Select.Root type="single" bind:value={userItem.role} onValueChange={(value) => onUpdateRole(userItem.id, value)}>
+									<Select.Trigger class="w-32">
+										<span data-slot="select-value" class="capitalize">{userItem.role}</span>
+									</Select.Trigger>
+									<Select.Content>
+										<Select.Item value="user">User</Select.Item>
+										<Select.Item value="admin">Admin</Select.Item>
+									</Select.Content>
+								</Select.Root>
 							{/if}
-						</td>
-						<td class="px-6 py-4 whitespace-nowrap">
-							<span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {userItem.emailVerified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+						</Table.Cell>
+						<Table.Cell>
+							<Badge variant={userItem.emailVerified ? 'default' : 'secondary'}>
 								{userItem.emailVerified ? 'Active' : 'Inactive'}
-							</span>
-						</td>
-						<td class="px-6 py-4 text-sm whitespace-nowrap text-gray-500">
+							</Badge>
+						</Table.Cell>
+						<Table.Cell class="text-foreground">
 							{formatDateOnly(userItem.createdAt)}
-						</td>
-						<td class="px-6 py-4 text-sm font-medium whitespace-nowrap">
+						</Table.Cell>
+						<Table.Cell>
 							{#if currentUser && userItem.id === currentUser.id}
-								<span class="text-gray-400">N/A</span>
+								<span class="text-foreground">N/A</span>
 							{:else}
 								<div class="flex space-x-2">
-									<button on:click={() => onToggleStatus(userItem.id, !!userItem.emailVerified)} class="text-indigo-600 hover:text-indigo-900">{userItem.emailVerified ? 'Disable' : 'Enable'}</button>
-									<button on:click={() => onDetails(userItem.id)} class="text-blue-600 hover:text-blue-900">Details</button>
-									<button on:click={() => onDelete(userItem.id, userItem.name || userItem.email)} class="text-red-600 hover:text-red-900">Delete</button>
+									<Button
+										variant="outline"
+										size="sm"
+										type="button"
+										onclick={() => onToggleStatus(userItem.id, !!userItem.emailVerified)}
+									>
+										{userItem.emailVerified ? 'Disable' : 'Enable'}
+									</Button>
+									<Button
+										variant="outline"
+										size="sm"
+										type="button"
+										onclick={() => onDetails(userItem.id)}
+									>
+										Details
+									</Button>
+									<Button
+										variant="destructive"
+										size="sm"
+										type="button"
+										onclick={() => onDelete(userItem.id, userItem.name || userItem.email)}
+									>
+										Delete
+									</Button>
 								</div>
 							{/if}
-						</td>
-					</tr>
+						</Table.Cell>
+					</Table.Row>
 				{/each}
-			</tbody>
-		</table>
-	</div>
-</div>
+			</Table.Body>
+		</Table.Root>
+	</Card.Content>
+</Card.Root>
 
 
