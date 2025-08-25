@@ -79,7 +79,7 @@
 <div class="min-h-screen bg-gray-50">
 	<Navigation user={user ?? null} currentPage="chat" />
 	<div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-		<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6 h-[calc(100vh-8rem)] min-h-[600px]">
+		<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6 h-[calc(100vh-8rem)] min-h-[600px] min-h-0">
 			<ChatSidebar
 				memoizedConversations={$conversations}
 				currentConversationId={$currentConversationId}
@@ -92,8 +92,8 @@
 				{initializing}
 			/>
 
-			<div class="lg:col-span-3 order-1 lg:order-2">
-				<div class="rounded-xl bg-white shadow-lg overflow-hidden h-full flex flex-col">
+			<div class="lg:col-span-3 order-1 lg:order-2 min-h-0 h-full flex flex-col">
+				<div class="rounded-xl bg-white shadow-lg overflow-hidden h-full min-h-0 flex flex-col">
 					<ChatHeader error={$error} retryCountdown={0} {getTimeUntilRetry} />
 					<ChatMessages
 						bind:this={chatMessagesRef}
