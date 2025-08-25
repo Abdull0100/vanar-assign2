@@ -12,7 +12,7 @@
 	}
 </script>
 
-<div class="border-t border-gray-200 bg-white p-4 lg:p-6 flex-shrink-0">
+<div class="border-t border-indigo-200 bg-white p-4 lg:p-6 flex-shrink-0">
 	<div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
 		<div class="flex-1">
 			<div class="relative">
@@ -24,14 +24,14 @@
 					rows="2"
 					maxlength="2000"
 					class="
-						block w-full resize-none rounded-xl border-gray-300 shadow-sm
-						focus:border-indigo-500 focus:ring-indigo-500 pr-12 bg-gray-50
+						block w-full resize-none rounded-xl border-indigo-200 shadow-sm
+						focus:border-indigo-300 focus:ring-indigo-300 pr-12 bg-indigo-50
 						focus:bg-white transition-all duration-200 ease-in-out
 						disabled:opacity-75 disabled:cursor-not-allowed
 						px-3 lg:px-4 py-2 lg:py-3
 						leading-normal
-						text-gray-800
-						placeholder-gray-400
+						text-neutral-800
+						placeholder-neutral-500
 						scroll-pb-3 scroll-pt-3
 						whitespace-pre-wrap
 						text-sm lg:text-base
@@ -40,7 +40,7 @@
 					aria-disabled={loading}
 					disabled={loading}
 				></textarea>
-				<div class="absolute right-3 bottom-3 text-xs text-gray-400">
+				<div class="absolute right-3 bottom-3 text-xs text-neutral-500">
 					{value.length}/2000
 				</div>
 			</div>
@@ -49,7 +49,7 @@
 			<button
 				on:click={() => onSend()}
 				disabled={loading || !value.trim() || value.length > 2000}
-				class="group relative inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 px-4 lg:px-6 py-2 lg:py-3 text-white text-sm lg:text-base font-medium hover:from-indigo-700 hover:via-purple-700 hover:to-indigo-800 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300 ease-out hover:scale-105 hover:shadow-xl shadow-lg"
+				class="group relative inline-flex items-center justify-center rounded-xl bg-indigo-300 px-4 lg:px-6 py-2 lg:py-3 text-indigo-900 text-sm lg:text-base font-medium hover:bg-indigo-400 focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300 ease-out hover:scale-105 hover:shadow-lg shadow-md"
 				aria-label="Send message to Vanar AI"
 			>
 				<span class="flex items-center">
@@ -69,7 +69,7 @@
 			{#if value.trim()}
 				<button
 					on:click={() => { onInput(''); }}
-					class="group relative inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-gray-100 via-gray-200 to-gray-300 px-4 lg:px-6 py-2 text-gray-600 hover:from-gray-200 hover:via-gray-300 hover:to-gray-400 transition-all duration-300 ease-out hover:scale-105 hover:shadow-md text-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+					class="group relative inline-flex items-center justify-center rounded-xl bg-violet-100 px-4 lg:px-6 py-2 text-violet-700 hover:bg-violet-200 transition-all duration-300 ease-out hover:scale-105 hover:shadow-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 focus:ring-offset-2"
 					aria-label="Clear message input"
 				>
 					<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 transition-transform duration-300 group-hover:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">

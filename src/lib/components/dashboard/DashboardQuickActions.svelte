@@ -10,11 +10,11 @@
 
 <div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
 	<!-- AI Chat Card -->
-	<div class="group relative overflow-hidden rounded-xl bg-white p-6 shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-		<div class="absolute inset-0 bg-gradient-to-r from-blue-50 to-indigo-50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+	<div class="group relative overflow-hidden rounded-xl bg-white p-6 shadow-md border border-indigo-100 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+		<div class="absolute inset-0 bg-gradient-to-r from-indigo-50 to-blue-50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
 		<div class="relative z-10">
 			<div class="flex items-center mb-4">
-				<div class="h-12 w-12 rounded-lg bg-blue-100 flex items-center justify-center mr-4">
+				<div class="h-12 w-12 rounded-lg bg-indigo-100 flex items-center justify-center mr-4">
 					<span class="text-2xl">🤖</span>
 				</div>
 				<div>
@@ -25,7 +25,7 @@
 			<p class="text-gray-600 mb-4">Chat with our intelligent AI assistant for help, creativity, and problem-solving.</p>
 			<button
 				on:click={() => navigateTo('/chat')}
-				class="w-full rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-white font-medium hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+				class="w-full rounded-xl bg-indigo-300 px-4 py-3 text-indigo-900 font-medium hover:bg-indigo-400 transition-all duration-200 shadow-md"
 			>
 				Start Conversation
 			</button>
@@ -33,11 +33,11 @@
 	</div>
 
 	<!-- Profile Card -->
-	<div class="group relative overflow-hidden rounded-xl bg-white p-6 shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-		<div class="absolute inset-0 bg-gradient-to-r from-green-50 to-emerald-50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+	<div class="group relative overflow-hidden rounded-xl bg-white p-6 shadow-md border border-violet-100 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+		<div class="absolute inset-0 bg-gradient-to-r from-violet-50 to-purple-50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
 		<div class="relative z-10">
 			<div class="flex items-center mb-4">
-				<div class="h-12 w-12 rounded-lg bg-green-100 flex items-center justify-center mr-4">
+				<div class="h-12 w-12 rounded-lg bg-violet-100 flex items-center justify-center mr-4">
 					<span class="text-2xl">👤</span>
 				</div>
 				<div>
@@ -48,7 +48,7 @@
 			<p class="text-gray-600 mb-4">Update your profile information, change password, and manage account settings.</p>
 			<button
 				on:click={() => navigateTo('/profile')}
-				class="w-full rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 px-4 py-3 text-white font-medium hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+				class="w-full rounded-xl bg-violet-300 px-4 py-3 text-violet-900 font-medium hover:bg-violet-400 transition-all duration-200 shadow-md"
 			>
 				Edit Profile
 			</button>
@@ -57,11 +57,11 @@
 
 	<!-- Admin Panel or Role Card -->
 	{#if isAdmin}
-		<div class="group relative overflow-hidden rounded-xl bg-white p-6 shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-			<div class="absolute inset-0 bg-gradient-to-r from-purple-50 to-pink-50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+		<div class="group relative overflow-hidden rounded-xl bg-white p-6 shadow-md border border-pink-100 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+			<div class="absolute inset-0 bg-gradient-to-r from-pink-50 to-rose-50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
 			<div class="relative z-10">
 				<div class="flex items-center mb-4">
-					<div class="h-12 w-12 rounded-lg bg-purple-100 flex items-center justify-center mr-4">
+					<div class="h-12 w-12 rounded-lg bg-pink-100 flex items-center justify-center mr-4">
 						<span class="text-2xl">👑</span>
 					</div>
 					<div>
@@ -72,7 +72,7 @@
 				<p class="text-gray-600 mb-4">Access administrative tools, manage users, and view system analytics.</p>
 				<button
 					on:click={() => navigateTo('/admin')}
-					class="w-full rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-3 text-white font-medium hover:from-purple-700 hover:to-pink-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+					class="w-full rounded-xl bg-pink-300 px-4 py-3 text-pink-900 font-medium hover:bg-pink-400 transition-all duration-200 shadow-md"
 				>
 					Open Admin Panel
 				</button>

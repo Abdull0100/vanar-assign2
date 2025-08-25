@@ -10,7 +10,7 @@
 	<meta name="description" content="Full-stack authentication app with AI chat" />
 </svelte:head>
 
-<main>
+<main class="min-h-screen bg-yellow-50">
 	<slot />
 </main>
 
@@ -19,5 +19,6 @@
 		margin: 0;
 		padding: 0;
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+		background: linear-gradient(135deg, #fefce8 0%, #f3f4f6 100%);
 	}
 </style>

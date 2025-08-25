@@ -208,7 +208,7 @@
 	<title>Profile - Auth App</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50">
+<div class="min-h-screen bg-gradient-to-br from-yellow-50 via-gray-50 to-indigo-50">
 	<!-- Navigation -->
 	<Navigation user={user ?? null} currentPage="profile" />
 

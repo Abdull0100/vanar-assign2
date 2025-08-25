@@ -15,9 +15,9 @@
 	<title>Redirecting to Verification - Auth App</title>
 </svelte:head>
 
-<div class="flex min-h-screen flex-col justify-center bg-gray-50 py-12 sm:px-6 lg:px-8">
+<div class="flex min-h-screen flex-col justify-center bg-gradient-to-br from-yellow-50 via-gray-50 to-indigo-50 py-12 sm:px-6 lg:px-8">
 	<div class="sm:mx-auto sm:w-full sm:max-w-md">
-		<div class="bg-white px-4 py-8 shadow sm:rounded-lg sm:px-10">
+		<div class="bg-white px-4 py-8 shadow-md border border-indigo-100 sm:rounded-xl sm:px-10">
 			<div class="text-center">
 				<div
 					class="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-indigo-600"

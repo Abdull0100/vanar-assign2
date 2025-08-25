@@ -12,15 +12,15 @@
 </script>
 
 <div class="lg:col-span-1 order-2 lg:order-1">
-	<div class="rounded-xl bg-white shadow-lg h-full flex flex-col">
-		<div class="p-3 lg:p-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+	<div class="rounded-xl bg-white shadow-md border border-indigo-100 h-full flex flex-col">
+		<div class="p-3 lg:p-4 border-b border-indigo-200 flex items-center justify-between flex-shrink-0">
 			<div>
 				<h3 class="text-base lg:text-lg font-semibold text-gray-900">Chat Rooms</h3>
 			</div>
 			<div class="flex space-x-2">
 				<button 
 					on:click={onNewConversation} 
-					class="group relative inline-flex items-center justify-center px-3 lg:px-4 py-2 lg:py-2.5 text-xs lg:text-sm font-medium text-white bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ease-out hover:scale-105 hover:from-indigo-700 hover:via-purple-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-white" 
+					class="group relative inline-flex items-center justify-center px-3 lg:px-4 py-2 lg:py-2.5 text-xs lg:text-sm font-medium text-indigo-900 bg-indigo-300 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 ease-out hover:scale-105 hover:bg-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-white" 
 					aria-label="Start a new conversation room"
 				>
 					<svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 lg:w-4 lg:h-4 mr-1 lg:mr-2 transition-transform duration-300 group-hover:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -64,12 +64,12 @@
 					</div>
 				{:else}
 				<div class="text-center py-8 lg:py-12">
-					<div class="h-12 w-12 lg:h-16 lg:w-16 rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 flex items-center justify-center mx-auto mb-4">
-						<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-500"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+					<div class="h-12 w-12 lg:h-16 lg:w-16 rounded-full bg-indigo-100 flex items-center justify-center mx-auto mb-4">
+						<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-600"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
 					</div>
-					<h3 class="text-base lg:text-lg font-semibold text-gray-900 mb-2">No chat rooms yet</h3>
-					<p class="text-xs lg:text-sm text-gray-500 mb-4">Create your first room to start chatting with Vanar AI</p>
-					<button on:click={onNewConversation} class="inline-flex items-center px-3 lg:px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs lg:text-sm font-medium rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg" aria-label="Create your first chat room">
+					<h3 class="text-base lg:text-lg font-semibold text-neutral-800 mb-2">No chat rooms yet</h3>
+					<p class="text-xs lg:text-sm text-neutral-500 mb-4">Create your first room to start chatting with Vanar AI</p>
+					<button on:click={onNewConversation} class="inline-flex items-center px-3 lg:px-4 py-2 bg-indigo-300 text-indigo-900 text-xs lg:text-sm font-medium rounded-xl hover:bg-indigo-400 transition-all duration-200 shadow-md hover:shadow-lg" aria-label="Create your first chat room">
 						<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
 						Create Room
 					</button>
@@ -79,7 +79,7 @@
 				{#each memoizedConversations as conv (conv.id)}
 					{#key conv.id}
 					<div 
-						class="w-full mb-2 lg:mb-3 p-3 lg:p-4 rounded-lg transition-all duration-200 cursor-pointer border {currentConversationId === conv.id ? 'bg-indigo-50 border-indigo-200 shadow-md' : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm'}" 
+						class="w-full mb-2 lg:mb-3 p-3 lg:p-4 rounded-xl transition-all duration-200 cursor-pointer border {currentConversationId === conv.id ? 'bg-indigo-50 border-indigo-200 shadow-md' : 'bg-white border-indigo-100 hover:bg-indigo-50 hover:border-indigo-200 hover:shadow-sm'}" 
 						on:click={() => onSelectConversation(conv.id)}
 						on:keydown={(e) => e.key === 'Enter' && onSelectConversation(conv.id)}
 						role="button"
@@ -111,7 +111,7 @@
 		
 		<!-- Clear All History Button -->
 		{#if memoizedConversations.length > 0}
-			<div class="p-3 lg:p-4 border-t border-gray-200 flex-shrink-0">
+			<div class="p-3 lg:p-4 border-t border-indigo-200 flex-shrink-0">
 				<button
 					on:click={onClearAll}
 					class="w-full group relative inline-flex items-center justify-center px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 hover:border-red-300 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"

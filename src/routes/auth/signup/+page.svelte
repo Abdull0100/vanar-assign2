@@ -84,7 +84,7 @@
 	<title>Sign Up - Auth App</title>
 </svelte:head>
 
-<div class="flex min-h-screen flex-col justify-center bg-gray-50 py-12 sm:px-6 lg:px-8">
+<div class="flex min-h-screen flex-col justify-center bg-gradient-to-br from-yellow-50 via-gray-50 to-indigo-50 py-12 sm:px-6 lg:px-8">
 	<div class="sm:mx-auto sm:w-full sm:max-w-md">
 		<!-- Back Button -->
 		<div class="mb-4">

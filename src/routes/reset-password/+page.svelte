@@ -72,7 +72,7 @@
 	<title>Reset Password - Vanar Chain</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center px-4">
+<div class="min-h-screen bg-gradient-to-br from-yellow-50 via-gray-50 to-indigo-50 flex items-center justify-center px-4">
 	<div class="max-w-md w-full">
 		<!-- Header -->
 		<div class="text-center mb-8">
