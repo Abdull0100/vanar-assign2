@@ -29,7 +29,7 @@
 				</div>
 				<div class="ml-5 w-0 flex-1">
 					<dl>
-						<dt class="truncate text-sm font-medium text-muted-foreground">Total Users</dt>
+						<dt class="truncate text-sm font-medium text-muted-foreground font-sans">Total Users</dt>
 						<dd class="text-lg font-medium">{userStats?.totalUsers || calculateStats().totalUsers}</dd>
 					</dl>
 				</div>
@@ -49,7 +49,7 @@
 				</div>
 				<div class="ml-5 w-0 flex-1">
 					<dl>
-						<dt class="truncate text-sm font-medium text-muted-foreground">Verified Users</dt>
+						<dt class="truncate text-sm font-medium text-muted-foreground font-sans">Verified Users</dt>
 						<dd class="text-lg font-medium">{userStats?.verifiedUsers || calculateStats().verifiedUsers}</dd>
 					</dl>
 				</div>
@@ -69,7 +69,7 @@
 				</div>
 				<div class="ml-5 w-0 flex-1">
 					<dl>
-						<dt class="truncate text-sm font-medium text-muted-foreground">Admin Users</dt>
+						<dt class="truncate text-sm font-medium text-muted-foreground font-sans">Admin Users</dt>
 						<dd class="text-lg font-medium">{userStats?.adminUsers || calculateStats().adminUsers}</dd>
 					</dl>
 				</div>
@@ -89,7 +89,7 @@
 				</div>
 				<div class="ml-5 w-0 flex-1">
 					<dl>
-						<dt class="truncate text-sm font-medium text-muted-foreground">Regular Users</dt>
+						<dt class="truncate text-sm font-medium text-muted-foreground font-sans">Regular Users</dt>
 						<dd class="text-lg font-medium">{userStats?.regularUsers || calculateStats().regularUsers}</dd>
 					</dl>
 				</div>
@@ -102,7 +102,7 @@
 	<div class="grid grid-cols-1 gap-6 md:grid-cols-2 mt-6">
 		<Card.Root>
 			<Card.Content>
-				<h3 class="text-lg font-medium mb-4">Chat Statistics</h3>
+				<h3 class="text-lg font-medium mb-4 font-sans">Chat Statistics</h3>
 				<div class="space-y-3">
 					<div class="flex justify-between">
 						<span class="text-sm text-muted-foreground">Total Chat Messages</span>
@@ -118,7 +118,7 @@
 
 		<Card.Root>
 			<Card.Content>
-				<h3 class="text-lg font-medium mb-4">Most Active Users</h3>
+				<h3 class="text-lg font-medium mb-4 font-sans">Most Active Users</h3>
 				<div class="space-y-2">
 					{#each mostActiveUsers.slice(0, 5) as activeUser}
 						<div class="flex justify-between items-center">
