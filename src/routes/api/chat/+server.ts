@@ -214,11 +214,21 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Prepare the prompt with conversation context
 		const prompt = `You are Vanar, a helpful AI assistant. You are having a conversation with a user. Please respond naturally and helpfully to their message.
 
+IMPORTANT FORMATTING INSTRUCTIONS:
+- When presenting tables, always use proper Markdown table formatting with headers and aligned columns
+- Use | to separate columns and - to create header separators
+- Ensure tables are properly aligned and readable
+- Example table format:
+  | Column 1 | Column 2 | Column 3 |
+  |----------|----------|----------|
+  | Data 1   | Data 2   | Data 3   |
+  | Data 4   | Data 5   | Data 6   |
+
 ${targetConversation?.summary ? `Conversation Summary:\n${targetConversation.summary}\n\n` : ''}Recent Conversation Context:\n${transcript}
 
 User's latest message: ${message}
 
-Please provide a helpful response. Keep it conversational and relevant to the context.`;
+Please provide a helpful response. Keep it conversational and relevant to the context. When presenting data in table format, ensure it's properly formatted using Markdown table syntax.`;
 
 		// Stream the response
 		const result = await genAI.getGenerativeModel({ model: 'gemini-1.5-flash' }).generateContentStream(prompt);
