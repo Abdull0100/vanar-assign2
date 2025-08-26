@@ -57,6 +57,86 @@
 
 	function renderMarkdown(text: string): string {
 		try {
+			// Check if this is a file upload message
+			if (text.startsWith('📎 **') && text.includes('**File Details:**')) {
+				// Extract file name from the message
+				const fileNameMatch = text.match(/📎 \*\*(.*?)\*\*/);
+				const fileName = fileNameMatch ? fileNameMatch[1] : 'Unknown File';
+				
+				// Create a special file upload display
+				const fileDisplay = `
+					<div class="file-upload-message bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+						<div class="flex items-center space-x-3">
+							<div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+								<svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+								</svg>
+							</div>
+							<div class="flex-1">
+								<h4 class="font-semibold text-blue-900">${fileName}</h4>
+								<p class="text-sm text-blue-700">Document uploaded successfully</p>
+							</div>
+							<div class="text-xs text-blue-500">
+								📎
+							</div>
+						</div>
+					</div>
+				`;
+				
+				// Replace the file message with the styled display
+				text = text.replace(/📎 \*\*.*?\*\*[\s\S]*?Please analyze this document and provide insights\./, fileDisplay);
+			}
+			
+			// Tables (basic support) - only apply when there are actual table patterns
+			// Look for multiple lines with pipe separators to identify actual tables
+			const lines = text.split('\n');
+			let inTable = false;
+			let tableLines = [];
+			
+			for (let i = 0; i < lines.length; i++) {
+				const line = lines[i];
+				// Check if this line looks like a table row (contains | and has multiple cells)
+				if (line.includes('|') && line.split('|').length > 2) {
+					if (!inTable) {
+						inTable = true;
+						tableLines = [];
+					}
+					tableLines.push(line);
+				} else {
+					// If we were in a table and now we're not, process the table
+					if (inTable && tableLines.length > 0) {
+						const tableHtml = tableLines.map(tableLine => {
+							const cells = tableLine.split('|').map(cell => `<td class="border border-gray-300 px-3 py-2">${cell.trim()}</td>`).join('');
+							return `<tr>${cells}</tr>`;
+						}).join('');
+						
+						const fullTable = `<table class="border-collapse border border-gray-300 my-4 w-full">${tableHtml}</table>`;
+						
+						// Replace the table lines in the original text
+						const tableText = tableLines.join('\n');
+						text = text.replace(tableText, fullTable);
+						
+						// Reset for next potential table
+						inTable = false;
+						tableLines = [];
+					}
+				}
+			}
+			
+			// Handle case where table is at the end of text
+			if (inTable && tableLines.length > 0) {
+				const tableHtml = tableLines.map(tableLine => {
+					const cells = tableLine.split('|').map(cell => `<td class="border border-gray-300 px-3 py-2">${cell.trim()}</td>`).join('');
+					return `<tr>${cells}</tr>`;
+				}).join('');
+				
+				const fullTable = `<table class="border-collapse border border-gray-300 my-4 w-full">${tableHtml}</table>`;
+				
+				// Replace the table lines in the original text
+				const tableText = tableLines.join('\n');
+				text = text.replace(tableText, fullTable);
+			}
+			
 			marked.setOptions({ breaks: true, gfm: true });
 			const sanitized = text
 				.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
@@ -374,6 +454,28 @@
 		background: rgba(16, 185, 129, 0.2); /* emerald */
 		border-color: #10b981; /* emerald-500 */
 		color: #ecfdf5;
+	}
+
+	/* File upload message styling */
+	:global(.file-upload-message) {
+		transition: all 0.3s ease;
+		box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+	}
+
+	:global(.file-upload-message:hover) {
+		box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+		transform: translateY(-1px);
+	}
+
+	:global(.file-upload-message h4) {
+		margin: 0;
+		font-size: 0.95rem;
+		font-weight: 600;
+	}
+
+	:global(.file-upload-message p) {
+		margin: 0;
+		font-size: 0.8rem;
 	}
 </style>
 

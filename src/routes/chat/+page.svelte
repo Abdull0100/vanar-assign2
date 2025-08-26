@@ -68,6 +68,19 @@
 		sendMessage(text);
 		setTimeout(() => chatMessagesRef?.scrollToBottomPublic?.(), 50);
 	}
+
+	function handleFileUpload(file: File) {
+		const fileName = file.name;
+		const fileSize = (file.size / 1024).toFixed(1); // KB
+		const fileType = file.type || 'Unknown';
+		
+		// Create a file message that will be displayed in the chat
+		const fileMessage = `📎 **${fileName}**\n\n**File Details:**\n- Size: ${fileSize} KB\n- Type: ${fileType}\n\nPlease analyze this document and provide insights.`;
+		
+		// Automatically send the file message
+		sendMessage(fileMessage);
+		setTimeout(() => chatMessagesRef?.scrollToBottomPublic?.(), 50);
+	}
 </script>
 
 <svelte:head>
@@ -281,7 +294,7 @@
 						
 						<!-- Enhanced Chat Input -->
 						<div class="relative z-10">
-							<ChatInput value={messageText} loading={$loading} onSend={handleSend} onInput={(v) => messageText = v} />
+							<ChatInput value={messageText} loading={$loading} onSend={handleSend} onInput={(v) => messageText = v} onFileUpload={handleFileUpload} />
 						</div>
 					</div>
 				</div>

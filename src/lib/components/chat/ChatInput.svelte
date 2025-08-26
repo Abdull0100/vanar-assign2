@@ -3,12 +3,29 @@
 	export let loading: boolean = false;
 	export let onSend: () => void;
 	export let onInput: (v: string) => void;
+	export let onFileUpload: ((file: File) => void) | null = null;
+
+	let fileInput: HTMLInputElement;
 
 	function handleKeyPress(event: KeyboardEvent) {
 		if (event.key === 'Enter' && !event.shiftKey) {
 			event.preventDefault();
 			if (!loading && value.trim()) onSend();
 		}
+	}
+
+	function handleFileUpload(event: Event) {
+		const target = event.target as HTMLInputElement;
+		const file = target.files?.[0];
+		if (file && onFileUpload) {
+			onFileUpload(file);
+			// Reset the input
+			target.value = '';
+		}
+	}
+
+	function triggerFileUpload() {
+		fileInput?.click();
 	}
 </script>
 
@@ -56,7 +73,34 @@
 			</div>
 		</div>
 		
+		<!-- Hidden file input -->
+		<input
+			bind:this={fileInput}
+			type="file"
+			accept=".pdf,.doc,.docx,.txt,.md,.json,.csv,.xlsx,.xls"
+			on:change={handleFileUpload}
+			class="hidden"
+			aria-label="Upload document"
+		/>
+
 		<div class="flex flex-row lg:flex-col space-x-3 lg:space-x-0 lg:space-y-3">
+			<!-- Upload Document Button -->
+			<button
+				on:click={triggerFileUpload}
+				disabled={loading}
+				class="group relative inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-400 px-6 py-4 text-white text-base font-semibold hover:from-emerald-500 hover:to-teal-500 focus:ring-4 focus:ring-emerald-400/30 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300 ease-out hover:scale-105 hover:shadow-xl shadow-lg min-w-[120px]"
+				aria-label="Upload document to chat"
+			>
+				<span class="flex items-center">
+					<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+					</svg>
+					<span class="hidden sm:inline">Upload</span>
+					<span class="sm:hidden">📄</span>
+				</span>
+				<div class="absolute inset-0 rounded-2xl bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+			</button>
+
 			<!-- Send Button -->
 			<button
 				on:click={() => onSend()}
