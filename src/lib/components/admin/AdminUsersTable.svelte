@@ -21,21 +21,21 @@
 	export let formatDateOnly: (d: string) => string;
 </script>
 
-<div class="font-sans admin-users-font">
+<div class="font-sans">
 <Card.Root>
 	<Card.Header>
-		<Card.Title class="text-white">User Management</Card.Title>
-		<Card.Description class="text-white">Manage user roles, status, and view detailed statistics</Card.Description>
+		<Card.Title >User Management</Card.Title>
+		<Card.Description >Manage user roles, status, and view detailed statistics</Card.Description>
 	</Card.Header>
 	<Card.Content>
 		<Table.Root>
 			<Table.Header>
 				<Table.Row>
-					<Table.Head class="text-white">User</Table.Head>
-					<Table.Head class="text-white">Role</Table.Head>
-					<Table.Head class="text-white">Status</Table.Head>
-					<Table.Head class="text-white">Joined</Table.Head>
-					<Table.Head class="text-white">Actions</Table.Head>
+					<Table.Head >User</Table.Head>
+					<Table.Head >Role</Table.Head>
+					<Table.Head >Status</Table.Head>
+					<Table.Head >Joined</Table.Head>
+					<Table.Head >Actions</Table.Head>
 				</Table.Row>
 			</Table.Header>
 			<Table.Body>
@@ -45,48 +45,48 @@
 							<div class="flex items-center">
 								<div class="h-10 w-10 flex-shrink-0">
 									<div class="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-										<span class="text-sm font-medium text-white">
+										<span class="text-sm font-medium ">
 											{userItem.name ? userItem.name.charAt(0).toUpperCase() : userItem.email.charAt(0).toUpperCase()}
 										</span>
 									</div>
 								</div>
 								<div class="ml-4">
-									<div class="text-sm font-medium text-white">
+									<div class="text-sm font-medium ">
 										{userItem.name || 'No name'}
 									</div>
-									<div class="text-sm text-white">{userItem.email}</div>
+									<div class="text-sm ">{userItem.email}</div>
 								</div>
 							</div>
 						</Table.Cell>
 						<Table.Cell>
 							{#if currentUser && userItem.id === currentUser.id}
 								<div class="flex items-center space-x-2">
-									<span class="text-sm font-medium text-white">{userItem.role}</span>
-									<Badge variant="outline" class="text-white">Current user</Badge>
+									<span class="text-sm font-medium ">{userItem.role}</span>
+									<Badge variant="outline" >Current user</Badge>
 								</div>
 							{:else}
 								<Select.Root type="single" bind:value={userItem.role} onValueChange={(value) => onUpdateRole(userItem.id, value)}>
-									<Select.Trigger class="w-32 text-white">
-										<span data-slot="select-value" class="capitalize text-white">{userItem.role}</span>
+									<Select.Trigger class="w-32 ">
+										<span data-slot="select-value" class="capitalize ">{userItem.role}</span>
 									</Select.Trigger>
-									<Select.Content class="text-white">
-										<Select.Item value="user" class="text-white">User</Select.Item>
-										<Select.Item value="admin" class="text-white">Admin</Select.Item>
+									<Select.Content >
+										<Select.Item value="user" >User</Select.Item>
+										<Select.Item value="admin" >Admin</Select.Item>
 									</Select.Content>
 								</Select.Root>
 							{/if}
 						</Table.Cell>
 						<Table.Cell>
-							<Badge variant={userItem.emailVerified ? 'default' : 'secondary'} class="text-white">
+							<Badge variant={userItem.emailVerified ? 'default' : 'secondary'} >
 								{userItem.emailVerified ? 'Active' : 'Inactive'}
 							</Badge>
 						</Table.Cell>
-						<Table.Cell class="text-white">
+						<Table.Cell >
 							{formatDateOnly(userItem.createdAt)}
 						</Table.Cell>
 						<Table.Cell>
 							{#if currentUser && userItem.id === currentUser.id}
-								<span class="text-white">N/A</span>
+								<span >N/A</span>
 							{:else}
 								<div class="flex space-x-2">
 									<Button
@@ -94,7 +94,7 @@
 										size="sm"
 										type="button"
 										onclick={() => onToggleStatus(userItem.id, !!userItem.emailVerified)}
-										class="text-white"
+										
 									>
 										{userItem.emailVerified ? 'Disable' : 'Enable'}
 									</Button>
@@ -103,7 +103,7 @@
 										size="sm"
 										type="button"
 										onclick={() => onDetails(userItem.id)}
-										class="text-white"
+										
 									>
 										Details
 									</Button>
@@ -112,7 +112,7 @@
 										size="sm"
 										type="button"
 										onclick={() => onDelete(userItem.id, userItem.name || userItem.email)}
-										class="text-white"
+										
 									>
 										Delete
 									</Button>
@@ -127,16 +127,5 @@
 
 </Card.Root>
 </div>
-
-<style>
-	:global(.admin-users-font h1),
-	:global(.admin-users-font h2),
-	:global(.admin-users-font h3),
-	:global(.admin-users-font h4),
-	:global(.admin-users-font h5),
-	:global(.admin-users-font h6) {
-		font-family: var(--font-sans) !important;
-	}
-</style>
 
 
