@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Button } from '$lib/components/ui/button';
 	export let user: { id: string; role: string; name?: string | null; email?: string | null } | null = null;
 	export let currentPage: string = '';
 
@@ -18,17 +19,17 @@
 
 	function getNavClass(page: string): string {
 		return isCurrentPage(page)
-			? 'border-indigo-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium'
-			: 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium';
+			? 'inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium border-primary text-foreground'
+			: 'inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium border-transparent text-muted-foreground hover:text-foreground hover:border-border';
 	}
 </script>
 
-<nav class="bg-white shadow">
+<nav class="bg-background border-b border-border font-sans">
 	<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 		<div class="flex h-16 justify-between">
 			<div class="flex">
 				<div class="flex flex-shrink-0 items-center">
-					<a href="/" class="text-xl font-bold text-gray-900 hover:text-gray-700">Auth App</a>
+					<a href="/" class="text-xl font-bold text-foreground hover:text-muted-foreground">Auth App</a>
 				</div>
 				{#if user}
 					<div class="hidden sm:ml-6 sm:flex sm:space-x-8">
@@ -45,21 +46,22 @@
 				{#if user}
 					<div class="ml-3">
 						<div class="flex items-center space-x-4">
-							<span class="text-sm text-gray-700">
+							<span class="text-sm text-muted-foreground">
 								{user?.role === 'admin' ? 'Admin: ' : 'Welcome, '}{user?.name || user?.email}
 							</span>
-							<button
-								on:click={handleSignOut}
-								class="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+							<Button
+								variant="destructive"
+								type="button"
+								onclick={handleSignOut}
 							>
 								Sign Out
-							</button>
+							</Button>
 						</div>
 					</div>
 				{:else}
-					<div class="flex items-center space-x-4">
-						<a href="/auth/signin" class="rounded-md px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Sign In</a>
-						<a href="/auth/signup" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">Sign Up</a>
+					<div class="flex items-center space-x-2">
+						<Button href="/auth/signin" variant="ghost">Sign In</Button>
+						<Button href="/auth/signup">Sign Up</Button>
 					</div>
 				{/if}
 			</div>
