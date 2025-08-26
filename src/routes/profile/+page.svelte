@@ -208,7 +208,7 @@
 	<title>Profile - Auth App</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50">
+<div class="min-h-screen">
 	<!-- Navigation -->
 	<Navigation user={user ?? null} currentPage="profile" />
 
@@ -224,14 +224,14 @@
 						<div
 							class="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-indigo-600"
 						></div>
-						<p class="mt-2 text-gray-600">Loading profile...</p>
+						<p class="mt-2">Loading profile...</p>
 					</div>
 				{:else}
 					<div class="grid gap-6 lg:grid-cols-3">
 						<div class="lg:col-span-2">
 							<ProfileAccountOverview {user} bind:name bind:email {error} {success} {saving} onSubmit={updateProfile}>
 								<svelte:fragment slot="actions">
-									<button type="button" on:click={() => { name = user?.name || ''; error = ''; success = ''; }} class="inline-flex items-center rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors">
+									<button type="button" on:click={() => { name = user?.name || ''; error = ''; success = ''; }} class="inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium transition-colors">
 										<span class="mr-2">↩️</span>
 										Reset
 									</button>

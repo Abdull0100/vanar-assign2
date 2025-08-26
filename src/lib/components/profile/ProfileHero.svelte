@@ -1,26 +1,34 @@
 <script lang="ts">
+	import * as Card from "$lib/components/ui/card/index.js";
+	import { Badge } from "$lib/components/ui/badge";
+	import { User, Crown, Settings } from "@lucide/svelte";
+
 	export let user: { role?: string } | null = null;
 </script>
 
-<section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-600 via-emerald-600 to-teal-700 px-8 py-12 text-white shadow-2xl mb-8" role="banner" aria-labelledby="profile-settings-title">
-	<div class="absolute inset-0 bg-black/20"></div>
-	<div class="relative z-10">
+<Card.Root class="relative rounded-2xl bg-card text-card-foreground border mb-8" role="banner" aria-labelledby="profile-settings-title">
+	<Card.Header>
+		<Card.Title id="profile-settings-title" class="text-3xl font-bold mb-1">Profile Settings</Card.Title>
+		<Card.Description class="text-base text-muted-foreground">Manage your account and preferences</Card.Description>
+	</Card.Header>
+	<Card.Content>
 		<div class="flex items-center justify-between">
 			<div>
-				<h1 id="profile-settings-title" class="text-4xl font-bold mb-2">Profile Settings</h1>
-				<p class="text-xl text-green-100">Manage your account and preferences</p>
-				<div class="mt-4 inline-flex items-center rounded-full bg-white/20 backdrop-blur-sm px-4 py-2" role="status" aria-live="polite">
-					<div class="h-2 w-2 rounded-full bg-green-400 mr-2" aria-hidden="true"></div>
-					<span class="text-sm font-medium">{user?.role === 'admin' ? '👑 Administrator Account' : '👤 User Account'}</span>
-				</div>
-			</div>
-			<div class="hidden md:block">
-				<div class="h-32 w-32 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center" aria-hidden="true">
-					<span class="text-5xl">⚙️</span>
-				</div>
+				<Badge class="mt-4 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium" variant="secondary">
+					<div class="h-2 w-2 rounded-full bg-primary" aria-hidden="true"></div>
+					{#if user?.role === 'admin'}
+						<Crown class="w-4 h-4" />
+						<span>Administrator Account</span>
+					{:else}
+						<User class="w-4 h-4" />
+						<span>User Account</span>
+					{/if}
+				</Badge>
 			</div>
 		</div>
+	</Card.Content>
+	<!-- Right, vertically centered settings icon (~32x32) -->
+	<div class="absolute right-6 top-1/2 -translate-y-1/2" aria-hidden="true">
+		<Settings class="w-8 h-8" />
 	</div>
-</section>
-
-
+</Card.Root>
