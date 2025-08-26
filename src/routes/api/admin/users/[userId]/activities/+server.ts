@@ -41,11 +41,14 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		// Get user stats
 		const stats = await ActivityTracker.getUserStats(userId);
 
-		// Get user's chat messages count
-		const userChatMessages = await db.select().from(chatMessages).where(eq(chatMessages.userId, userId)).limit(100);
-
-		// Get user's conversations
+		// Get user's chat messages from their conversations
 		const userConversations = await db.select().from(conversations).where(eq(conversations.userId, userId)).limit(50);
+		const conversationIds = userConversations.map(conv => conv.id);
+		
+		// Get messages from user's conversations
+		const userChatMessages = conversationIds.length > 0 
+			? await db.select().from(chatMessages).where(eq(chatMessages.roomId, conversationIds[0])).limit(100)
+			: [];
 
 		return json({
 			user: {
@@ -62,9 +65,8 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			sessions,
 			chatMessages: userChatMessages.map(msg => ({
 				id: msg.id,
+				role: msg.role,
 				content: msg.content,
-				sender: msg.sender,
-				aiResponse: msg.aiResponse,
 				createdAt: msg.createdAt
 			})),
 			conversations: userConversations.map(conv => ({

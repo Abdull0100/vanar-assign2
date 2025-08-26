@@ -36,22 +36,19 @@ export const passwordResetTokens = pgTable("passwordResetTokens", {
 
 export const chatMessages = pgTable("chatMessages", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
-	conversationId: uuid().notNull(),
-	userId: uuid().notNull(),
-	createdAt: timestamp({ mode: 'string' }).defaultNow().notNull(),
+	roomId: uuid().notNull(),
+	role: text().notNull(),
 	content: text().notNull(),
-	sender: text().notNull(),
-	aiResponse: text(),
+	parentId: uuid(),
+	previousId: uuid(),
+	versionNumber: integer().default(1).notNull(),
+	createdAt: timestamp({ mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp({ mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
 	foreignKey({
-			columns: [table.conversationId],
+			columns: [table.roomId],
 			foreignColumns: [conversations.id],
-			name: "chatMessages_conversationId_conversations_id_fk"
-		}).onDelete("cascade"),
-	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [users.id],
-			name: "chatMessages_userId_users_id_fk"
+			name: "chatMessages_roomId_conversations_id_fk"
 		}).onDelete("cascade"),
 ]);
 

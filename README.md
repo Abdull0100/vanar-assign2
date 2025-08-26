@@ -253,24 +253,25 @@ The chat system uses a **room-based architecture** where:
 
 - **`conversations`** table represents chat rooms with `roomName`
 - **`chatMessages`** table stores individual messages with:
-  - `content`: User query or empty string for AI
-  - `sender`: 'user' or 'ai' identification
-  - `aiResponse`: AI response text (null for user messages)
-  - `conversationId`: Links message to specific room
+  - `role`: 'user', 'assistant', or 'system' identification
+  - `content`: Message body content
+  - `roomId`: Links message to specific room
+  - `parentId`: Direct previous message for conversation flow
+  - `previousId`: For forking/regeneration scenarios
+  - `versionNumber`: To track multiple forks/responses
 
 ### Key Design Principles
 
-1. **No Message Grouping**: Each message is stored separately
-2. **Room-Based Structure**: `conversationId` represents a chat room
-3. **Explicit Sender Identification**: Clear 'user' or 'ai' designation
-4. **Optional AI Responses**: `aiResponse` field can be null
+1. **Role-Based Messages**: Each message has a clear role (user/assistant/system)
+2. **Room-Based Structure**: `roomId` represents a chat room
+3. **Conversation Threading**: `parentId` maintains conversation flow
+4. **Message Forking**: `previousId` and `versionNumber` support editing/regeneration
 5. **Empty Room Filtering**: Rooms with no messages are automatically hidden
 
 ### Database Relationships
 
 ```
 users (1) ←→ (many) conversations
-users (1) ←→ (many) chatMessages
 conversations (1) ←→ (many) chatMessages
 ```
 

@@ -10,19 +10,14 @@ export const accountsRelations = relations(accounts, ({one}) => ({
 
 export const usersRelations = relations(users, ({many}) => ({
 	accounts: many(accounts),
-	chatMessages: many(chatMessages),
 	conversations: many(conversations),
 	sessions: many(sessions),
 }));
 
 export const chatMessagesRelations = relations(chatMessages, ({one}) => ({
 	conversation: one(conversations, {
-		fields: [chatMessages.conversationId],
+		fields: [chatMessages.roomId],
 		references: [conversations.id]
-	}),
-	user: one(users, {
-		fields: [chatMessages.userId],
-		references: [users.id]
 	}),
 }));
 

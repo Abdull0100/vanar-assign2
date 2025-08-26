@@ -1,6 +1,6 @@
 <script lang="ts">
-	export let memoizedConversations: Array<any> = [];
-	export let currentConversationId: string | null = null;
+	export let memoizedConversations: Array<{ id: string; roomName: string; createdAt: string; updatedAt: string; messageCount?: number }> = [];
+	export let currentRoomId: string | null = null;
 	export let onSelectConversation: (id: string) => void;
 	export let onNewConversation: () => void;
 	export let onDeleteConversation: (id: string) => void;
@@ -79,13 +79,13 @@
 				{#each memoizedConversations as conv (conv.id)}
 					{#key conv.id}
 					<div 
-						class="w-full mb-2 lg:mb-3 p-3 lg:p-4 rounded-lg transition-all duration-200 cursor-pointer border {currentConversationId === conv.id ? 'bg-indigo-50 border-indigo-200 shadow-md' : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm'}" 
+						class="w-full mb-2 lg:mb-3 p-3 lg:p-4 rounded-lg transition-all duration-200 cursor-pointer border {currentRoomId === conv.id ? 'bg-indigo-50 border-indigo-200 shadow-md' : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm'}" 
 						on:click={() => onSelectConversation(conv.id)}
 						on:keydown={(e) => e.key === 'Enter' && onSelectConversation(conv.id)}
 						role="button"
 						tabindex="0"
 						aria-label="Select conversation: {conv.roomName}"
-						aria-pressed={currentConversationId === conv.id}
+						aria-pressed={currentRoomId === conv.id}
 					>
 						<div class="flex items-center justify-between">
 							<p class="text-xs lg:text-sm font-medium text-gray-800 truncate flex-1 mr-2 lg:mr-3">{conv.roomName}</p>
