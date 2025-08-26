@@ -1,4 +1,7 @@
 <script lang="ts">
+	import * as Card from '$lib/components/ui/card';
+	import { Badge } from '$lib/components/ui/badge';
+
 	export let users: Array<{ id: string; role: string; emailVerified: string | null; createdAt: string }> = [];
 	export let userStats: any = null;
 	export let mostActiveUsers: any[] = [];
@@ -14,8 +17,8 @@
 </script>
 
 <div class="grid grid-cols-1 gap-6 md:grid-cols-4">
-	<div class="overflow-hidden rounded-lg bg-card border">
-		<div class="p-5">
+	<Card.Root>
+		<Card.Content>
 			<div class="flex items-center">
 				<div class="flex-shrink-0">
 					<div class="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
@@ -31,11 +34,11 @@
 					</dl>
 				</div>
 			</div>
-		</div>
-	</div>
+		</Card.Content>
+	</Card.Root>
 
-	<div class="overflow-hidden rounded-lg bg-card border">
-		<div class="p-5">
+	<Card.Root>
+		<Card.Content>
 			<div class="flex items-center">
 				<div class="flex-shrink-0">
 					<div class="flex h-8 w-8 items-center justify-center rounded-md bg-secondary">
@@ -51,11 +54,11 @@
 					</dl>
 				</div>
 			</div>
-		</div>
-	</div>
+		</Card.Content>
+	</Card.Root>
 
-	<div class="overflow-hidden rounded-lg bg-card border">
-		<div class="p-5">
+	<Card.Root>
+		<Card.Content>
 			<div class="flex items-center">
 				<div class="flex-shrink-0">
 					<div class="flex h-8 w-8 items-center justify-center rounded-md bg-accent">
@@ -71,11 +74,11 @@
 					</dl>
 				</div>
 			</div>
-		</div>
-	</div>
+		</Card.Content>
+	</Card.Root>
 
-	<div class="overflow-hidden rounded-lg bg-card border">
-		<div class="p-5">
+	<Card.Root>
+		<Card.Content>
 			<div class="flex items-center">
 				<div class="flex-shrink-0">
 					<div class="flex h-8 w-8 items-center justify-center rounded-md bg-muted">
@@ -91,14 +94,14 @@
 					</dl>
 				</div>
 			</div>
-		</div>
-	</div>
+		</Card.Content>
+	</Card.Root>
 </div>
 
 {#if userStats}
 	<div class="grid grid-cols-1 gap-6 md:grid-cols-2 mt-6">
-		<div class="overflow-hidden rounded-lg bg-card border">
-			<div class="p-5">
+		<Card.Root>
+			<Card.Content>
 				<h3 class="text-lg font-medium mb-4">Chat Statistics</h3>
 				<div class="space-y-3">
 					<div class="flex justify-between">
@@ -110,24 +113,24 @@
 						<span class="text-sm font-medium">{userStats.totalConversations}</span>
 					</div>
 				</div>
-			</div>
-		</div>
+			</Card.Content>
+		</Card.Root>
 
-		<div class="overflow-hidden rounded-lg bg-card border">
-			<div class="p-5">
+		<Card.Root>
+			<Card.Content>
 				<h3 class="text-lg font-medium mb-4">Most Active Users</h3>
 				<div class="space-y-2">
 					{#each mostActiveUsers.slice(0, 5) as activeUser}
 						<div class="flex justify-between items-center">
 							<span class="text-sm">{activeUser.name || activeUser.email}</span>
-							<span class="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded-full">
+							<Badge variant="secondary" class="rounded-full px-2 py-1 text-xs">
 								{activeUser.stats?.totalChatMessages || 0} messages
-							</span>
+							</Badge>
 						</div>
 					{/each}
 				</div>
-			</div>
-		</div>
+			</Card.Content>
+		</Card.Root>
 	</div>
 {/if}
 
