@@ -44,12 +44,19 @@
 		openDeleteAllModal,
 		closeDeleteAllModal,
 		confirmDeleteAllConversations,
-		editMessage
+		editMessage,
+		continueFromMessage,
+		getCurrentVersionInfo,
+		goToPreviousVersion,
+		goToNextVersion
 	} = store;
 
 	let messageText = '';
 	let chatMessagesRef: any;
 	let initializing = true;
+	
+	// Reactive version info - watch both conversations and messages for changes
+	$: versionInfo = $conversations.length > 0 ? getCurrentVersionInfo() : null;
 
 	onMount(() => {
 		loadConversationsFromStorage();
@@ -165,50 +172,7 @@
 	
 	<!-- Enhanced Chat Container -->
 	<div class="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-		<!-- Enhanced Welcome Header for New Users -->
-		{#if $conversations.length === 0 && !initializing}
-			<div class="text-center mb-12 animate-fade-in">
-				<div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-indigo-300 via-violet-300 to-pink-300 rounded-full mb-6 shadow-lg animate-bounce">
-					<img src="/gemini-logo.png" alt="AI" class="w-10 h-10 object-contain" />
-				</div>
-				<h1 class="text-4xl font-bold text-neutral-800 mb-4 bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
-					Welcome to Vanar AI Assistant
-				</h1>
-				<p class="text-xl text-neutral-600 max-w-3xl mx-auto leading-relaxed mb-8">
-					Your intelligent conversation partner powered by Google Gemini. Start a new conversation to begin exploring the possibilities.
-				</p>
-				<!-- Feature highlights -->
-				<div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-					<div class="bg-white/60 backdrop-blur-sm rounded-xl p-6 border border-indigo-200/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-						<div class="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mb-4 mx-auto">
-							<svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-							</svg>
-						</div>
-						<h3 class="text-lg font-semibold text-neutral-800 mb-2">Lightning Fast</h3>
-						<p class="text-neutral-600">Get instant responses powered by advanced AI technology</p>
-					</div>
-					<div class="bg-white/60 backdrop-blur-sm rounded-xl p-6 border border-violet-200/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-						<div class="w-12 h-12 bg-violet-100 rounded-lg flex items-center justify-center mb-4 mx-auto">
-							<svg class="w-6 h-6 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-							</svg>
-						</div>
-						<h3 class="text-lg font-semibold text-neutral-800 mb-2">Smart & Secure</h3>
-						<p class="text-neutral-600">Your conversations are protected with enterprise-grade security</p>
-					</div>
-					<div class="bg-white/60 backdrop-blur-sm rounded-xl p-6 border border-pink-200/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-						<div class="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center mb-4 mx-auto">
-							<svg class="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
-							</svg>
-						</div>
-						<h3 class="text-lg font-semibold text-neutral-800 mb-2">Always Learning</h3>
-						<p class="text-neutral-600">Continuously improving to provide better assistance</p>
-					</div>
-				</div>
-			</div>
-		{/if}
+
 
 		<!-- Enhanced Chat Layout with Different Header/Footer Design -->
 		<div class="relative">
@@ -276,6 +240,10 @@
 								messages={$messages}
 								{initializing}
 								onEditMessage={editMessage}
+								onContinueFromMessage={continueFromMessage}
+								{versionInfo}
+								onGoToPreviousVersion={goToPreviousVersion}
+								onGoToNextVersion={goToNextVersion}
 							/>
 						</div>
 						

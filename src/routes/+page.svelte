@@ -49,7 +49,7 @@
 							<Button 
 								size="lg" 
 								class="text-lg px-8 py-6 bg-indigo-300 hover:bg-indigo-400 text-indigo-900 shadow-md hover:shadow-lg transition-all duration-200 rounded-xl" 
-								onclick={() => goto('/auth/signup')}
+								onclick={() => goto('/auth/signin')}
 							>
 								Get Started
 							</Button>

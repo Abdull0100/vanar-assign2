@@ -8,7 +8,7 @@
 	}
 </script>
 
-<div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 animate-fade-in">
+<div class="mt-8 grid gap-6 grid-cols-1 animate-fade-in">
 	<!-- AI Chat Card -->
 	<div class="group relative overflow-hidden rounded-xl bg-white p-6 shadow-md border border-indigo-100 transition-all duration-500 hover:shadow-xl hover:-translate-y-2 animate-float" style="animation-delay: 0.1s">
 		<div class="absolute inset-0 bg-gradient-to-r from-indigo-50 to-blue-50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -32,9 +32,14 @@
 			<p class="text-gray-600 mb-4">Chat with our intelligent AI assistant for help, creativity, and problem-solving.</p>
 			<button
 				on:click={() => navigateTo('/chat')}
-				class="w-full rounded-xl bg-indigo-300 px-4 py-3 text-indigo-900 font-medium hover:bg-indigo-400 hover:scale-105 transition-all duration-300 shadow-md hover:shadow-lg group-hover:animate-pulse"
+				class="w-full rounded-xl bg-gradient-to-r from-indigo-400 to-blue-500 px-6 py-4 text-white font-semibold hover:from-indigo-500 hover:to-blue-600 hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 group-hover:animate-pulse border-0 focus:outline-none focus:ring-4 focus:ring-indigo-300/50"
 			>
-				Start Conversation
+				<div class="flex items-center justify-center space-x-2">
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+					</svg>
+					<span>Start Conversation</span>
+				</div>
 			</button>
 		</div>
 	</div>
@@ -62,9 +67,14 @@
 			<p class="text-gray-600 mb-4">Update your profile information, change password, and manage account settings.</p>
 			<button
 				on:click={() => navigateTo('/profile')}
-				class="w-full rounded-xl bg-violet-300 px-4 py-3 text-violet-900 font-medium hover:bg-violet-400 hover:scale-105 transition-all duration-300 shadow-md hover:shadow-lg group-hover:animate-pulse"
+				class="w-full rounded-xl bg-gradient-to-r from-violet-400 to-purple-500 px-6 py-4 text-white font-semibold hover:from-violet-500 hover:to-purple-600 hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 group-hover:animate-pulse border-0 focus:outline-none focus:ring-4 focus:ring-violet-300/50"
 			>
-				Edit Profile
+				<div class="flex items-center justify-center space-x-2">
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+					</svg>
+					<span>Edit Profile</span>
+				</div>
 			</button>
 		</div>
 	</div>
@@ -93,9 +103,14 @@
 				<p class="text-gray-600 mb-4">Access administrative tools, manage users, and view system analytics.</p>
 				<button
 					on:click={() => navigateTo('/admin')}
-					class="w-full rounded-xl bg-pink-300 px-4 py-3 text-pink-900 font-medium hover:bg-pink-400 hover:scale-105 transition-all duration-300 shadow-md hover:shadow-lg group-hover:animate-pulse"
+					class="w-full rounded-xl bg-gradient-to-r from-pink-400 to-rose-500 px-6 py-4 text-white font-semibold hover:from-pink-500 hover:to-rose-600 hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 group-hover:animate-pulse border-0 focus:outline-none focus:ring-4 focus:ring-pink-300/50"
 				>
-					Open Admin Panel
+					<div class="flex items-center justify-center space-x-2">
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+						</svg>
+						<span>Open Admin Panel</span>
+					</div>
 				</button>
 			</div>
 		</div>
@@ -119,8 +134,13 @@
 					</div>
 				</div>
 				<p class="text-gray-600 mb-4">You have standard user access. Contact an administrator for role upgrades.</p>
-				<div class="w-full rounded-lg bg-gray-100 px-4 py-3 text-gray-600 font-medium text-center">
-					Standard User
+				<div class="w-full rounded-xl bg-gradient-to-r from-gray-400 to-slate-500 px-6 py-4 text-white font-semibold text-center shadow-lg border-0">
+					<div class="flex items-center justify-center space-x-2">
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+						</svg>
+						<span>Standard User</span>
+					</div>
 				</div>
 			</div>
 		</div>

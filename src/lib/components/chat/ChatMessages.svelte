@@ -14,6 +14,10 @@
 	export let messages: Array<{ id: string; content: string; aiResponse: string | null; createdAt: string; isStreaming?: boolean }>= [];
 	export let initializing: boolean = false;
 	export let onEditMessage: ((messageId: string, newContent: string) => void) | null = null;
+	export let onContinueFromMessage: ((messageId: string) => void) | null = null;
+	export let versionInfo: { currentVersion: number; totalVersions: number; canGoBack: boolean; canGoForward: boolean } | null = null;
+	export let onGoToPreviousVersion: (() => void) | null = null;
+	export let onGoToNextVersion: (() => void) | null = null;
 
 	let aiResponseContainer: HTMLElement;
 	let messagesContainer: HTMLElement;
@@ -57,85 +61,58 @@
 
 	function renderMarkdown(text: string): string {
 		try {
-			// Check if this is a file upload message
-			if (text.startsWith('📎 **') && text.includes('**File Details:**')) {
-				// Extract file name from the message
-				const fileNameMatch = text.match(/📎 \*\*(.*?)\*\*/);
-				const fileName = fileNameMatch ? fileNameMatch[1] : 'Unknown File';
-				
-				// Create a special file upload display
-				const fileDisplay = `
-					<div class="file-upload-message bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-						<div class="flex items-center space-x-3">
-							<div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-								<svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-								</svg>
-							</div>
-							<div class="flex-1">
-								<h4 class="font-semibold text-blue-900">${fileName}</h4>
-								<p class="text-sm text-blue-700">Document uploaded successfully</p>
-							</div>
-							<div class="text-xs text-blue-500">
-								📎
-							</div>
-						</div>
-					</div>
-				`;
-				
-				// Replace the file message with the styled display
-				text = text.replace(/📎 \*\*.*?\*\*[\s\S]*?Please analyze this document and provide insights\./, fileDisplay);
-			}
-			
-			// Tables (basic support) - only apply when there are actual table patterns
-			// Look for multiple lines with pipe separators to identify actual tables
+			// Tables (basic support) - process tables properly
 			const lines = text.split('\n');
-			let inTable = false;
-			let tableLines = [];
+			let processedLines = [];
+			let i = 0;
 			
-			for (let i = 0; i < lines.length; i++) {
+			while (i < lines.length) {
 				const line = lines[i];
+				
 				// Check if this line looks like a table row (contains | and has multiple cells)
 				if (line.includes('|') && line.split('|').length > 2) {
-					if (!inTable) {
-						inTable = true;
-						tableLines = [];
+					// Start of a table - collect all table rows
+					let tableRows = [];
+					let j = i;
+					
+					while (j < lines.length) {
+						const tableLine = lines[j];
+						
+						// Skip separator lines (lines that are mostly dashes and pipes)
+						if (tableLine.match(/^[\s\-\|]+$/)) {
+							j++;
+							continue;
+						}
+						
+						// Check if this is still a table row
+						if (tableLine.includes('|') && tableLine.split('|').length > 2) {
+							// Check if this is the first row (header row)
+							const isHeaderRow = tableRows.length === 0;
+							const cellClass = isHeaderRow ? 'border border-gray-300 px-3 py-2 bg-indigo-50 font-semibold text-indigo-900' : 'border border-gray-300 px-3 py-2';
+							const cells = tableLine.split('|').map(cell => `<td class="${cellClass}">${cell.trim()}</td>`).join('');
+							tableRows.push(`<tr>${cells}</tr>`);
+							j++;
+						} else {
+							break; // End of table
+						}
 					}
-					tableLines.push(line);
+					
+					// Create the table if we have rows
+					if (tableRows.length > 0) {
+						const tableHtml = `<table class="border-collapse border border-gray-300 my-4 w-full">${tableRows.join('')}</table>`;
+						processedLines.push(tableHtml);
+						i = j; // Skip to after the table
+					} else {
+						processedLines.push(line);
+						i++;
+					}
 				} else {
-					// If we were in a table and now we're not, process the table
-					if (inTable && tableLines.length > 0) {
-						const tableHtml = tableLines.map(tableLine => {
-							const cells = tableLine.split('|').map(cell => `<td class="border border-gray-300 px-3 py-2">${cell.trim()}</td>`).join('');
-							return `<tr>${cells}</tr>`;
-						}).join('');
-						
-						const fullTable = `<table class="border-collapse border border-gray-300 my-4 w-full">${tableHtml}</table>`;
-						
-						// Replace the table lines in the original text
-						const tableText = tableLines.join('\n');
-						text = text.replace(tableText, fullTable);
-						
-						// Reset for next potential table
-						inTable = false;
-						tableLines = [];
-					}
+					processedLines.push(line);
+					i++;
 				}
 			}
 			
-			// Handle case where table is at the end of text
-			if (inTable && tableLines.length > 0) {
-				const tableHtml = tableLines.map(tableLine => {
-					const cells = tableLine.split('|').map(cell => `<td class="border border-gray-300 px-3 py-2">${cell.trim()}</td>`).join('');
-					return `<tr>${cells}</tr>`;
-				}).join('');
-				
-				const fullTable = `<table class="border-collapse border border-gray-300 my-4 w-full">${tableHtml}</table>`;
-				
-				// Replace the table lines in the original text
-				const tableText = tableLines.join('\n');
-				text = text.replace(tableText, fullTable);
-			}
+			text = processedLines.join('\n');
 			
 			marked.setOptions({ breaks: true, gfm: true });
 			const sanitized = text
@@ -258,6 +235,63 @@
 			</div>
 			{/if}
 		{:else}
+			<!-- Debug Version Info -->
+			<div class="mb-2 text-center text-xs text-gray-500">
+				Debug: versionInfo = {JSON.stringify(versionInfo)}
+			</div>
+			
+			<!-- Test Version Creation Button -->
+			<div class="mb-2 text-center">
+				<button 
+					on:click={() => {
+						// Test version creation by editing the first message
+						if (messages.length > 0) {
+							const firstMessage = messages[0];
+							console.log('Creating test version by editing first message...');
+							// Simulate editing the first message
+							if (onEditMessage) {
+								onEditMessage(firstMessage.id, firstMessage.content + ' (edited)');
+							}
+						}
+					}}
+					class="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+				>
+					Test Create Version
+				</button>
+			</div>
+			
+			<!-- Version Navigation -->
+			{#if versionInfo && versionInfo.totalVersions >= 1}
+				<div class="flex items-center justify-center mb-4">
+					<div class="flex items-center space-x-2 bg-white rounded-lg border border-gray-200 px-3 py-2 shadow-sm">
+						<button
+							on:click={onGoToPreviousVersion}
+							disabled={!versionInfo.canGoBack}
+							class="flex items-center justify-center w-6 h-6 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-gray-600"
+							title="Previous version"
+						>
+							<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<path d="M15 18l-6-6 6-6"/>
+							</svg>
+						</button>
+						
+						<span class="text-sm font-medium text-gray-700">
+							{versionInfo.currentVersion} / {versionInfo.totalVersions}
+						</span>
+						
+						<button
+							on:click={onGoToNextVersion}
+							disabled={!versionInfo.canGoForward}
+							class="flex items-center justify-center w-6 h-6 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-gray-600"
+							title="Next version"
+						>
+							<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<path d="M9 18l6-6-6-6"/>
+							</svg>
+						</button>
+					</div>
+				</div>
+			{/if}
 			<div class="mb-4 text-center">
 				<p class="text-xs text-gray-400 italic">💡 Each message represents a complete Q&A pair • All deletions provide guaranteed permanent erasure from all systems</p>
 			</div>
@@ -284,7 +318,7 @@
 											on:click={() => saveEdit(messageItem.id)}
 											class="px-3 py-1 text-xs rounded bg-indigo-600 hover:bg-indigo-700 text-white"
 										>
-											Save
+											Save & Regenerate
 										</button>
 									</div>
 								</div>
@@ -373,10 +407,10 @@
 						</div>
 					</div>
 					
-					<!-- AI response action button -->
+					<!-- AI response action buttons -->
 					{#if messageItem.aiResponse && messageItem.aiResponse.length > 0 && !messageItem.isStreaming}
 						<div class="flex justify-start ml-10 mt-1">
-							<div class="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+							<div class="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
 								<button 
 									on:click={() => copyResponse(messageItem.id, messageItem.aiResponse || '')}
 									class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors duration-150"
@@ -393,6 +427,21 @@
 										{/if}
 									</svg>
 								</button>
+								{#if onContinueFromMessage && idx < messages.length - 1}
+									<button 
+										on:click={() => onContinueFromMessage(messageItem.id)}
+										class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors duration-150"
+										title="Continue from here"
+										aria-label="Continue conversation from this point"
+									>
+										<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+											<path d="M8 3H5a2 2 0 0 0-2 2v3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+											<path d="M21 8V5a2 2 0 0 0-2-2h-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+											<path d="M3 16v3a2 2 0 0 0 2 2h3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+											<path d="M16 21h3a2 2 0 0 0 2-2v-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+										</svg>
+									</button>
+								{/if}
 							</div>
 						</div>
 					{/if}
@@ -456,26 +505,26 @@
 		color: #ecfdf5;
 	}
 
-	/* File upload message styling */
-	:global(.file-upload-message) {
-		transition: all 0.3s ease;
-		box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+	/* Editing state styling */
+	.editing-message {
+		border: 2px solid #4f46e5;
+		box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
 	}
 
-	:global(.file-upload-message:hover) {
-		box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
-		transform: translateY(-1px);
+	/* Continue from message indicator */
+	.continue-indicator {
+		position: relative;
 	}
 
-	:global(.file-upload-message h4) {
-		margin: 0;
-		font-size: 0.95rem;
-		font-weight: 600;
-	}
-
-	:global(.file-upload-message p) {
-		margin: 0;
-		font-size: 0.8rem;
+	.continue-indicator::before {
+		content: '';
+		position: absolute;
+		left: -8px;
+		top: 0;
+		bottom: 0;
+		width: 3px;
+		background: linear-gradient(to bottom, #4f46e5, #7c3aed);
+		border-radius: 2px;
 	}
 </style>
 
