@@ -1,50 +1,73 @@
-<div class="bg-gray-50 py-12">
+<script lang="ts">
+	import * as Card from '$lib/components/ui/card';
+	// Lucide icons
+	import { Sparkles, Lock, Database, MessageSquare } from '@lucide/svelte';
+</script>
+
+<div class="bg-background py-16 font-sans text-foreground">
 	<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 		<div class="lg:text-center">
-			<h2 class="text-base font-semibold tracking-wide text-indigo-600 uppercase">
+			<h2 class="font-sans text-2xl font-semibold tracking-wide text-primary uppercase">
 				Technology Stack
 			</h2>
-			<p class="mt-2 text-3xl leading-8 font-extrabold tracking-tight text-gray-900 sm:text-4xl">
+			<p class="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
 				Built with modern technologies
+			</p>
+			<p class="mt-4 max-w-2xl text-muted-foreground text-lg lg:mx-auto">
+				Every layer is carefully chosen for performance, security, and scalability.
 			</p>
 		</div>
 
-		<div class="mt-10">
-			<div class="grid grid-cols-2 gap-8 md:grid-cols-4">
-				<div class="text-center">
-					<div class="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-indigo-500 text-white">
-						<span class="text-lg font-bold">SK</span>
-					</div>
-					<h3 class="mt-4 text-lg font-medium text-gray-900">SvelteKit</h3>
-					<p class="mt-2 text-base text-gray-500">Full-stack web framework</p>
-				</div>
+		<div class="mt-12">
+			<div class="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-4">
+				<Card.Root class="bg-card text-card-foreground transition-transform duration-200 hover:scale-[1.03] hover:shadow-lg">
+					<Card.Content class="p-6 text-center">
+						<div class="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-primary text-primary-foreground">
+							<Sparkles class="h-6 w-6" />
+						</div>
+						<h3 class="mt-5 text-lg font-sans font-semibold text-card-foreground">SvelteKit</h3>
+						<p class="mt-2 text-sm text-muted-foreground">
+							Full-stack web framework
+						</p>
+					</Card.Content>
+				</Card.Root>
 
-				<div class="text-center">
-					<div class="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-indigo-500 text-white">
-						<span class="text-lg font-bold">A</span>
-					</div>
-					<h3 class="mt-4 text-lg font-medium text-gray-900">Auth.js</h3>
-					<p class="mt-2 text-base text-gray-500">Complete authentication</p>
-				</div>
+				<Card.Root class="bg-card text-card-foreground transition-transform duration-200 hover:scale-[1.03] hover:shadow-lg">
+					<Card.Content class="p-6 text-center">
+						<div class="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-primary text-primary-foreground">
+							<Lock class="h-6 w-6" />
+						</div>
+						<h3 class="mt-5 text-lg font-sans font-semibold text-card-foreground">Auth.js</h3>
+						<p class="mt-2 text-sm text-muted-foreground">
+							Complete authentication
+						</p>
+					</Card.Content>
+				</Card.Root>
 
-				<div class="text-center">
-					<div class="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-indigo-500 text-white">
-						<span class="text-lg font-bold">D</span>
-					</div>
-					<h3 class="mt-4 text-lg font-medium text-gray-900">Drizzle</h3>
-					<p class="mt-2 text-base text-gray-500">Type-safe ORM</p>
-				</div>
+				<Card.Root class="bg-card text-card-foreground transition-transform duration-200 hover:scale-[1.03] hover:shadow-lg">
+					<Card.Content class="p-6 text-center">
+						<div class="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-primary text-primary-foreground">
+							<Database class="h-6 w-6" />
+						</div>
+						<h3 class="mt-5 text-lg font-sans font-semibold text-card-foreground">Drizzle</h3>
+						<p class="mt-2 text-sm text-muted-foreground">
+							Type-safe ORM
+						</p>
+					</Card.Content>
+				</Card.Root>
 
-				<div class="text-center">
-					<div class="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-indigo-500 text-white">
-						<span class="text-lg font-bold">G</span>
-					</div>
-					<h3 class="mt-4 text-lg font-medium text-gray-900">Gemini</h3>
-					<p class="mt-2 text-base text-gray-500">AI chat integration</p>
-				</div>
+				<Card.Root class="bg-card text-card-foreground transition-transform duration-200 hover:scale-[1.03] hover:shadow-lg">
+					<Card.Content class="p-6 text-center">
+						<div class="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-primary text-primary-foreground">
+							<MessageSquare class="h-6 w-6" />
+						</div>
+						<h3 class="mt-5 text-lg font-sans font-semibold text-card-foreground">Gemini</h3>
+						<p class="mt-2 text-sm text-muted-foreground">
+							AI chat integration
+						</p>
+					</Card.Content>
+				</Card.Root>
 			</div>
 		</div>
 	</div>
 </div>
-
-

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
+	import { goto } from '$app/navigation';
 	export let user: { id: string; role: string; name?: string | null; email?: string | null } | null = null;
 	export let currentPage: string = '';
 
@@ -9,7 +10,7 @@
 		} catch (e) {
 			// ignore errors; we'll still redirect
 		} finally {
-			window.location.assign('/');
+			goto('/');
 		}
 	}
 
@@ -33,11 +34,11 @@
 				</div>
 				{#if user}
 					<div class="hidden sm:ml-6 sm:flex sm:space-x-8">
-						<a href="/dashboard" class={getNavClass('dashboard')}>Dashboard</a>
-						<a href="/chat" class={getNavClass('chat')}>AI Chat</a>
-						<a href="/profile" class={getNavClass('profile')}>Profile</a>
+						<a href="/dashboard" class={getNavClass('dashboard')} aria-current={isCurrentPage('dashboard') ? 'page' : undefined}>Dashboard</a>
+						<a href="/chat" class={getNavClass('chat')} aria-current={isCurrentPage('chat') ? 'page' : undefined}>AI Chat</a>
+						<a href="/profile" class={getNavClass('profile')} aria-current={isCurrentPage('profile') ? 'page' : undefined}>Profile</a>
 						{#if user?.role === 'admin'}
-							<a href="/admin" class={getNavClass('admin')}>Admin Panel</a>
+							<a href="/admin" class={getNavClass('admin')} aria-current={isCurrentPage('admin') ? 'page' : undefined}>Admin Panel</a>
 						{/if}
 					</div>
 				{/if}

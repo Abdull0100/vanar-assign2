@@ -111,11 +111,21 @@
     font-family: var(--font-sans);
   }
   h1,h2,h3,h4,h5,h6 {
-    font-family: var(--font-serif);
+    font-family: var(--font-sans);
     color: var(--color-foreground);
   }
   code, pre, kbd, samp {
     font-family: var(--font-mono);
     color: var(--color-foreground);
   }
+}
+
+::selection {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+::-moz-selection { /* Firefox */
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
