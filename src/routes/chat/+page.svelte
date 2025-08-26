@@ -123,6 +123,20 @@
 		::-webkit-scrollbar-thumb:hover {
 			background: linear-gradient(45deg, #4f46e5, #7c3aed);
 		}
+		
+		/* Ensure chat grid maintains fixed height */
+		.chat-grid {
+			height: calc(100vh - 20rem) !important;
+			max-height: calc(100vh - 20rem) !important;
+			overflow: hidden;
+		}
+		
+		/* Ensure sidebar maintains fixed height */
+		.chat-sidebar {
+			height: 100% !important;
+			max-height: 100% !important;
+			overflow: hidden;
+		}
 	</style>
 </svelte:head>
 
@@ -210,10 +224,10 @@
 			</div>
 
 			<!-- Main Chat Grid -->
-			<div class="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8 h-[calc(100vh-20rem)] min-h-[600px]">
+			<div class="chat-grid grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8 h-[calc(100vh-20rem)] min-h-[600px] max-h-[calc(100vh-20rem)]">
 				<!-- Enhanced Sidebar -->
-				<div class="order-2 lg:order-1">
-					<div class="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-indigo-200/50 overflow-hidden h-full">
+				<div class="chat-sidebar order-2 lg:order-1 h-full">
+					<div class="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-indigo-200/50 overflow-hidden h-full max-h-full">
 						<ChatSidebar
 							memoizedConversations={$conversations}
 							currentConversationId={$currentConversationId}

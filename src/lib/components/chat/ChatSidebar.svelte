@@ -11,7 +11,7 @@
 	export let initializing: boolean = false;
 </script>
 
-<div class="h-full flex flex-col bg-white">
+<div class="h-full flex flex-col bg-white overflow-hidden max-h-full">
 	<!-- Modern Header with Logo -->
 	<div class="p-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
 		<div class="flex items-center">
@@ -33,7 +33,7 @@
 	</div>
 
 	<!-- Navigation Links -->
-	<div class="p-4 border-b border-gray-200">
+	<div class="p-4 border-b border-gray-200 flex-shrink-0">
 		<button 
 			on:click={onNewConversation} 
 			class="w-full flex items-center px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100 transition-colors group"
@@ -56,10 +56,13 @@
 			Library
 		</button>
 	</div>
-	<!-- Chats Section -->
-	<div class="p-4">
-		<h4 class="text-sm font-semibold text-gray-900 mb-3">Chats</h4>
-		<div class="flex-1 overflow-y-auto" style="contain: layout style paint;">
+	
+	<!-- Scrollable Chats Section -->
+	<div class="flex-1 flex flex-col min-h-0 overflow-hidden">
+		<div class="p-4 flex-shrink-0">
+			<h4 class="text-sm font-semibold text-gray-900 mb-3">Chats</h4>
+		</div>
+		<div class="flex-1 overflow-y-auto px-4 pb-4" style="contain: layout style paint;">
 		{#if error && (error.includes('rate limit') || error.includes('quota') || error.includes('high demand'))}
 			<div class="mb-6 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-xl shadow-sm">
 				<div class="flex items-start text-yellow-800">
@@ -114,6 +117,7 @@
 						tabindex="0"
 						aria-label="Select conversation: {conv.roomName}"
 						aria-pressed={currentConversationId === conv.id}
+						style="min-height: 44px;"
 					>
 						<div class="flex items-center justify-between">
 							<div class="flex items-center flex-1 min-w-0">
@@ -123,7 +127,7 @@
 									</svg>
 								</div>
 								<div class="min-w-0 flex-1">
-									<p class="text-sm text-gray-700 truncate">{conv.roomName}</p>
+									<p class="text-sm text-gray-700 truncate leading-tight" title="{conv.roomName}">{conv.roomName}</p>
 								</div>
 							</div>
 							<button 
@@ -149,7 +153,7 @@
 		
 	<!-- Clear All History Button -->
 	{#if memoizedConversations.length > 0}
-		<div class="p-4 border-t border-gray-200">
+		<div class="p-4 border-t border-gray-200 flex-shrink-0">
 			<button
 				on:click={onClearAll}
 				class="w-full flex items-center px-3 py-2 text-sm text-gray-700 rounded-lg hover:bg-gray-100 transition-colors group"
@@ -188,5 +192,50 @@
 	
 	.vanar-logo:hover {
 		animation: spin-slow 2s linear infinite, glow 1s ease-in-out infinite;
+	}
+	
+	/* Custom scrollbar styling */
+	.overflow-y-auto::-webkit-scrollbar {
+		width: 8px;
+	}
+	
+	.overflow-y-auto::-webkit-scrollbar-track {
+		background: rgba(243, 244, 246, 0.5);
+		border-radius: 4px;
+	}
+	
+	.overflow-y-auto::-webkit-scrollbar-thumb {
+		background: linear-gradient(to bottom, rgba(139, 92, 246, 0.4), rgba(99, 102, 241, 0.4));
+		border-radius: 4px;
+		transition: background 0.2s ease;
+	}
+	
+	.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+		background: linear-gradient(to bottom, rgba(139, 92, 246, 0.6), rgba(99, 102, 241, 0.6));
+	}
+	
+	/* Firefox scrollbar */
+	.overflow-y-auto {
+		scrollbar-width: thin;
+		scrollbar-color: rgba(139, 92, 246, 0.4) rgba(243, 244, 246, 0.5);
+	}
+	
+	/* Ensure proper text truncation */
+	.truncate {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	
+	/* Ensure sidebar maintains fixed height */
+	:global(.h-full) {
+		height: 100% !important;
+		max-height: 100% !important;
+	}
+	
+	/* Ensure scrollable area is properly constrained */
+	.flex-1 {
+		flex: 1 1 0%;
+		min-height: 0;
 	}
 </style>
