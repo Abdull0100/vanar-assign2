@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import * as Card from '$lib/components/ui/card/index.js';
+	import { Bot, User as UserIcon, ShieldCheck, BarChart3 } from '@lucide/svelte';
 
 	export let isAdmin: boolean = false;
 
@@ -8,95 +10,96 @@
 	}
 </script>
 
-<div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+<div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 font-sans">
 	<!-- AI Chat Card -->
-	<div class="group relative overflow-hidden rounded-xl bg-white p-6 shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-		<div class="absolute inset-0 bg-gradient-to-r from-blue-50 to-indigo-50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-		<div class="relative z-10">
+	<Card.Root class="group relative overflow-hidden bg-card text-card-foreground border transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+		<div class="absolute inset-0  from-primary/10 to-accent/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+		<Card.Content class="relative z-10 p-6">
 			<div class="flex items-center mb-4">
-				<div class="h-12 w-12 rounded-lg bg-blue-100 flex items-center justify-center mr-4">
-					<span class="text-2xl">🤖</span>
+				<div class="h-12 w-12 rounded-lg bg-primary/15 flex items-center justify-center mr-4">
+					<Bot class="h-6 w-6 text-primary" />
 				</div>
 				<div>
-					<h3 class="text-lg font-semibold text-gray-900">AI Assistant</h3>
-					<p class="text-sm text-gray-500">Powered by Gemini</p>
+					<h3 class="text-lg font-semibold">AI Assistant</h3>
+					<p class="text-sm text-muted-foreground">Powered by Gemini</p>
 				</div>
 			</div>
-			<p class="text-gray-600 mb-4">Chat with our intelligent AI assistant for help, creativity, and problem-solving.</p>
+			<p class="text-muted-foreground mb-4">Chat with our intelligent AI assistant for help, creativity, and problem-solving.</p>
 			<button
 				on:click={() => navigateTo('/chat')}
-				class="w-full rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-white font-medium hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+				class="w-full rounded-lg bg-primary px-4 py-3 text-primary-foreground font-medium transition-transform transition-shadow duration-200 shadow 
+				       hover:shadow-lg hover:scale-[1.03] active:scale-95 active:shadow-inner"
 			>
 				Start Conversation
 			</button>
-		</div>
-	</div>
+		</Card.Content>
+	</Card.Root>
 
 	<!-- Profile Card -->
-	<div class="group relative overflow-hidden rounded-xl bg-white p-6 shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-		<div class="absolute inset-0 bg-gradient-to-r from-green-50 to-emerald-50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-		<div class="relative z-10">
+	<Card.Root class="group relative overflow-hidden bg-card text-card-foreground border transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+		<div class="absolute inset-0  from-secondary/10 to-accent/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+		<Card.Content class="relative z-10 p-6">
 			<div class="flex items-center mb-4">
-				<div class="h-12 w-12 rounded-lg bg-green-100 flex items-center justify-center mr-4">
-					<span class="text-2xl">👤</span>
+				<div class="h-12 w-12 rounded-lg bg-secondary/30 flex items-center justify-center mr-4">
+					<UserIcon class="h-6 w-6 text-secondary-foreground" />
 				</div>
 				<div>
-					<h3 class="text-lg font-semibold text-gray-900">Profile Settings</h3>
-					<p class="text-sm text-gray-500">Manage account</p>
+					<h3 class="text-lg font-semibold">Profile Settings</h3>
+					<p class="text-sm text-muted-foreground">Manage account</p>
 				</div>
 			</div>
-			<p class="text-gray-600 mb-4">Update your profile information, change password, and manage account settings.</p>
+			<p class="text-muted-foreground mb-4">Update your profile information, change password, and manage account settings.</p>
 			<button
 				on:click={() => navigateTo('/profile')}
-				class="w-full rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 px-4 py-3 text-white font-medium hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+				class="w-full rounded-lg bg-secondary px-4 py-3 text-secondary-foreground font-medium transition-transform transition-shadow duration-200 shadow 
+				       hover:shadow-lg hover:scale-[1.03] active:scale-95 active:shadow-inner"
 			>
 				Edit Profile
 			</button>
-		</div>
-	</div>
+		</Card.Content>
+	</Card.Root>
 
 	<!-- Admin Panel or Role Card -->
 	{#if isAdmin}
-		<div class="group relative overflow-hidden rounded-xl bg-white p-6 shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-			<div class="absolute inset-0 bg-gradient-to-r from-purple-50 to-pink-50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-			<div class="relative z-10">
+		<Card.Root class="group relative overflow-hidden bg-card text-card-foreground border transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+			<div class="absolute inset-0  from-accent/10 to-primary/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+			<Card.Content class="relative z-10 p-6">
 				<div class="flex items-center mb-4">
-					<div class="h-12 w-12 rounded-lg bg-purple-100 flex items-center justify-center mr-4">
-						<span class="text-2xl">👑</span>
+					<div class="h-12 w-12 rounded-lg bg-accent/20 flex items-center justify-center mr-4">
+						<ShieldCheck class="h-6 w-6 text-accent" />
 					</div>
 					<div>
-						<h3 class="text-lg font-semibold text-gray-900">Admin Dashboard</h3>
-						<p class="text-sm text-gray-500">System management</p>
+						<h3 class="text-lg font-semibold">Admin Dashboard</h3>
+						<p class="text-sm text-muted-foreground">System management</p>
 					</div>
 				</div>
-				<p class="text-gray-600 mb-4">Access administrative tools, manage users, and view system analytics.</p>
+				<p class="text-muted-foreground mb-4">Access administrative tools, manage users, and view system analytics.</p>
 				<button
 					on:click={() => navigateTo('/admin')}
-					class="w-full rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-3 text-white font-medium hover:from-purple-700 hover:to-pink-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+					class="w-full rounded-lg bg-accent px-4 py-3 text-accent-foreground font-medium transition-transform transition-shadow duration-200 shadow 
+					       hover:shadow-lg hover:scale-[1.03] active:scale-95 active:shadow-inner"
 				>
 					Open Admin Panel
 				</button>
-			</div>
-		</div>
+			</Card.Content>
+		</Card.Root>
 	{:else}
-		<div class="group relative overflow-hidden rounded-xl bg-white p-6 shadow-lg">
-			<div class="relative z-10">
+		<Card.Root class="group relative overflow-hidden bg-card text-card-foreground border">
+			<Card.Content class="relative z-10 p-6">
 				<div class="flex items-center mb-4">
-					<div class="h-12 w-12 rounded-lg bg-gray-100 flex items-center justify-center mr-4">
-						<span class="text-2xl">📊</span>
+					<div class="h-12 w-12 rounded-lg bg-muted flex items-center justify-center mr-4">
+						<BarChart3 class="h-6 w-6 text-muted-foreground" />
 					</div>
 					<div>
-						<h3 class="text-lg font-semibold text-gray-900">Your Role</h3>
-						<p class="text-sm text-gray-500">Current access level</p>
+						<h3 class="text-lg font-semibold">Your Role</h3>
+						<p class="text-sm text-muted-foreground">Current access level</p>
 					</div>
 				</div>
-				<p class="text-gray-600 mb-4">You have standard user access. Contact an administrator for role upgrades.</p>
-				<div class="w-full rounded-lg bg-gray-100 px-4 py-3 text-gray-600 font-medium text-center">
+				<p class="text-muted-foreground mb-4">You have standard user access. Contact an administrator for role upgrades.</p>
+				<div class="w-full rounded-lg bg-muted px-4 py-3 text-foreground font-medium text-center">
 					Standard User
 				</div>
-			</div>
-		</div>
+			</Card.Content>
+		</Card.Root>
 	{/if}
 </div>
-
-

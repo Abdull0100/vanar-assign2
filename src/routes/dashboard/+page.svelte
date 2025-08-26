@@ -6,6 +6,7 @@
 	import DashboardQuickActions from '$lib/components/dashboard/DashboardQuickActions.svelte';
 	import AdminStats from '$lib/components/dashboard/AdminStats.svelte';
 	import LoadingSession from '$lib/components/dashboard/LoadingSession.svelte';
+	import { onDestroy } from 'svelte';
 	export let data: any;
 
 	$: user = data.session?.user;
@@ -18,6 +19,7 @@
 		systemStatus: 'online'
 	};
 	let loadingStats = true;
+	let activityPulse = false;
 
 	onMount(() => {
 		// Only redirect if we're sure there's no session data
@@ -25,7 +27,38 @@
 			goto('/auth/signin');
 		} else if (user?.role === 'admin') {
 			loadStats();
+			startAdminStream();
 		}
+	});
+
+	let es: EventSource | null = null;
+
+	function startAdminStream() {
+		try {
+			es = new EventSource('/api/admin/events');
+			es.onmessage = (ev) => {
+				try {
+					const data = JSON.parse(ev.data || '{}');
+					const type = data.type as string;
+					if (type === 'heartbeat' || type === 'connected') return;
+					if (type === 'stats_updated' || type === 'users_changed' || type === 'admin_action' || type === 'user_activity' || type === 'user_login' || type === 'user_logout') {
+						loadStats();
+						activityPulse = true;
+						setTimeout(() => (activityPulse = false), 1500);
+					}
+				} catch {}
+			};
+			es.onerror = () => {
+				es?.close();
+				es = null;
+				// optional backoff could be added if needed
+			};
+		} catch {}
+	}
+
+	onDestroy(() => {
+		es?.close();
+		es = null;
 	});
 
 	async function loadStats() {
@@ -63,7 +96,7 @@
 	<title>Dashboard - Auth App</title>
 </svelte:head>
 {#if user}
-<div class="min-h-screen bg-gray-50">
+<div class="min-h-screen">
 
 		<Navigation user={user ?? null} currentPage="dashboard" />
 
@@ -77,7 +110,7 @@
 
 			<!-- Quick Stats (if admin) -->
 			{#if user?.role === 'admin'}
-				<AdminStats stats={stats} loading={loadingStats} />
+				<AdminStats stats={stats} loading={loadingStats} useStream={false} />
 			{/if}
 		</div>
 	</div>
