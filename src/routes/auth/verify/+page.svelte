@@ -12,7 +12,8 @@
 	let resendError = '';
 	let resendSuccess = '';
 
-	onMount(() => {
+	onMount(async () => {
+		//fix later TODO
 		// Get the token from the current URL if it exists
 		const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
 		const token = params.get('token') || '';
