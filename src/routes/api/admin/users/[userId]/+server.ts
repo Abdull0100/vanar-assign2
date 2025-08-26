@@ -4,8 +4,9 @@ import { db } from '$lib/db';
 import { users, sessions, accounts, chatMessages } from '$lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { trackUserDelete } from '$lib/activityTracker';
+import { broadcastAdminEvent } from '../../events/hub';
 
-export const DELETE: RequestHandler = async ({ params, locals }) => {
+export const DELETE: RequestHandler = async ({ params, locals, request }) => {
 	try {
 		const session = await locals.getSession?.();
 
@@ -41,8 +42,8 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			session.user.id,
 			userId as string,
 			userToDelete.email,
-			locals.request?.headers.get('x-forwarded-for') || locals.request?.headers.get('x-real-ip'),
-			locals.request?.headers.get('user-agent')
+			request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined,
+			request.headers.get('user-agent') || undefined
 		);
 
 		// Delete related data first to handle foreign key constraints
@@ -57,6 +58,12 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 
 		// Finally delete the user
 		await db.delete(users).where(eq(users.id, userId as string));
+
+		// Notify admin dashboards to refresh users/stats
+		try {
+			broadcastAdminEvent({ type: 'users_changed', payload: { userId } });
+			broadcastAdminEvent({ type: 'stats_updated', payload: { reason: 'user_deleted' } });
+		} catch {}
 
 		// Send deletion email notification
 		if (userToDelete.email) {

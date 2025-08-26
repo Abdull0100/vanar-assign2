@@ -1,4 +1,4 @@
-import { writable } from 'svelte/store';
+import { writable, get } from 'svelte/store';
 import {
 	fetchUsers,
 	fetchUsersStats,
@@ -55,6 +55,7 @@ export interface AdminState {
 	selectedSpecificActivity: string;
 	analyticsData: AnalyticsData;
 	autoRefresh: boolean;
+  sseConnected?: boolean;
 }
 
 // Initial state
@@ -208,12 +209,12 @@ export async function loadAllRecentActivities() {
 		const adminActions = actionsData.actions || [];
 
 		const allRecentActivities = [
-			...userActivities.map(activity => ({
+			...userActivities.map((activity: any) => ({
 				...activity,
 				type: 'user_activity',
 				user: activity.user || { id: activity.userId, name: 'Unknown User' }
 			})),
-			...adminActions.map(action => ({
+			...adminActions.map((action: any) => ({
 				...action,
 				type: 'admin_action'
 			}))
@@ -228,6 +229,73 @@ export async function loadAllRecentActivities() {
 	} catch (err) {
 		console.error('Failed to load all recent activities:', err);
 	}
+}
+
+// --- SSE subscription ---
+let eventSource: EventSource | null = null;
+
+export function connectAdminEvents() {
+  if (eventSource) return;
+  try {
+    eventSource = new EventSource('/api/admin/events');
+    adminStore.update((s) => ({ ...s, sseConnected: true }));
+
+    eventSource.onmessage = (ev) => {
+      try {
+        const data = JSON.parse(ev.data || '{}');
+        const type = data.type as string;
+
+        if (type === 'heartbeat' || type === 'connected') return;
+
+        // Selective refresh for better performance and correctness
+        switch (type) {
+          case 'users_changed':
+            // user list changed; also impacts overview stats
+            Promise.allSettled([
+              loadUsers(),
+              loadUserStats()
+            ]);
+            break;
+          case 'stats_updated':
+            loadUserStats();
+            break;
+          case 'admin_action':
+          case 'user_activity':
+          case 'user_login':
+          case 'user_logout':
+            // activity feeds and possibly stats
+            Promise.allSettled([
+              loadAllRecentActivities(),
+              loadUserStats()
+            ]);
+            break;
+          default:
+            // Fallback: conservative refresh
+            Promise.allSettled([
+              loadUsers(),
+              loadUserStats(),
+              loadAllRecentActivities()
+            ]);
+        }
+      } catch {}
+    };
+
+    eventSource.onerror = () => {
+      disconnectAdminEvents();
+      // Backoff reconnect
+      setTimeout(() => connectAdminEvents(), 3000);
+    };
+  } catch {
+    // ignore
+  }
+}
+
+export function disconnectAdminEvents() {
+  if (eventSource) {
+    eventSource.close();
+    eventSource = null;
+    adminStore.update((s) => ({ ...s, sseConnected: false }));
+  }
 }
 
 export async function loadUserDetails(userId: string) {
@@ -262,7 +330,10 @@ export async function updateUserRole(userId: string, newRole: string) {
 		
 		setSuccess('User role updated successfully!');
 		clearSuccessMessage();
-		await loadRecentActivity();
+		await Promise.allSettled([
+			loadRecentActivity(),
+			loadUserStats()
+		]);
 	} catch (err) {
 		setError('An error occurred while updating user role');
 	}
@@ -272,7 +343,10 @@ export async function toggleUserStatus(userId: string, currentStatus: boolean) {
 	try {
 		clearMessages();
 		await apiToggleUserStatus(userId, !currentStatus);
-		await loadUsers();
+		await Promise.allSettled([
+			loadUsers(),
+			loadUserStats()
+		]);
 		setSuccess('User status updated successfully!');
 		clearSuccessMessage();
 		await loadRecentActivity();
@@ -293,7 +367,10 @@ export async function deleteUserAction(userId: string) {
 		
 		setSuccess('User deleted successfully!');
 		clearSuccessMessage();
-		await loadRecentActivity();
+		await Promise.allSettled([
+			loadRecentActivity(),
+			loadUserStats()
+		]);
 	} catch (err) {
 		console.error('Delete user error:', err);
 		setError('An error occurred while deleting user. Please check your connection and try again.');
@@ -312,9 +389,9 @@ export function closeDeleteModal() {
 }
 
 export async function confirmDeleteUser() {
-	if (!$deleteTarget) return;
-
-	const { id: userId } = $deleteTarget;
+	const selected = get(deleteTarget);
+	if (!selected) return;
+	const { id: userId } = selected;
 	closeDeleteModal();
 	await deleteUserAction(userId);
 }
@@ -384,7 +461,7 @@ export function formatMetadata(metadata: any) {
 
 // Pagination functions
 export function getPaginatedActivities() {
-	let state: AdminState;
+	let state: AdminState = initialState;
 	adminStore.subscribe(s => state = s)();
 	
 	const start = (state.activitiesPage - 1) * state.activitiesPerPage;
@@ -393,13 +470,13 @@ export function getPaginatedActivities() {
 }
 
 export function getTotalPages() {
-	let state: AdminState;
+	let state: AdminState = initialState;
 	adminStore.subscribe(s => state = s)();
 	return Math.ceil(state.userActivities.length / state.activitiesPerPage);
 }
 
 export function nextActivitiesPage() {
-	let state: AdminState;
+	let state: AdminState = initialState;
 	adminStore.subscribe(s => state = s)();
 	
 	if (state.activitiesPage < getTotalPages()) {
@@ -408,7 +485,7 @@ export function nextActivitiesPage() {
 }
 
 export function prevActivitiesPage() {
-	let state: AdminState;
+	let state: AdminState = initialState;
 	adminStore.subscribe(s => state = s)();
 	
 	if (state.activitiesPage > 1) {
@@ -419,7 +496,7 @@ export function prevActivitiesPage() {
 // Keyboard event handler
 export function setupKeyboardHandlers() {
 	const handleKeydown = (event: KeyboardEvent) => {
-		let state: AdminState;
+		let state: AdminState = initialState;
 		adminStore.subscribe(s => state = s)();
 		
 		if (event.key === 'Escape' && state.selectedUser) {

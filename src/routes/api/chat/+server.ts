@@ -8,6 +8,7 @@ import { AuthError, ValidationError, handleApiError } from '$lib/errors';
 
 // Import env vars from $env
 import { GEMINI_API_KEY } from '$env/static/private';
+import { ActivityTracker, trackChatMessage } from '$lib/activityTracker';
 
 // Initialize Gemini AI only if API key is available
 const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
@@ -70,6 +71,20 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			
 			conversation = newConversation;
 			targetConversationId = conversation.id; // Set targetConversationId
+
+			// Track conversation created
+			try {
+				const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined;
+				const ua = request.headers.get('user-agent') || undefined;
+				await ActivityTracker.trackUserActivity(
+					session.user.id,
+					'conversation_created',
+					'User started a new conversation',
+					{ conversationId: targetConversationId },
+					ip,
+					ua
+				);
+			} catch {}
 		}
 
 		// Update conversation's updatedAt timestamp
@@ -130,6 +145,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			createdAt: new Date(),
 			updatedAt: new Date()
 		}).returning();
+
+		// Track chat message
+		try {
+			const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined;
+			const ua = request.headers.get('user-agent') || undefined;
+			await trackChatMessage(session.user.id, 1, ip, ua);
+		} catch {}
 
 		// Check if Gemini API is available
 		if (!genAI) {

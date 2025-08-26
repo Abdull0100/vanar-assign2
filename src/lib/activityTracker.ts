@@ -1,6 +1,7 @@
 import { db } from '$lib/db';
 import { userActivities, adminActions, userSessions, userStats } from '$lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { broadcastAdminEvent } from '../routes/api/admin/events/hub';
 
 export interface ActivityMetadata {
 	[key: string]: any;
@@ -30,6 +31,12 @@ export class ActivityTracker {
 
 			// Update user stats based on activity type
 			await this.updateUserStats(userId, activityType);
+
+			// Notify admins
+			broadcastAdminEvent({
+				type: 'user_activity',
+				payload: { userId, activityType, description }
+			});
 		} catch (error) {
 			console.error('Failed to track user activity:', error);
 		}
@@ -57,6 +64,12 @@ export class ActivityTracker {
 				ipAddress: ipAddress || null,
 				userAgent: userAgent || null
 			});
+
+			// Notify admins
+			broadcastAdminEvent({
+				type: 'admin_action',
+				payload: { adminId, actionType, description, targetUserId }
+			});
 		} catch (error) {
 			console.error('Failed to track admin action:', error);
 		}
@@ -83,6 +96,8 @@ export class ActivityTracker {
 
 			// Update last login time in user stats
 			await this.updateUserStats(userId, 'login');
+
+			broadcastAdminEvent({ type: 'user_login', payload: { userId } });
 		} catch (error) {
 			console.error('Failed to track user login:', error);
 		}
@@ -100,6 +115,8 @@ export class ActivityTracker {
 					isActive: false
 				})
 				.where(eq(userSessions.sessionToken, sessionToken));
+
+			broadcastAdminEvent({ type: 'user_logout', payload: {} });
 		} catch (error) {
 			console.error('Failed to track user logout:', error);
 		}
@@ -157,6 +174,8 @@ export class ActivityTracker {
 					passwordChangeCount: updateData.passwordChangeCount || 0
 				});
 			}
+
+			broadcastAdminEvent({ type: 'stats_updated', payload: { userId, activityType } });
 		} catch (error) {
 			console.error('Failed to update user stats:', error);
 		}

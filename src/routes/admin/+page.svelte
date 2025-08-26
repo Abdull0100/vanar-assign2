@@ -10,20 +10,15 @@
 	import {
 		adminStore,
 		loadData,
-		loadUserDetails,
+		connectAdminEvents,
+		disconnectAdminEvents,
 		updateUserRole,
 		toggleUserStatus,
 		deleteUserAction,
 		closeUserModal,
 		setActiveTab,
-		setModalActiveTab,
 		formatDate,
 		formatDateOnly,
-		formatDuration,
-		getPaginatedActivities,
-		getTotalPages,
-		nextActivitiesPage,
-		prevActivitiesPage,
 		setupKeyboardHandlers
 	} from '$lib/api/adminState';
 
@@ -33,6 +28,7 @@
 	onMount(() => {
 		if (user) {
 			loadData();
+			connectAdminEvents();
 		}
 
 		// Setup keyboard handlers
@@ -40,6 +36,7 @@
 
 		return () => {
 			cleanup();
+			disconnectAdminEvents();
 		};
 	});
 </script>
@@ -61,16 +58,21 @@
 			/>
 
 			{#if $adminStore.error}
-				<div class="border border-destructive/20 bg-destructive/10 px-4 py-3 text-destructive mb-6 rounded-md">
-					{$adminStore.error}
-				</div>
-			{/if}
+	<div
+		class="mb-6 rounded-md border bg-[var(--destructive)]/15 px-4 py-3 text-[var(--destructive-foreground)] border-[var(--destructive)]/30"
+	>
+		{$adminStore.error}
+	</div>
+{/if}
 
-			{#if $adminStore.success}
-				<div class="border border-green-200 bg-green-50 px-4 py-3 text-green-700 mb-6 rounded-md">
-					{$adminStore.success}
-				</div>
-			{/if}
+{#if $adminStore.success}
+	<div
+		class="mb-6 rounded-md border bg-[var(--accent)]/15 px-4 py-3 text-[var(--accent-foreground)] border-[var(--accent)]/30"
+	>
+		{$adminStore.success}
+	</div>
+{/if}
+
 
 			{#if $adminStore.loading}
 				<LoadingSpinner label="Loading data..." />
@@ -93,7 +95,6 @@
 						currentUser={user}
 						onUpdateRole={updateUserRole}
 						onToggleStatus={toggleUserStatus}
-						onDetails={(id) => loadUserDetails(id)}
 						onDelete={(id) => deleteUserAction(id)}
 						formatDateOnly={(d) => formatDateOnly(d)}
 					/>
@@ -112,18 +113,7 @@
 
 	<AdminUserModal
 		selectedUser={$adminStore.selectedUser}
-		userStats={$adminStore.userStats}
-		userActivities={$adminStore.userActivities}
-		userSessions={$adminStore.userSessions}
-		modalActiveTab={$adminStore.modalActiveTab}
-		setModalActiveTab={setModalActiveTab}
-		{formatDate}
-		{formatDuration}
-		{getPaginatedActivities}
-		{getTotalPages}
-		activitiesPage={$adminStore.activitiesPage}
-		{nextActivitiesPage}
-		{prevActivitiesPage}
-		{closeUserModal}
+		open={$adminStore.selectedUser != null}
+		onClose={closeUserModal}
 	/>
 </div>
