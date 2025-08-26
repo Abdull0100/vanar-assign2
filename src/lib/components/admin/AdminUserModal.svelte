@@ -13,10 +13,13 @@
 	let tabValue: string = "overview";
 </script>
 
+
+
+
 {#if selectedUser}
 	<Dialog.Root bind:open onOpenChange={(val) => { if (!val) onClose(); }}>
 		<Dialog.Content
-			class="bg-card text-card-foreground max-h-[90vh] w-[90vw] max-w-5xl flex flex-col rounded-2xl shadow-xl"
+			class="bg-card font-sans text-card-foreground max-h-[90vh] w-[90vw] max-w-5xl flex flex-col rounded-2xl shadow-xl"
 		>
 			<!-- Header -->
 			<div class="px-6 py-4 border-b border-border flex items-center justify-between">
@@ -31,7 +34,7 @@
 				<!-- User Info -->
 				<div class="flex flex-col md:flex-row md:items-center md:justify-between">
 					<div>
-						<h3 class="text-xl font-semibold">{selectedUser.name}</h3>
+						<h3 class="text-xl font-semibold font-sans">{selectedUser.name}</h3>
 						<p class="text-muted-foreground">{selectedUser.email}</p>
 					</div>
 					<Badge variant={selectedUser.active ? "default" : "secondary"}>
@@ -54,9 +57,9 @@
 						<TabsContent value="overview">
 							<Card>
 								<CardContent class="p-4 space-y-2">
-									<p><span class="font-semibold">ID:</span> {selectedUser.id}</p>
-									<p><span class="font-semibold">Role:</span> {selectedUser.role}</p>
-									<p><span class="font-semibold">Joined:</span> {selectedUser.createdAt}</p>
+									<p><span class="font-semibold text-card-foreground">ID:</span> {selectedUser.id}</p>
+									<p><span class="font-semibold text-card-foreground">Role:</span> {selectedUser.role}</p>
+									<p><span class="font-semibold text-card-foreground">Joined:</span> {selectedUser.createdAt}</p>
 								</CardContent>
 							</Card>
 						</TabsContent>

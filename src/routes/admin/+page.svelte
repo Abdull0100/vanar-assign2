@@ -5,20 +5,15 @@
 	import AdminUsersTable from '$lib/components/admin/AdminUsersTable.svelte';
 	import AdminRecentActivities from '$lib/components/admin/AdminRecentActivities.svelte';
 	import AdminUserModal from '$lib/components/admin/AdminUserModal.svelte';
-	import AdminDeleteUserModal from '$lib/components/admin/AdminDeleteUserModal.svelte';
 	import AdminHeaderTabs from '$lib/components/admin/AdminHeaderTabs.svelte';
 	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 	import {
 		adminStore,
-		showDeleteModal,
-		deleteTarget,
 		loadData,
 		loadUserDetails,
 		updateUserRole,
 		toggleUserStatus,
-		openDeleteModal,
-		closeDeleteModal,
-		confirmDeleteUser,
+		deleteUserAction,
 		closeUserModal,
 		setActiveTab,
 		setModalActiveTab,
@@ -47,10 +42,6 @@
 			cleanup();
 		};
 	});
-
-	async function handleDeleteUser(userId: string, userName: string) {
-		openDeleteModal(userId, userName);
-	}
 </script>
 
 <svelte:head>
@@ -103,7 +94,7 @@
 						onUpdateRole={updateUserRole}
 						onToggleStatus={toggleUserStatus}
 						onDetails={(id) => loadUserDetails(id)}
-						onDelete={(id, name) => handleDeleteUser(id, name)}
+						onDelete={(id) => deleteUserAction(id)}
 						formatDateOnly={(d) => formatDateOnly(d)}
 					/>
 				{/if}
@@ -118,13 +109,6 @@
 			{/if}
 		</div>
 	</div>
-
-	<AdminDeleteUserModal 
-		show={$showDeleteModal} 
-		target={$deleteTarget} 
-		onConfirm={confirmDeleteUser} 
-		onCancel={closeDeleteModal} 
-	/>
 
 	<AdminUserModal
 		selectedUser={$adminStore.selectedUser}

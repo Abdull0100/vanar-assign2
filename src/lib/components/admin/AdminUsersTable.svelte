@@ -5,6 +5,7 @@
 	import * as Table from '$lib/components/ui/table';
 	import * as Select from '$lib/components/ui/select';
 	import AdminUserModal from './AdminUserModal.svelte';
+	import AdminDeleteUserModal from './AdminDeleteUserModal.svelte';
 
 	export let users: Array<{
 		id: string;
@@ -17,10 +18,10 @@
 	export let currentUser: { id: string } | null = null;
 	export let onUpdateRole: (userId: string, newRole: string) => void;
 	export let onToggleStatus: (userId: string, currentStatus: boolean) => void;
-	export let onDelete: (userId: string, nameOrEmail: string) => void;
+	export let onDelete: (userId: string, nameOrEmail?: string) => void | Promise<void>;
 	export let formatDateOnly: (d: string) => string;
 
-	// Modal state
+	// Details modal state
 	let modalOpen = false;
 	let selectedUser: any = null;
 
@@ -34,6 +35,27 @@
 			};
 			modalOpen = true;
 		}
+	}
+
+	// Delete modal state
+	let deleteModalOpen = false;
+	let deleteTarget: { id: string; name: string } | null = null;
+
+	function openDelete(userItem: { id: string; name: string; email: string }) {
+		deleteTarget = { id: userItem.id, name: userItem.name || userItem.email };
+		deleteModalOpen = true;
+	}
+
+	async function handleConfirmDelete() {
+		if (!deleteTarget) return;
+		await onDelete?.(deleteTarget.id, deleteTarget.name);
+		deleteModalOpen = false;
+		deleteTarget = null;
+	}
+
+	function handleCloseDelete() {
+		deleteModalOpen = false;
+		deleteTarget = null;
 	}
 </script>
 
@@ -129,7 +151,7 @@
 											variant="destructive"
 											size="sm"
 											type="button"
-											onclick={() => onDelete(userItem.id, userItem.name || userItem.email)}
+											onclick={() => openDelete(userItem)}
 										>
 											Delete
 										</Button>
@@ -143,10 +165,18 @@
 		</Card.Content>
 	</Card.Root>
 
-	<!-- Modal -->
+	<!-- Details Modal -->
 	<AdminUserModal
 		{selectedUser}
 		open={modalOpen}
 		onClose={() => { modalOpen = false; selectedUser = null; }}
+	/>
+
+	<!-- Delete Modal -->
+	<AdminDeleteUserModal
+		open={deleteModalOpen}
+		target={deleteTarget}
+		onConfirm={handleConfirmDelete}
+		onClose={handleCloseDelete}
 	/>
 </div>
