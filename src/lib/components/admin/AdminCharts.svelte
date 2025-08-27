@@ -4,7 +4,6 @@
 	import * as Card from "$lib/components/ui/card/index.js";
 	import * as Select from "$lib/components/ui/select/index.js";
 	import { AreaChart } from "layerchart";
-	import { cubicInOut } from "svelte/easing";
 	import { adminStore } from "$lib/api/adminState";
 
 	// Access adminStore directly for real-time updates
@@ -73,11 +72,7 @@
 				return activityDate >= targetDate && activityDate < nextDate && isLogin;
 			}).length;
 
-			// If no real data, use sample data for demonstration
-			if (allRecentActivities.length === 0) {
-				activitiesCount = Math.floor(Math.random() * 50) + 10;
-				loginsCount = Math.floor(Math.random() * 20) + 5;
-			}
+			// Use actual data only - no fake sample data
 			
 			data.push({
 				date: targetDate,
