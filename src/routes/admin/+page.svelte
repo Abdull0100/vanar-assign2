@@ -6,6 +6,7 @@
 	import AdminRecentActivities from '$lib/components/admin/AdminRecentActivities.svelte';
 	import AdminUserModal from '$lib/components/admin/AdminUserModal.svelte';
 	import AdminHeaderTabs from '$lib/components/admin/AdminHeaderTabs.svelte';
+	import AdminCharts from '$lib/components/admin/AdminCharts.svelte';
 	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 	import {
 		adminStore,
@@ -24,6 +25,8 @@
 
 	export let data: any;
 	let user = data.session?.user;
+
+
 
 	onMount(() => {
 		if (user) {
@@ -56,6 +59,10 @@
 				activeTab={$adminStore.activeTab} 
 				setActiveTab={setActiveTab} 
 			/>
+			
+
+
+
 
 			{#if $adminStore.error}
 	<div
@@ -85,6 +92,7 @@
 							userStats={$adminStore.userStats} 
 							mostActiveUsers={$adminStore.mostActiveUsers} 
 						/>
+						<AdminCharts />
 					</div>
 				{/if}
 
