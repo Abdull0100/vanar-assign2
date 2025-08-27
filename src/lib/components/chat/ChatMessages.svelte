@@ -11,13 +11,14 @@
 	import 'prismjs/components/prism-markdown';
 	import 'prismjs/components/prism-sql';
 
-	export let messages: Array<{ id: string; content: string; aiResponse: string | null; createdAt: string; isStreaming?: boolean }>= [];
+	export let messages: Array<{ id: string; role: 'user' | 'assistant' | 'system'; content: string; createdAt: string; isStreaming?: boolean; totalForks?: number; selectedForkNumber?: number; previousId?: string | null }>= [];
 	export let initializing: boolean = false;
 	export let onEditMessage: ((messageId: string, newContent: string) => void) | null = null;
 	export let onContinueFromMessage: ((messageId: string) => void) | null = null;
 	export let versionInfo: { currentVersion: number; totalVersions: number; canGoBack: boolean; canGoForward: boolean } | null = null;
 	export let onGoToPreviousVersion: (() => void) | null = null;
 	export let onGoToNextVersion: (() => void) | null = null;
+	export let onSwitchFork: ((previousId: string, nextForkNumber: number) => void) | null = null;
 
 	let aiResponseContainer: HTMLElement;
 	let messagesContainer: HTMLElement;
@@ -62,8 +63,8 @@
 	function renderMarkdown(text: string): string {
 		try {
 			// Tables (basic support) - process tables properly
-			const lines = text.split('\n');
-			let processedLines = [];
+			const lines: string[] = text.split('\n');
+			const processedLines: string[] = [];
 			let i = 0;
 			
 			while (i < lines.length) {
@@ -72,7 +73,7 @@
 				// Check if this line looks like a table row (contains | and has multiple cells)
 				if (line.includes('|') && line.split('|').length > 2) {
 					// Start of a table - collect all table rows
-					let tableRows = [];
+					const tableRows: string[] = [];
 					let j = i;
 					
 					while (j < lines.length) {
@@ -87,9 +88,12 @@
 						// Check if this is still a table row
 						if (tableLine.includes('|') && tableLine.split('|').length > 2) {
 							// Check if this is the first row (header row)
-							const isHeaderRow = tableRows.length === 0;
-							const cellClass = isHeaderRow ? 'border border-gray-300 px-3 py-2 bg-indigo-50 font-semibold text-indigo-900' : 'border border-gray-300 px-3 py-2';
-							const cells = tableLine.split('|').map(cell => `<td class="${cellClass}">${cell.trim()}</td>`).join('');
+							const isHeaderRow: boolean = tableRows.length === 0;
+							const cellClass: string = isHeaderRow ? 'border border-gray-300 px-3 py-2 bg-indigo-50 font-semibold text-indigo-900' : 'border border-gray-300 px-3 py-2';
+							const cells: string = tableLine
+								.split('|')
+								.map((cell: string): string => `<td class="${cellClass}">${cell.trim()}</td>`)
+								.join('');
 							tableRows.push(`<tr>${cells}</tr>`);
 							j++;
 						} else {
@@ -235,30 +239,7 @@
 			</div>
 			{/if}
 		{:else}
-			<!-- Debug Version Info -->
-			<div class="mb-2 text-center text-xs text-gray-500">
-				Debug: versionInfo = {JSON.stringify(versionInfo)}
-			</div>
-			
-			<!-- Test Version Creation Button -->
-			<div class="mb-2 text-center">
-				<button 
-					on:click={() => {
-						// Test version creation by editing the first message
-						if (messages.length > 0) {
-							const firstMessage = messages[0];
-							console.log('Creating test version by editing first message...');
-							// Simulate editing the first message
-							if (onEditMessage) {
-								onEditMessage(firstMessage.id, firstMessage.content + ' (edited)');
-							}
-						}
-					}}
-					class="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
-				>
-					Test Create Version
-				</button>
-			</div>
+			<!-- Removed debug and test UI -->
 			
 			<!-- Version Navigation -->
 			{#if versionInfo && versionInfo.totalVersions >= 1}
@@ -269,6 +250,7 @@
 							disabled={!versionInfo.canGoBack}
 							class="flex items-center justify-center w-6 h-6 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-gray-600"
 							title="Previous version"
+							aria-label="Previous version"
 						>
 							<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 								<path d="M15 18l-6-6 6-6"/>
@@ -284,6 +266,7 @@
 							disabled={!versionInfo.canGoForward}
 							class="flex items-center justify-center w-6 h-6 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-gray-600"
 							title="Next version"
+							aria-label="Next version"
 						>
 							<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 								<path d="M9 18l6-6-6-6"/>
@@ -297,153 +280,168 @@
 			</div>
 			{#each messages as messageItem, idx (messageItem.id)}
 				<div class="mb-6 group hover:bg-gray-50 rounded-lg p-1 -m-1 transition-colors duration-200">
-					<div class="flex justify-end mb-2">
-						<div class="flex items-end space-x-2 max-w-xl relative">
-							{#if editingMessageId === messageItem.id}
-								<div class="rounded-2xl rounded-br-sm bg-white border-2 border-indigo-600 px-4 py-3 shadow-lg flex-1">
-									<textarea 
-										bind:value={editText}
-										class="w-full text-sm leading-relaxed resize-none border-none outline-none bg-transparent"
-										rows="3"
-										placeholder="Edit your message..."
-									></textarea>
-									<div class="flex justify-end space-x-2 mt-2">
-										<button 
-											on:click={cancelEdit}
-											class="px-3 py-1 text-xs rounded border border-gray-300 hover:bg-gray-50 text-gray-700"
-										>
-											Cancel
-										</button>
-										<button 
-											on:click={() => saveEdit(messageItem.id)}
-											class="px-3 py-1 text-xs rounded bg-indigo-600 hover:bg-indigo-700 text-white"
-										>
-											Save & Regenerate
-										</button>
-									</div>
-								</div>
-							{:else}
-								<div class="rounded-2xl rounded-br-sm bg-gradient-to-r from-indigo-300 to-violet-300 px-4 py-3 text-indigo-900 shadow-lg">
-									<p class="text-sm leading-relaxed">{messageItem.content}</p>
-								</div>
-							{/if}
-							<div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
-								<span class="text-sm">👤</span>
-							</div>
-						</div>
-					</div>
-					
-					<!-- User message action buttons -->
-					{#if editingMessageId !== messageItem.id}
-						<div class="flex justify-end mr-10 mb-1">
-							<div class="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-								<button 
-									on:click={() => copyUserMessage(messageItem.id + '_user', messageItem.content)}
-									class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors duration-150"
-									title="Copy"
-									aria-label="Copy message"
-								>
-									<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-										{#if copiedMessageId === messageItem.id + '_user'}
-											<path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-											<path d="M21 9v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-										{:else}
-											<rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2" fill="none"/>
-											<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2" fill="none"/>
-										{/if}
-									</svg>
-								</button>
-								<button 
-									on:click={() => startEditMessage(messageItem.id, messageItem.content)}
-									class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors duration-150"
-									title="Edit"
-									aria-label="Edit message"
-								>
-									<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-										<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-										<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-									</svg>
-								</button>
-							</div>
-						</div>
-					{/if}
-
-					<div class="flex justify-start">
-						<div class="flex items-end space-x-2 max-w-xl relative">
-							<div class="h-8 w-8 rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 flex items-center justify-center flex-shrink-0">
-								<img src="/src/lib/assets/images-removebg-preview.png" alt="Vanar Chain" class="w-5 h-5" />
-							</div>
-							<div class="rounded-2xl rounded-bl-sm bg-white px-4 py-3 shadow-lg border border-gray-100">
-								{#if messageItem.isStreaming}
-									<div class="text-sm leading-relaxed text-gray-800 prose prose-sm max-w-none" bind:this={aiResponseContainer}>
-										{#if messageItem.aiResponse && messageItem.aiResponse.length > 0}
-											<span>{@html renderMarkdown(messageItem.aiResponse)}</span>
-											<span class="inline-block w-0.5 h-4 bg-indigo-500 animate-pulse ml-1"></span>
-										{:else}
-											<span class="inline-block w-0.5 h-4 bg-indigo-500 animate-pulse ml-1"></span>
-										{/if}
-									</div>
-									<div class="flex items-center mt-2 space-x-2">
-										<div class="flex items-center space-x-1">
-											<div class="h-2 w-2 rounded-full bg-indigo-400 animate-pulse"></div>
-											<div class="h-2 w-2 rounded-full bg-indigo-400 animate-pulse" style="animation-delay: 0.2s"></div>
-											<div class="h-2 w-2 rounded-full bg-indigo-400 animate-pulse" style="animation-delay: 0.4s"></div>
+					{#if messageItem.role === 'user'}
+						<div class="flex justify-end mb-2">
+							<div class="flex items-end space-x-2 max-w-xl relative">
+								{#if editingMessageId === messageItem.id}
+									<div class="rounded-2xl rounded-br-sm bg-white border-2 border-indigo-600 px-4 py-3 shadow-lg flex-1">
+										<textarea 
+											bind:value={editText}
+											class="w-full text-sm leading-relaxed resize-none border-none outline-none bg-transparent"
+											rows="3"
+											placeholder="Edit your message..."
+										></textarea>
+										<div class="flex justify-end space-x-2 mt-2">
+											<button 
+												on:click={cancelEdit}
+												class="px-3 py-1 text-xs rounded border border-gray-300 hover:bg-gray-50 text-gray-700"
+											>
+												Cancel
+											</button>
+											<button 
+												on:click={() => saveEdit(messageItem.id)}
+												class="px-3 py-1 text-xs rounded bg-indigo-600 hover:bg-indigo-700 text-white"
+											>
+												Save & Regenerate
+											</button>
 										</div>
-										<span class="text-xs text-indigo-600 font-medium">Vanar AI is typing...</span>
 									</div>
-								{:else if messageItem.aiResponse && messageItem.aiResponse.length > 0}
-									<div class="text-sm leading-relaxed text-gray-800 prose prose-sm max-w-none" bind:this={aiResponseContainer}>
-										{@html renderMarkdown(messageItem.aiResponse)}
-									</div>
-									<p class="mt-2 text-xs text-gray-400">
-										{new Date(messageItem.createdAt).toLocaleTimeString()}
-									</p>
 								{:else}
-									<div class="text-sm text-gray-400 italic">
-										No response received
+									<div class="rounded-2xl rounded-br-sm bg-gradient-to-r from-indigo-300 to-violet-300 px-4 py-3 text-indigo-900 shadow-lg">
+										<p class="text-sm leading-relaxed">{messageItem.content}</p>
 									</div>
 								{/if}
+								<div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+									<span class="text-sm">👤</span>
+								</div>
 							</div>
 						</div>
-					</div>
-					
-					<!-- AI response action buttons -->
-					{#if messageItem.aiResponse && messageItem.aiResponse.length > 0 && !messageItem.isStreaming}
-						<div class="flex justify-start ml-10 mt-1">
-							<div class="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-								<button 
-									on:click={() => copyResponse(messageItem.id, messageItem.aiResponse || '')}
-									class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors duration-150"
-									title="Copy"
-									aria-label="Copy response"
-								>
-									<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-										{#if copiedMessageId === messageItem.id}
-											<path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-											<path d="M21 9v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-										{:else}
-											<rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2" fill="none"/>
-											<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2" fill="none"/>
-										{/if}
-									</svg>
-								</button>
-								{#if onContinueFromMessage && idx < messages.length - 1}
+						{#if editingMessageId !== messageItem.id}
+							<div class="flex justify-end mr-10 mb-1">
+								<div class="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
 									<button 
-										on:click={() => onContinueFromMessage(messageItem.id)}
+										on:click={() => copyUserMessage(messageItem.id + '_user', messageItem.content)}
 										class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors duration-150"
-										title="Continue from here"
-										aria-label="Continue conversation from this point"
+										title="Copy"
+										aria-label="Copy message"
 									>
 										<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-											<path d="M8 3H5a2 2 0 0 0-2 2v3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-											<path d="M21 8V5a2 2 0 0 0-2-2h-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-											<path d="M3 16v3a2 2 0 0 0 2 2h3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-											<path d="M16 21h3a2 2 0 0 0 2-2v-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+											{#if copiedMessageId === messageItem.id + '_user'}
+												<path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+												<path d="M21 9v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+											{:else}
+												<rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2" fill="none"/>
+												<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2" fill="none"/>
+											{/if}
 										</svg>
 									</button>
-								{/if}
+									<button 
+										on:click={() => startEditMessage(messageItem.id, messageItem.content)}
+										class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors duration-150"
+										title="Edit"
+										aria-label="Edit message"
+									>
+										<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+											<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+											<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+										</svg>
+									</button>
+								</div>
+							</div>
+						{/if}
+					{/if}
+
+					{#if messageItem.role === 'assistant'}
+						<div class="flex justify-start">
+							<div class="flex items-end space-x-2 max-w-xl relative">
+								<div class="h-8 w-8 rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 flex items-center justify-center flex-shrink-0">
+									<img src="/src/lib/assets/images-removebg-preview.png" alt="Vanar Chain" class="w-5 h-5" />
+								</div>
+								<div class="rounded-2xl rounded-bl-sm bg-white px-4 py-3 shadow-lg border border-gray-100">
+									{#if messageItem.isStreaming}
+										<div class="text-sm leading-relaxed text-gray-800 prose prose-sm max-w-none" bind:this={aiResponseContainer}>
+											<span class="inline-block w-0.5 h-4 bg-indigo-500 animate-pulse ml-1"></span>
+										</div>
+										<div class="flex items-center mt-2 space-x-2">
+											<div class="flex items-center space-x-1">
+												<div class="h-2 w-2 rounded-full bg-indigo-400 animate-pulse"></div>
+												<div class="h-2 w-2 rounded-full bg-indigo-400 animate-pulse" style="animation-delay: 0.2s"></div>
+												<div class="h-2 w-2 rounded-full bg-indigo-400 animate-pulse" style="animation-delay: 0.4s"></div>
+											</div>
+											<span class="text-xs text-indigo-600 font-medium">Vanar AI is typing...</span>
+										</div>
+									{:else}
+										<div class="text-sm leading-relaxed text-gray-800 prose prose-sm max-w-none" bind:this={aiResponseContainer}>
+											{@html renderMarkdown(messageItem.content)}
+										</div>
+										<p class="mt-2 text-xs text-gray-400">
+											{new Date(messageItem.createdAt).toLocaleTimeString()}
+										</p>
+									{/if}
+								</div>
 							</div>
 						</div>
+
+						<!-- Fork switcher -->
+						{#if onSwitchFork && messageItem.totalForks && (messageItem.totalForks > 1) && messageItem.previousId}
+							<div class="flex justify-start ml-10 mt-1">
+								<div class="inline-flex items-center space-x-2 text-xs text-gray-600">
+									<button 
+										on:click={() => onSwitchFork(messageItem.previousId!, Math.max(1, (messageItem.selectedForkNumber || 1) - 1))}
+										class="px-2 py-1 rounded border hover:bg-gray-50"
+										aria-label="Previous fork"
+									>
+										<span aria-hidden="true">‹</span>
+									</button>
+									<span>{messageItem.selectedForkNumber || 1} / {messageItem.totalForks}</span>
+									<button 
+										on:click={() => onSwitchFork(messageItem.previousId!, Math.min(messageItem.totalForks || 1, (messageItem.selectedForkNumber || 1) + 1))}
+										class="px-2 py-1 rounded border hover:bg-gray-50"
+										aria-label="Next fork"
+									>
+										<span aria-hidden="true">›</span>
+									</button>
+								</div>
+							</div>
+						{/if}
+
+						{#if !messageItem.isStreaming && messageItem.content && messageItem.content.length > 0}
+							<div class="flex justify-start ml-10 mt-1">
+								<div class="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+									<button 
+										on:click={() => copyResponse(messageItem.id, messageItem.content || '')}
+										class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors duration-150"
+										title="Copy"
+										aria-label="Copy response"
+									>
+										<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+											{#if copiedMessageId === messageItem.id}
+												<path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+												<path d="M21 9v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+											{:else}
+												<rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2" fill="none"/>
+												<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2" fill="none"/>
+											{/if}
+										</svg>
+									</button>
+									{#if onContinueFromMessage && idx < messages.length - 1}
+										<button 
+											on:click={() => onContinueFromMessage(messageItem.id)}
+											class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors duration-150"
+											title="Continue from here"
+											aria-label="Continue conversation from this point"
+										>
+											<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+												<path d="M8 3H5a2 2 0 0 0-2 2v3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+												<path d="M21 8V5a2 2 0 0 0-2-2h-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+												<path d="M3 16v3a2 2 0 0 0 2 2h3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+												<path d="M16 21h3a2 2 0 0 0 2-2v-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+											</svg>
+										</button>
+									{/if}
+								</div>
+							</div>
+						{/if}
 					{/if}
 				</div>
 			{/each}
@@ -505,27 +503,7 @@
 		color: #ecfdf5;
 	}
 
-	/* Editing state styling */
-	.editing-message {
-		border: 2px solid #4f46e5;
-		box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-	}
-
-	/* Continue from message indicator */
-	.continue-indicator {
-		position: relative;
-	}
-
-	.continue-indicator::before {
-		content: '';
-		position: absolute;
-		left: -8px;
-		top: 0;
-		bottom: 0;
-		width: 3px;
-		background: linear-gradient(to bottom, #4f46e5, #7c3aed);
-		border-radius: 2px;
-	}
+	/* Unused selectors removed */
 </style>
 
 

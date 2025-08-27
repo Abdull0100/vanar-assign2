@@ -71,22 +71,19 @@ export const conversations = pgTable('conversations', {
 	updatedAt: timestamp('updatedAt').defaultNow().notNull()
 });
 
-// Chat messages table - each row represents a complete Q&A pair
-// When aiResponse is NULL: it's a user message waiting for AI response
-// When aiResponse has content: it's a complete Q&A pair with user context + AI response
+// Chat messages table - each row represents a message with role-based content
 export const chatMessages = pgTable('chatMessages', {
-	id: uuid('id').primaryKey().defaultRandom(), // This is messageId
-	conversationId: uuid('conversationId')
+	id: uuid('id').primaryKey().defaultRandom(),
+	roomId: uuid('roomId')
 		.notNull()
 		.references(() => conversations.id, { onDelete: 'cascade' }),
-	userId: uuid('userId')
-		.notNull()
-		.references(() => users.id, { onDelete: 'cascade' }),
-	content: text('content').notNull(), // User query/context
-	aiResponse: text('aiResponse'), // AI response text (null for pending user messages, text for complete Q&A pairs)
-	previousId: uuid('previousId'), // ID of previous chat in same room for conversation flow
-	createdAt: timestamp('createdAt').defaultNow().notNull(), // Timestamp of the Q&A pair
-	updatedAt: timestamp('updatedAt').defaultNow().notNull() // When message was last updated
+	role: text('role').notNull(), // 'user', 'assistant', 'system'
+	content: text('content').notNull(), // Message body
+	parentId: uuid('parentId'), // Direct previous message (conversation flow)
+	previousId: uuid('previousId'), // For "forking": original message you edited/regenerated from
+	versionNumber: integer('versionNumber').default(1).notNull(), // To track multiple forks/responses
+	createdAt: timestamp('createdAt').defaultNow().notNull(),
+	updatedAt: timestamp('updatedAt').defaultNow().notNull()
 });
 
 // User Sessions table - tracks user login sessions
@@ -156,7 +153,6 @@ export const usersRelations = relations(users, ({ many }) => ({
 	accounts: many(accounts),
 	sessions: many(sessions),
 	conversations: many(conversations),
-	chatMessages: many(chatMessages),
 	userSessions: many(userSessions),
 	userActivities: many(userActivities),
 	adminActions: many(adminActions, { relationName: 'adminActions' }),
@@ -187,12 +183,8 @@ export const conversationsRelations = relations(conversations, ({ one, many }) =
 }));
 
 export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
-	user: one(users, {
-		fields: [chatMessages.userId],
-		references: [users.id]
-	}),
 	conversation: one(conversations, {
-		fields: [chatMessages.conversationId],
+		fields: [chatMessages.roomId],
 		references: [conversations.id]
 	})
 }));

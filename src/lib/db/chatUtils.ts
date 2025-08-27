@@ -1,3 +1,4 @@
+
 import type { InferSelectModel } from 'drizzle-orm';
 import { users, conversations, chatMessages } from './schema';
 
@@ -9,30 +10,31 @@ type ChatMessage = InferSelectModel<typeof chatMessages>;
 /**
  * Build a compact transcript from the most recent messages.
  * Output format is plain text lines prefixed with "User:" or "Vanar:".
- * Each row represents a complete Q&A pair.
+ * Each row represents a message with its role.
  */
 export function buildRecentTranscript(messages: ChatMessage[]): string {
   if (!messages || messages.length === 0) return '';
   let out = '';
   for (const m of messages) {
-    // Each row contains user context + AI response
-    out += `User: ${m.content}\n`;
-    if (m.aiResponse) {
-      out += `Vanar: ${m.aiResponse}\n`;
+    if (m.role === 'user') {
+      out += `User: ${m.content}\n`;
+    } else if (m.role === 'assistant') {
+      out += `Vanar: ${m.content}\n\n`;
     }
   }
   return out.trim();
 }
 
 // Types for the required JSON structure
-// Each message represents a complete Q&A pair
+// Each message represents a single message with role
 export interface ChatMessageResponse {
 	messageId: string;
-	content: string; // User query/context
+	role: 'user' | 'assistant' | 'system';
+	content: string;
 	timestamp: string;
-	// sender: 'user' | 'ai'; // Removed
-	aiResponse: string | null; // AI response (null if pending, text if complete)
-	previousId: string | null; // Link to previous chat in same room
+	parentId: string | null; // Direct previous message (conversation flow)
+	previousId: string | null; // For "forking": original message you edited/regenerated from
+	versionNumber: number;
 	updatedAt: string; // When message was last updated
 }
 
@@ -76,47 +78,59 @@ export function transformConversation(dbConversation: any): ConversationResponse
 export function transformChatMessage(dbMessage: any): ChatMessageResponse {
 	return {
 		messageId: dbMessage.id,
+		role: dbMessage.role,
 		content: dbMessage.content,
 		timestamp: dbMessage.createdAt,
-		aiResponse: dbMessage.aiResponse,
+		parentId: dbMessage.parentId,
 		previousId: dbMessage.previousId,
+		versionNumber: dbMessage.versionNumber || 1,
 		updatedAt: dbMessage.updatedAt
 	};
 }
 
 /**
  * Transform raw DB messages (rows) to the chat view model used by the UI store.
- * Each row already represents a complete Q&A pair in the new schema.
+ * Each row represents a single message with role.
  */
 export function transformDbMessagesToView(dbMessages: any[]): Array<{
   id: string;
+  role: 'user' | 'assistant' | 'system';
   content: string;
-  aiResponse: string | null;
   createdAt: string;
   isStreaming?: boolean;
+  previousId?: string | null;
+  versionNumber?: number;
+  parentId?: string | null;
 }> {
   if (!dbMessages || !Array.isArray(dbMessages)) return [];
   return dbMessages.map((msg: any) => ({
     id: msg.id,
+    role: msg.role || 'user',
     content: msg.content || '',
-    aiResponse: msg.aiResponse ?? null,
     createdAt: msg.createdAt,
-    isStreaming: false
+    isStreaming: false,
+    previousId: msg.previousId || null,
+    versionNumber: msg.versionNumber || 1,
+    parentId: msg.parentId || null
   }));
 }
 
 /**
- * Create a new message structure for a Q&A pair
+ * Create a new message structure for a single message
  */
 export function createMessageStructure(
-	content: string, // User query/context
-	aiResponse: string | null = null, // AI response (null initially, filled when AI responds)
-	previousId: string | null = null // Link to previous chat in same room
+	role: 'user' | 'assistant' | 'system',
+	content: string,
+	parentId: string | null = null, // Direct previous message (conversation flow)
+	previousId: string | null = null, // For "forking": original message you edited/regenerated from
+	versionNumber: number = 1
 ): Omit<ChatMessageResponse, 'messageId' | 'timestamp' | 'updatedAt'> {
 	return {
+		role,
 		content,
-		aiResponse,
-		previousId
+		parentId,
+		previousId,
+		versionNumber
 	};
 }
 
@@ -129,4 +143,111 @@ export function createEmptyConversation(): Omit<ConversationResponse, 'id' | 'me
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString()
 	};
+}
+
+/**
+ * Build a conversation tree from messages, handling forks and versions
+ */
+export function buildConversationTree(messages: ChatMessage[]): any[] {
+	if (!messages || messages.length === 0) return [];
+	
+	// Group messages by their branch (using parentId chain)
+	const messageMap = new Map();
+	const branches: any[] = [];
+	
+	// First pass: create message map
+	messages.forEach(msg => {
+		messageMap.set(msg.id, { ...msg, children: [] });
+	});
+	
+	// Second pass: build parent-child relationships
+	messages.forEach(msg => {
+		if (msg.parentId && messageMap.has(msg.parentId)) {
+			const parent = messageMap.get(msg.parentId);
+			parent.children.push(messageMap.get(msg.id));
+		} else {
+			// Root message (no parent)
+			branches.push(messageMap.get(msg.id));
+		}
+	});
+	
+	return branches;
+}
+
+/**
+ * Get all versions of a specific message
+ */
+export function getMessageVersions(messages: ChatMessage[], messageId: string): ChatMessage[] {
+	const message = messages.find(m => m.id === messageId);
+	if (!message) return [];
+	
+	// Find all messages with the same previousId (forked from the same original)
+	return messages.filter(m => m.previousId === message.previousId && m.role === message.role);
+}
+
+/**
+ * Get the active branch of a conversation (excluding forked branches)
+ */
+export function getActiveBranch(messages: ChatMessage[]): ChatMessage[] {
+	if (!messages || messages.length === 0) return [];
+	
+	// Find the latest message without a previousId (not forked)
+	const latestNonForked = messages
+		.filter(m => !m.previousId)
+		.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+	
+	if (!latestNonForked) return messages;
+	
+	// Build the active branch by following parentId chain
+	const activeBranch: ChatMessage[] = [];
+	let current: ChatMessage | undefined = latestNonForked;
+	
+	while (current) {
+		activeBranch.unshift(current);
+		const pid: string | null = current.parentId ?? null;
+current = pid ? (messages.find((m) => m.id === pid) ?? undefined) : undefined;
+	}
+	
+	return activeBranch;
+}
+
+export async function saveMessage(args: {
+	roomId: string;
+	userId?: string; // kept optional for compatibility with callers
+	role: 'user' | 'assistant' | 'system';
+	content: string;
+	parentId?: string | null;
+	previousId?: string | null;
+}): Promise<any> {
+	const { roomId, role, content } = args;
+	const parentId = args.parentId ?? null;
+	const previousId = args.previousId ?? null;
+
+	const { db } = await import('./index');
+	const { chatMessages } = await import('./schema');
+	const { eq } = await import('drizzle-orm');
+
+	let versionNumber = 1;
+	if (previousId) {
+		const existingForks = await db
+			.select({ id: chatMessages.id })
+			.from(chatMessages)
+			.where(eq(chatMessages.previousId, previousId));
+		versionNumber = (existingForks?.length ?? 0) + 1;
+	}
+
+	const [inserted] = await db
+		.insert(chatMessages)
+		.values({
+			roomId,
+			role,
+			content,
+			parentId,
+			previousId,
+			versionNumber,
+			updatedAt: new Date()
+		})
+		.returning();
+
+	return inserted;
 }

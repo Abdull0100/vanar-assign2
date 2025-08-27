@@ -2,7 +2,7 @@ import { json, type RequestHandler } from '@sveltejs/kit';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { db } from '$lib/db';
 import { chatMessages, conversations } from '$lib/db/schema';
-import { buildRecentTranscript } from '$lib/db/chatUtils';
+import { getActiveBranch, saveMessage } from '$lib/db/chatUtils';
 import { eq, inArray, and } from 'drizzle-orm';
 import { AuthError, ValidationError, handleApiError } from '$lib/errors';
 
@@ -29,6 +29,7 @@ function getRandomFallbackResponse(): string {
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	let userMessage: any = null; // Declare at function level for error handling
+	let assistantMessage: any = null; // Assistant placeholder to update
 	let targetConversationId: string; // Declare at function level for error handling
 	
 	try {
@@ -36,6 +37,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const message: string = body.message;
 		const _history: HistoryTurn[] | undefined = Array.isArray(body.history) ? body.history : undefined;
 		const conversationId: string | undefined = body.conversationId;
+		const previousIdFromClient: string | undefined = body.previousId;
+		const parentIdFromClient: string | undefined = body.parentId;
 		const session = await locals.getSession?.();
 
 		if (!session?.user?.id) {
@@ -77,70 +80,46 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			.set({ updatedAt: new Date() })
 			.where(eq(conversations.id, conversation.id));
 
-		// Find the most recent message in this conversation to use as previousId
-		const mostRecentMessage = await db.query.chatMessages.findFirst({
-			where: and(
-				eq(chatMessages.conversationId, targetConversationId), // Use target conversation ID
-				eq(chatMessages.userId, session.user.id)
-			),
-			orderBy: (chatMessages, { desc }) => [desc(chatMessages.createdAt)],
-			columns: { id: true, aiResponse: true, content: true, conversationId: true }
+		// Determine parent for the active branch and optional previousId for forking
+		const allMessagesForBranch = await db.query.chatMessages.findMany({
+			where: eq(chatMessages.roomId, targetConversationId),
+			orderBy: (chatMessages, { asc }) => [asc(chatMessages.createdAt)]
+		});
+		const branch = getActiveBranch(allMessagesForBranch as any);
+		const lastInBranch = branch[branch.length - 1];
+		const parentId = parentIdFromClient ?? (lastInBranch ? lastInBranch.id : null);
+		const previousId = previousIdFromClient || null;
+
+		// Save user message using centralized logic
+		userMessage = await saveMessage({
+			roomId: targetConversationId,
+			userId: session.user.id,
+			role: 'user',
+			content: message,
+			parentId,
+			previousId
 		});
 
-		// Determine the appropriate previousId and conversationId based on conversation state
-		let previousId = null;
-		
-		if (mostRecentMessage) {
-			if (mostRecentMessage.aiResponse) {
-				// If the most recent message has an AI response, link to it
-				previousId = mostRecentMessage.id;
-				targetConversationId = mostRecentMessage.conversationId; // Use the conversation from previous message
-				console.log(`Linking to completed message: ${previousId} in conversation: ${targetConversationId} (content: "${mostRecentMessage.content?.substring(0, 50)}...")`);
-			} else {
-				// If the most recent message is still waiting for AI response, 
-				// find the last completed message to maintain conversation flow
-				const lastCompletedMessage = await db.query.chatMessages.findFirst({
-					where: and(
-						eq(chatMessages.conversationId, targetConversationId), // Use target conversation ID
-						eq(chatMessages.userId, session.user.id),
-						eq(chatMessages.aiResponse, 'IS NOT NULL')
-					),
-					orderBy: (chatMessages, { desc }) => [desc(chatMessages.createdAt)],
-					columns: { id: true, conversationId: true }
-				});
-				previousId = lastCompletedMessage?.id || null;
-				if (lastCompletedMessage?.conversationId) {
-					targetConversationId = lastCompletedMessage.conversationId;
-				}
-				console.log(`Linking to last completed message: ${previousId} in conversation: ${targetConversationId} (skipping pending message: ${mostRecentMessage.id})`);
-			}
-		} else {
-			console.log('First message in conversation, no previousId');
-		}
-
-		console.log(`Creating new message with previousId: ${previousId} in conversation: ${targetConversationId} for user: ${session.user.id}`);
-
-		// Save user message and prepare for AI response in a single row
-		const [userMessage] = await db.insert(chatMessages).values({
-			conversationId: targetConversationId, // Use the conversation from previousId
+		// Create assistant placeholder to update later
+		assistantMessage = await saveMessage({
+			roomId: targetConversationId,
 			userId: session.user.id,
-			content: message,
-			aiResponse: null, // Will be filled when AI responds
-			previousId: previousId, // Link to the previous message in this conversation
-			createdAt: new Date(),
-			updatedAt: new Date()
-		}).returning();
+			role: 'assistant',
+			content: '',
+			parentId: userMessage.id,
+			previousId
+		});
 
 		// Check if Gemini API is available
 		if (!genAI) {
-			// Fallback: Save a simple response
+			// Fallback: Save a simple response on assistant placeholder
 			const fallbackResponse = "I'm sorry, but I'm currently unable to process your request. Please try again later.";
 			await db.update(chatMessages)
 				.set({ 
-					aiResponse: fallbackResponse,
+					content: fallbackResponse,
 					updatedAt: new Date()
 				})
-				.where(eq(chatMessages.id, userMessage.id));
+				.where(eq(chatMessages.id, assistantMessage.id));
 			
 			return json({
 				success: true,
@@ -152,59 +131,26 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		// Build conversation context from DB: stored summary + last 10 messages
-		// Fetch last 10 messages for compact context, using previousId for proper threading
+		// Fetch last 10 messages for compact context
 		const recentDbMessages = await db.query.chatMessages.findMany({
-			where: and(
-				eq(chatMessages.conversationId, targetConversationId), // Use target conversation ID
-				eq(chatMessages.userId, session.user.id)
-			),
+			where: eq(chatMessages.roomId, targetConversationId), // Use target conversation ID
 			orderBy: (chatMessages, { asc }) => [asc(chatMessages.createdAt)],
 			limit: 10
 		});
 
-		// Build threaded conversation context using previousId with security validation
-		const buildThreadedTranscript = (messages: any[]) => {
-			if (!messages || messages.length === 0 || !session.user) return '';
-			
+		// Build conversation transcript using role-based messages
+		const buildTranscript = (messages: any[]) => {
+			if (!messages || messages.length === 0) return '';
 			let transcript = '';
-			const messageMap = new Map();
-			const validMessageIds = new Set();
-			
-			// Validate that all messages belong to the current user and conversation
-			messages.forEach(msg => {
-				if (msg.userId === session.user!.id && msg.conversationId === targetConversationId) { // Use target conversation ID
-					messageMap.set(msg.id, msg);
-					validMessageIds.add(msg.id);
-				} else {
-					console.warn(`Skipping unauthorized message: ${msg.id} (userId: ${msg.userId}, conversationId: ${msg.conversationId})`);
-				}
-			});
-			
-			// Build transcript following the previousId chain, only using validated messages
-			const processedIds = new Set();
-			let currentMessage = messages[messages.length - 1]; // Start with the most recent
-			
-			while (currentMessage && !processedIds.has(currentMessage.id) && validMessageIds.has(currentMessage.id)) {
-				processedIds.add(currentMessage.id);
-				
-				if (currentMessage.aiResponse) {
-					// Complete Q&A pair
-					transcript = `User: ${currentMessage.content}\nVanar: ${currentMessage.aiResponse}\n\n` + transcript;
-				} else {
-					// Pending user message
-					transcript = `User: ${currentMessage.content}\nVanar: [Waiting for response]\n\n` + transcript;
-				}
-				
-				// Move to previous message in the chain, ensuring it's valid
-				currentMessage = currentMessage.previousId && validMessageIds.has(currentMessage.previousId) 
-					? messageMap.get(currentMessage.previousId) 
-					: null;
+			for (const msg of messages) {
+				if (msg.roomId !== targetConversationId) continue;
+				if (msg.role === 'user') transcript += `User: ${msg.content}\n`;
+				else if (msg.role === 'assistant') transcript += `Vanar: ${msg.content}\n\n`;
 			}
-			
 			return transcript.trim();
 		};
 
-		const transcript = buildThreadedTranscript(recentDbMessages);
+		const transcript = buildTranscript(recentDbMessages);
 
 		// Get the target conversation for summary and other metadata
 		const targetConversation = await db.query.conversations.findFirst({
@@ -305,13 +251,13 @@ Please provide a helpful response. Keep it conversational and relevant to the co
 						}
 					}
 					
-					// Save the processed response to the database
+					// Save the processed response to the database on assistant message
 					await db.update(chatMessages)
 						.set({ 
-							aiResponse: processedResponse,
+							content: processedResponse,
 							updatedAt: new Date()
 						})
-						.where(eq(chatMessages.id, userMessage.id));
+						.where(eq(chatMessages.id, assistantMessage.id));
 					
 					// Send completion signal
 					controller.enqueue(`data: ${JSON.stringify({ 
@@ -328,24 +274,18 @@ Please provide a helpful response. Keep it conversational and relevant to the co
 						}
 						
 						const totalMessages = await db.query.chatMessages.findMany({
-							where: and(
-								eq(chatMessages.conversationId, targetConversationId), // Use target conversation ID
-								eq(chatMessages.userId, session.user.id)
-							),
+							where: eq(chatMessages.roomId, targetConversationId), // Use target conversation ID
 							columns: { id: true }
 						});
 						if (totalMessages.length % 10 === 0 && genAI) {
 							const recentForSummary = await db.query.chatMessages.findMany({
-								where: and(
-									eq(chatMessages.conversationId, targetConversationId), // Use target conversation ID
-									eq(chatMessages.userId, session.user.id)
-								),
+								where: eq(chatMessages.roomId, targetConversationId), // Use target conversation ID
 								orderBy: (chatMessages, { asc }) => [asc(chatMessages.createdAt)],
 								limit: 16
 							});
 							
 							// Use the same threaded approach for summary generation
-							const recentTranscript = buildThreadedTranscript(recentForSummary);
+							const recentTranscript = buildTranscript(recentForSummary);
 							const summaryText = targetConversation?.summary as string | null;
 							const modelForSummary = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 							const summaryPrompt = `You maintain a concise, rolling summary of a chat between User and Vanar.\n\nExisting summary (may be empty):\n${summaryText || '(none)'}\n\nNew recent messages to incorporate (chronological):\n${recentTranscript}\n\nUpdate the summary in 5-10 short bullet points capturing key facts, decisions, tasks, user preferences, and unresolved questions.\n- Max 200 words.\n- Do not include timestamps or salutations.\n- Do not quote large passages; paraphrase.\n- Keep it neutral and factual.\n- Output only the updated summary.`;
@@ -367,14 +307,17 @@ Please provide a helpful response. Keep it conversational and relevant to the co
 				} catch (error) {
 					console.error('Error in stream processing:', error);
 					
-					// Save error response to database
-					const errorMessage = "I apologize, but I encountered an error while processing your request. Please try again.";
+					// Save error response to database on assistant message
+					const isRateLimited = (error as any)?.status === 429 || (error as any)?.message?.includes('quota');
+					const errorMessage = isRateLimited
+						? "I'm currently experiencing high demand and can't process your request right now. Please try again in a few minutes."
+						: "I apologize, but I encountered an error while processing your request. Please try again.";
 					await db.update(chatMessages)
 						.set({ 
-							aiResponse: errorMessage,
+							content: errorMessage,
 							updatedAt: new Date()
 						})
-						.where(eq(chatMessages.id, userMessage.id));
+						.where(eq(chatMessages.id, assistantMessage.id));
 					
 					controller.enqueue(`data: ${JSON.stringify({ 
 						error: errorMessage,
@@ -416,14 +359,14 @@ Please provide a helpful response. Keep it conversational and relevant to the co
 		}
 		
 		// Save error response to database if it's a user-facing error and userMessage exists
-		if (shouldSaveToDb && userMessage) {
+		if (shouldSaveToDb && assistantMessage) {
 			try {
 				await db.update(chatMessages)
 					.set({ 
-						aiResponse: errorMessage,
+						content: errorMessage,
 						updatedAt: new Date()
 					})
-					.where(eq(chatMessages.id, userMessage.id));
+					.where(eq(chatMessages.id, assistantMessage.id));
 			} catch (dbError) {
 				console.error('Failed to save error response to database:', dbError);
 			}
@@ -490,20 +433,29 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 				throw new AuthError('Conversation not found or access denied');
 			}
 
-			// Query messages separately
-			const messages = await db.query.chatMessages.findMany({
-				where: eq(chatMessages.conversationId, conversationId),
-				orderBy: (chatMessages, { asc }) => [asc(chatMessages.createdAt)],
-				columns: {
-					id: true,
-					content: true,
-					aiResponse: true,
-					createdAt: true,
-					updatedAt: true
-				}
+			// Build active branch with optional selected forks
+			const selectedForksParam = url.searchParams.get('selectedForks');
+			let selectedForks: Record<string, number> | undefined;
+			if (selectedForksParam) {
+				try { selectedForks = JSON.parse(selectedForksParam); } catch {}
+			}
+			const allMessagesForBranch = await db.query.chatMessages.findMany({
+				where: eq(chatMessages.roomId, conversationId),
+				orderBy: (chatMessages, { asc }) => [asc(chatMessages.createdAt)]
 			});
-
-			console.log('Found messages:', messages.length);
+			const branch = getActiveBranch(allMessagesForBranch as any);
+			const messages = branch.map((m: any) => ({
+				id: m.id,
+				role: m.role,
+				content: m.content,
+				createdAt: m.createdAt,
+				updatedAt: m.updatedAt,
+				parentId: m.parentId,
+				previousId: m.previousId,
+				versionNumber: m.versionNumber,
+				totalForks: m.totalForks ?? 0,
+				selectedForkNumber: m.selectedForkNumber ?? 1
+			}));
 			return json({ messages });
 		} else {
 			// Get all conversations with message counts, filtering out empty ones
@@ -614,14 +566,18 @@ export const DELETE: RequestHandler = async ({ request, locals }) => {
 
 		// Delete specific messages
 		if (messageIds && Array.isArray(messageIds) && messageIds.length > 0) {
-			// First verify all messages belong to the current user
-			const userMessages = await db.query.chatMessages.findMany({
+			// Fetch their roomIds
+			const msgs = await db.query.chatMessages.findMany({
 				where: inArray(chatMessages.id, messageIds),
+				columns: { id: true, roomId: true }
+			});
+			const roomIds = Array.from(new Set(msgs.map((m) => m.roomId)));
+			// Verify the rooms belong to the user
+			const rooms = await db.query.conversations.findMany({
+				where: inArray(conversations.id, roomIds),
 				columns: { id: true, userId: true }
 			});
-
-			// Check if all messages belong to the current user
-			const allOwned = userMessages.every(msg => msg.userId === session.user!.id);
+			const allOwned = rooms.every((r) => r.userId === session.user!.id);
 			if (!allOwned) {
 				throw new AuthError('You can only delete your own messages');
 			}
@@ -706,7 +662,6 @@ export const PATCH: RequestHandler = async ({ locals }) => {
 		// Check chatMessages table structure
 		try {
 			const msgCount = await db.query.chatMessages.findMany({
-				where: eq(chatMessages.userId, session.user.id),
 				columns: { id: true, previousId: true, updatedAt: true }, // Check for these columns
 				limit: 1
 			});

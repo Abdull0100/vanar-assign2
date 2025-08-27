@@ -48,17 +48,21 @@
 		continueFromMessage,
 		getCurrentVersionInfo,
 		goToPreviousVersion,
-		goToNextVersion
+		goToNextVersion,
+		switchFork
 	} = store;
 
 	let messageText = '';
 	let chatMessagesRef: any;
 	let initializing = true;
+	let now = new Date();
+	let nowTimer: any;
 	
 	// Reactive version info - watch both conversations and messages for changes
 	$: versionInfo = $conversations.length > 0 ? getCurrentVersionInfo() : null;
 
 	onMount(() => {
+		nowTimer = setInterval(() => { now = new Date(); }, 1000);
 		loadConversationsFromStorage();
 		loadChatHistory().finally(() => {
 			initializing = false;
@@ -66,7 +70,7 @@
 	});
 
 	onDestroy(() => {
-		// Store handles its internal timers automatically
+		if (nowTimer) clearInterval(nowTimer);
 	});
 
 	function handleSend() {
@@ -194,7 +198,7 @@
 							<span class="text-xs text-green-700 font-medium">Live</span>
 						</div>
 						<div class="text-xs text-neutral-500">
-							{new Date().toLocaleTimeString()}
+							{now.toLocaleTimeString()}
 						</div>
 					</div>
 				</div>
@@ -244,6 +248,7 @@
 								{versionInfo}
 								onGoToPreviousVersion={goToPreviousVersion}
 								onGoToNextVersion={goToNextVersion}
+								onSwitchFork={(prevId, n) => switchFork(prevId, n)}
 							/>
 						</div>
 						

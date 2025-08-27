@@ -28,8 +28,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 	if (sessionCookie) {
 		// Validate session against database
 		try {
-			const { db } = await import('./lib/db');
-			const { sessions, users } = await import('./lib/db/schema');
+			const dbModule = await import('./lib/db');
+			const { db, sessions, users } = dbModule as any;
 			const { eq } = await import('drizzle-orm');
 
 			const sessionData = await db
@@ -51,11 +51,14 @@ export const handle: Handle = async ({ event, resolve }) => {
 				.where(eq(sessions.sessionToken, sessionCookie))
 				.limit(1);
 
-			if (sessionData.length > 0 && sessionData[0].expires > new Date()) {
-				session = {
-					user: sessionData[0].user,
-					expires: sessionData[0].expires.toISOString()
-				};
+			if (sessionData.length > 0) {
+				const expiresValue = new Date(sessionData[0].expires as unknown as string);
+				if (expiresValue > new Date()) {
+					session = {
+						user: sessionData[0].user,
+						expires: expiresValue.toISOString()
+					};
+				}
 			}
 		} catch (error) {
 			console.error('Session validation error:', error);

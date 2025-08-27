@@ -8,6 +8,10 @@ export type ChatMessage = {
 	createdAt: string;
 	isStreaming?: boolean;
 	updatedAt?: string;
+	previousId?: string | null;
+	parentId?: string | null;
+	totalForks?: number;
+	selectedForkNumber?: number;
 };
 
 export type ConversationVersion = {
@@ -32,6 +36,7 @@ export function createChatStore(userId: string | null) {
 	const messages = writable<ChatMessage[]>([]);
 	const conversations = writable<Conversation[]>([]);
 	const currentConversationId = writable<string | null>(null);
+	const selectedForks = writable<Record<string, number>>({});
 	const loading = writable(false);
 	const error = writable('');
 
@@ -224,7 +229,8 @@ export function createChatStore(userId: string | null) {
 			return;
 		}
 		try {
-			const res = await fetch(`/api/chat?conversationId=${id}`);
+			const forksParam = encodeURIComponent(JSON.stringify(getValue(selectedForks)));
+			const res = await fetch(`/api/chat?conversationId=${id}&selectedForks=${forksParam}`);
 			if (!res.ok) {
 				messages.set([]);
 				return;
@@ -319,29 +325,7 @@ export function createChatStore(userId: string | null) {
 			await new Promise((r) => setTimeout(r, 0));
 		}
 		
-		// MESSAGE MODIFICATION: Create contextual instruction based on user message
-		let instruction = "";
-		
-		// Analyze the message content to determine appropriate instruction
-		const lowerMessage = messageContent.toLowerCase();
-		
-		if (lowerMessage.includes('table') || lowerMessage.includes('list') || lowerMessage.includes('data')) {
-			instruction = "\n\nPlease provide a well-formatted response with clear structure and organization.";
-		} else if (lowerMessage.includes('explain') || lowerMessage.includes('how') || lowerMessage.includes('why')) {
-			instruction = "\n\nPlease provide a detailed and comprehensive explanation.";
-		} else if (lowerMessage.includes('compare') || lowerMessage.includes('difference') || lowerMessage.includes('vs')) {
-			instruction = "\n\nPlease provide a clear comparison with structured points.";
-		} else if (lowerMessage.includes('code') || lowerMessage.includes('programming') || lowerMessage.includes('script')) {
-			instruction = "\n\nPlease provide clean, well-commented code with explanations.";
-		} else if (lowerMessage.includes('help') || lowerMessage.includes('assist') || lowerMessage.includes('support')) {
-			instruction = "\n\nPlease provide helpful and supportive guidance.";
-		} else if (lowerMessage.includes('thank') || lowerMessage.includes('thanks')) {
-			instruction = "\n\nPlease respond warmly and acknowledge the gratitude.";
-		} else {
-			instruction = "\n\nPlease provide a helpful and informative response.";
-		}
-		
-		const modifiedMessage = messageContent + instruction;
+		// Removed client-side instruction injection to preserve original user text
 		
 		const chatMessage: ChatMessage = {
 			id: generateId(),
@@ -366,7 +350,7 @@ export function createChatStore(userId: string | null) {
 			const response = await fetch('/api/chat', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ message: modifiedMessage, history, conversationId: apiConversationId })
+				body: JSON.stringify({ message: messageContent, history, conversationId: apiConversationId })
 			});
 
 			if (response.ok && response.headers.get('content-type')?.includes('text/event-stream')) {
@@ -559,27 +543,7 @@ export function createChatStore(userId: string | null) {
 		error.set('');
 		
 		try {
-			// MESSAGE MODIFICATION: Create contextual instruction based on user message
-			let instruction = "";
-			const lowerMessage = newContent.toLowerCase();
-			
-			if (lowerMessage.includes('table') || lowerMessage.includes('list') || lowerMessage.includes('data')) {
-				instruction = "\n\nPlease provide a well-formatted response with clear structure and organization.";
-			} else if (lowerMessage.includes('explain') || lowerMessage.includes('how') || lowerMessage.includes('why')) {
-				instruction = "\n\nPlease provide a detailed and comprehensive explanation.";
-			} else if (lowerMessage.includes('compare') || lowerMessage.includes('difference') || lowerMessage.includes('vs')) {
-				instruction = "\n\nPlease provide a clear comparison with structured points.";
-			} else if (lowerMessage.includes('code') || lowerMessage.includes('programming') || lowerMessage.includes('script')) {
-				instruction = "\n\nPlease provide clean, well-commented code with explanations.";
-			} else if (lowerMessage.includes('help') || lowerMessage.includes('assist') || lowerMessage.includes('support')) {
-				instruction = "\n\nPlease provide helpful and supportive guidance.";
-			} else if (lowerMessage.includes('thank') || lowerMessage.includes('thanks')) {
-				instruction = "\n\nPlease respond warmly and acknowledge the gratitude.";
-			} else {
-				instruction = "\n\nPlease provide a helpful and informative response.";
-			}
-			
-			const modifiedMessage = newContent + instruction;
+			// Removed client-side instruction injection to preserve original user text
 			
 			// Prepare conversation history for the API
 			const history = truncatedMessages
@@ -592,7 +556,7 @@ export function createChatStore(userId: string | null) {
 			const response = await fetch('/api/chat', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ message: modifiedMessage, history, conversationId: apiConversationId })
+				body: JSON.stringify({ message: newContent, history, conversationId: apiConversationId, previousId: messageId })
 			});
 
 			if (response.ok && response.headers.get('content-type')?.includes('text/event-stream')) {
@@ -709,6 +673,15 @@ export function createChatStore(userId: string | null) {
 		debouncedSaveToStorage();
 	}
 
+	function switchFork(previousId: string, nextForkNumber: number) {
+		selectedForks.update((map) => ({ ...map, [previousId]: nextForkNumber }));
+		const id = getValue(currentConversationId);
+		if (id) {
+			selectConversation(id);
+		}
+		debouncedSaveToStorage();
+	}
+
 	function navigateToVersion(versionId: string) {
 		const id = getValue(currentConversationId);
 		if (!id) return;
@@ -807,6 +780,7 @@ export function createChatStore(userId: string | null) {
 			canRetryNow,
 			getTimeUntilRetry,
 			sendMessage,
+			switchFork,
 			openDeleteModal,
 			closeDeleteModal,
 			confirmDeleteConversation,

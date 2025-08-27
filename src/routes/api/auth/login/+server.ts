@@ -1,8 +1,7 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 import bcrypt from 'bcryptjs';
 import { eq } from 'drizzle-orm';
-import { db } from '$lib/db';
-import { users, sessions } from '$lib/db/schema';
+import { db, users, sessions } from '$lib/db';
 import crypto from 'crypto';
 
 export const POST: RequestHandler = async ({ request, cookies }) => {
@@ -14,9 +13,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		}
 
 		// Find user by email
-		const user = await db.query.users.findFirst({
-			where: eq(users.email, email.toLowerCase())
-		});
+		const user = (await db.select().from(users).where(eq(users.email, email.toLowerCase())).limit(1))[0];
 
 		if (!user?.password) {
 			return json({ error: 'Invalid email or password' }, { status: 401 });

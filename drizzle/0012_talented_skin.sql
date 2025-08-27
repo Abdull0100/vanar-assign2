@@ -1,0 +1,1 @@
+ALTER TABLE "chatMessages" ADD COLUMN "versionNumber" integer DEFAULT 1 NOT NULL;
