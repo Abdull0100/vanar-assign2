@@ -7,6 +7,7 @@
 	import ProfileSidebar from '$lib/components/profile/ProfileSidebar.svelte';
 	import ProfileChangePasswordModal from '$lib/components/profile/ProfileChangePasswordModal.svelte';
 	import ProfileDeleteAccountModal from '$lib/components/profile/ProfileDeleteAccountModal.svelte';
+	import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 	export let data: any;
 
 	let name = '';
@@ -90,18 +91,7 @@
 		showChangePasswordModal = false;
 	}
 
-	function handleBackdropClick(event: MouseEvent | KeyboardEvent) {
-		if (event.target === event.currentTarget) {
-			closeChangePasswordModal();
-		}
-	}
 
-	function handleBackdropKeydown(event: KeyboardEvent) {
-		if (event.key === 'Enter' || event.key === ' ') {
-			event.preventDefault();
-			closeChangePasswordModal();
-		}
-	}
 
 	async function changePassword() {
 		if (newPassword !== confirmNewPassword) {
@@ -155,18 +145,7 @@
 		showDeleteAccountModal = false;
 	}
 
-	function handleDeleteBackdropClick(event: MouseEvent | KeyboardEvent) {
-		if (event.target === event.currentTarget) {
-			closeDeleteAccountModal();
-		}
-	}
 
-	function handleDeleteBackdropKeydown(event: KeyboardEvent) {
-		if (event.key === 'Enter' || event.key === ' ') {
-			event.preventDefault();
-			closeDeleteAccountModal();
-		}
-	}
 
 	async function deleteAccount() {
 		if (deleteConfirmation !== 'DELETE') {
@@ -220,37 +199,27 @@
 
 			<div class="mx-auto max-w-4xl">
 				{#if loading}
-					<div class="py-8 text-center">
-						<div
-							class="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-indigo-600"
-						></div>
-						<p class="mt-2">Loading profile...</p>
+					<div class="py-8">
+						<LoadingSpinner label="Loading profile..." />
 					</div>
 				{:else}
 					<div class="grid gap-6 lg:grid-cols-3">
 						<div class="lg:col-span-2">
-							<ProfileAccountOverview {user} bind:name bind:email {error} {success} {saving} onSubmit={updateProfile}>
-								<svelte:fragment slot="actions">
-									<button type="button" on:click={() => { name = user?.name || ''; error = ''; success = ''; }} class="inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium transition-colors">
-										<span class="mr-2">↩️</span>
-										Reset
-									</button>
-								</svelte:fragment>
-							</ProfileAccountOverview>
+							<ProfileAccountOverview 
+								{user} 
+								bind:name 
+								bind:email 
+								{error} 
+								{success} 
+								{saving} 
+								onSubmit={updateProfile}
+								onReset={() => { name = user?.name || ''; error = ''; success = ''; }}
+							/>
 						</div>
 						<ProfileSidebar {user}
 							openChangePasswordModal={openChangePasswordModal}
-							gotoChat={() => goto('/chat')}
-							gotoAdmin={() => goto('/admin')}
-						>
-							<svelte:fragment slot="danger">
-								<div class="mb-4">
-									<h4 class="text-sm font-medium text-red-900 mb-1">Delete Account</h4>
-									<p class="text-sm text-red-600 mb-3">Permanently delete your account and all associated data. This action cannot be undone.</p>
-									<button on:click={openDeleteAccountModal} class="w-full rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors">Delete Account</button>
-								</div>
-							</svelte:fragment>
-						</ProfileSidebar>
+							openDeleteAccountModal={openDeleteAccountModal}
+						/>
 					</div>
 				{/if}
 			</div>

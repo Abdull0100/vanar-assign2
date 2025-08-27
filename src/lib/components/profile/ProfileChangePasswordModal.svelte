@@ -1,4 +1,7 @@
 <script lang="ts">
+	import * as Dialog from "$lib/components/ui/dialog";
+	import { Button } from "$lib/components/ui/button";
+	import { Input } from "$lib/components/ui/input";
 	export let show = false;
 	export let currentPassword = '';
 	export let newPassword = '';
@@ -10,41 +13,39 @@
 	export let onSubmit: () => void;
 </script>
 
-{#if show}
-	<div class="bg-opacity-50 fixed inset-0 z-50 h-full w-full overflow-y-auto bg-gray-600" on:click={onClose} role="presentation">
-		<div class="relative top-20 mx-auto w-96 rounded-md border bg-white p-5 shadow-lg" on:click|stopPropagation role="dialog" aria-modal="true" tabindex="-1">
-			<div class="mt-3">
-				<h3 class="mb-4 text-lg font-medium text-gray-900">Change Password</h3>
-
-				{#if passwordError}
-					<div class="mb-4 rounded border border-red-200 bg-red-50 px-4 py-3 text-red-700">{passwordError}</div>
-				{/if}
-
-				{#if passwordSuccess}
-					<div class="mb-4 rounded border border-green-200 bg-green-50 px-4 py-3 text-green-700">{passwordSuccess}</div>
-				{/if}
-
-				<form on:submit|preventDefault={onSubmit} class="space-y-4">
-					<div>
-						<label for="currentPassword" class="block text-sm font-medium text-gray-700">Current Password</label>
-						<input type="password" id="currentPassword" bind:value={currentPassword} required class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:outline-none" />
-					</div>
-					<div>
-						<label for="newPassword" class="block text-sm font-medium text-gray-700">New Password</label>
-						<input type="password" id="newPassword" bind:value={newPassword} required minlength="8" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:outline-none" />
-					</div>
-					<div>
-						<label for="confirmNewPassword" class="block text-sm font-medium text-gray-700">Confirm New Password</label>
-						<input type="password" id="confirmNewPassword" bind:value={confirmNewPassword} required minlength="8" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:outline-none" />
-					</div>
-					<div class="flex justify-end space-x-3 pt-4">
-						<button type="button" on:click={onClose} class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
-						<button type="submit" disabled={changingPassword} class="rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50">{changingPassword ? 'Changing...' : 'Change Password'}</button>
-					</div>
-				</form>
-			</div>
+<Dialog.Root bind:open={show} onOpenChange={(val) => { if (!val) onClose?.(); }}>
+	<Dialog.Content class="bg-card text-card-foreground w-[90vw] max-w-md rounded-2xl shadow-xl">
+		<div class="px-6 py-4 border-b border-border flex items-center justify-between">
+			<Dialog.Title class="text-lg font-medium">Change Password</Dialog.Title>
+			<Dialog.Close aria-label="Close" />
 		</div>
-	</div>
-{/if}
+		<div class="px-6 py-4 space-y-4">
+			{#if passwordError}
+				<div class="rounded-lg border border-destructive bg-destructive/20 px-4 py-3 text-destructive">{passwordError}</div>
+			{/if}
+			{#if passwordSuccess}
+				<div class="rounded-lg border border-accent bg-accent/20 px-4 py-3 text-accent">{passwordSuccess}</div>
+			{/if}
+			<form on:submit|preventDefault={onSubmit} class="space-y-4">
+				<div class="grid gap-2">
+					<label for="currentPassword" class="text-sm font-medium">Current Password</label>
+					<Input type="password" id="currentPassword" bind:value={currentPassword} required autocomplete="current-password" />
+				</div>
+				<div class="grid gap-2">
+					<label for="newPassword" class="text-sm font-medium">New Password</label>
+					<Input type="password" id="newPassword" bind:value={newPassword} required minlength={8} autocomplete="new-password" />
+				</div>
+				<div class="grid gap-2">
+					<label for="confirmNewPassword" class="text-sm font-medium">Confirm New Password</label>
+					<Input type="password" id="confirmNewPassword" bind:value={confirmNewPassword} required minlength={8} autocomplete="new-password" />
+				</div>
+				<div class="pt-2 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3">
+					<Button type="button" variant="secondary" onclick={onClose} class="w-full sm:w-auto">Cancel</Button>
+					<Button type="submit" disabled={changingPassword} class="w-full sm:w-auto">{changingPassword ? 'Changing…' : 'Change Password'}</Button>
+				</div>
+			</form>
+		</div>
+	</Dialog.Content>
+</Dialog.Root>
 
 
