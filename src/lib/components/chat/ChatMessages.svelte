@@ -10,6 +10,7 @@
 	import 'prismjs/components/prism-css';
 	import 'prismjs/components/prism-markdown';
 	import 'prismjs/components/prism-sql';
+	import { Bot, User, Copy, Edit3, Check, MessageSquare } from '@lucide/svelte';
 
 	export let messages: Array<{ id: string; content: string; aiResponse: string | null; createdAt: string; isStreaming?: boolean }>= [];
 	export let initializing: boolean = false;
@@ -158,61 +159,61 @@
 	}
 </script>
 
-<div class="flex-1 overflow-y-auto bg-gradient-to-b from-gray-50 to-white">
+<div class="flex-1 overflow-y-auto bg-background">
 	<div bind:this={messagesContainer} class="p-4 lg:p-6">
 		{#if messages.length === 0}
 			{#if initializing}
-				<div class="flex items-center justify-center h-32 text-gray-400 text-sm">Loading chat…</div>
+				<div class="flex items-center justify-center h-32 text-muted-foreground text-sm">Loading chat…</div>
 			{:else}
 			<div class="flex flex-col items-center justify-center h-full text-center">
-				<div class="h-24 w-24 rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 flex items-center justify-center mb-4">
-					<span class="text-4xl">💬</span>
+				<div class="h-24 w-24 rounded-full bg-muted flex items-center justify-center mb-4">
+					<MessageSquare class="w-10 h-10 text-muted-foreground" />
 				</div>
 				<br>
-				<h3 class="text-xl font-semibold text-gray-900 mb-2">Welcome to Vanar AI Assistant</h3>
-				<p class="text-gray-500 max-w-md">
+				<h3 class="text-xl font-semibold mb-2">Welcome to Vanar AI Assistant</h3>
+				<p class="text-muted-foreground max-w-md">
 					Hi! I'm Vanar, your AI assistant from Vanar Chain. Ask me about anything!
 				</p>
 			</div>
 			{/if}
 		{:else}
 			<div class="mb-4 text-center">
-				<p class="text-xs text-gray-400 italic">💡 Each message represents a complete Q&A pair • All deletions provide guaranteed permanent erasure from all systems</p>
+				<p class="text-xs text-muted-foreground italic">Each message represents a complete Q&A pair • All deletions provide guaranteed permanent erasure from all systems</p>
 			</div>
 			{#each messages as messageItem, idx (messageItem.id)}
-				<div class="mb-6 group hover:bg-gray-50 rounded-lg p-1 -m-1 transition-colors duration-200">
+				<div class="mb-6 group hover:bg-muted/30 rounded-lg p-1 -m-1 transition-colors duration-200">
 					<div class="flex justify-end mb-2">
 						<div class="flex items-end space-x-2 max-w-xl relative">
 							{#if editingMessageId === messageItem.id}
-								<div class="rounded-2xl rounded-br-sm bg-white border-2 border-indigo-600 px-4 py-3 shadow-lg flex-1">
+								<div class="rounded-2xl rounded-br-sm bg-card border-2 border-primary px-4 py-3 shadow-lg flex-1">
 									<textarea 
 										bind:value={editText}
-										class="w-full text-sm leading-relaxed resize-none border-none outline-none bg-transparent"
+										class="w-full text-sm leading-relaxed resize-none border-none outline-none bg-transparent text-foreground placeholder:text-muted-foreground"
 										rows="3"
 										placeholder="Edit your message..."
 									></textarea>
 									<div class="flex justify-end space-x-2 mt-2">
 										<button 
 											on:click={cancelEdit}
-											class="px-3 py-1 text-xs rounded border border-gray-300 hover:bg-gray-50 text-gray-700"
+											class="px-3 py-1 text-xs rounded border border-border hover:bg-muted text-foreground"
 										>
 											Cancel
 										</button>
 										<button 
 											on:click={() => saveEdit(messageItem.id)}
-											class="px-3 py-1 text-xs rounded bg-indigo-600 hover:bg-indigo-700 text-white"
+											class="px-3 py-1 text-xs rounded bg-primary hover:bg-primary/90 text-primary-foreground"
 										>
 											Save
 										</button>
 									</div>
 								</div>
 							{:else}
-								<div class="rounded-2xl rounded-br-sm bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 text-white shadow-lg">
+								<div class="rounded-2xl rounded-br-sm bg-primary px-4 py-3 text-primary-foreground shadow-lg">
 									<p class="text-sm leading-relaxed">{messageItem.content}</p>
 								</div>
 							{/if}
-							<div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
-								<span class="text-sm">👤</span>
+							<div class="h-8 w-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+								<User class="w-4 h-4 text-muted-foreground" />
 							</div>
 						</div>
 					</div>
@@ -223,30 +224,23 @@
 							<div class="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
 								<button 
 									on:click={() => copyUserMessage(messageItem.id + '_user', messageItem.content)}
-									class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors duration-150"
+									class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors duration-150"
 									title="Copy"
 									aria-label="Copy message"
 								>
-									<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-										{#if copiedMessageId === messageItem.id + '_user'}
-											<path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-											<path d="M21 9v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-										{:else}
-											<rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2" fill="none"/>
-											<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2" fill="none"/>
-										{/if}
-									</svg>
+									{#if copiedMessageId === messageItem.id + '_user'}
+										<Check class="w-4 h-4" />
+									{:else}
+										<Copy class="w-4 h-4" />
+									{/if}
 								</button>
 								<button 
 									on:click={() => startEditMessage(messageItem.id, messageItem.content)}
-									class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors duration-150"
+									class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors duration-150"
 									title="Edit"
 									aria-label="Edit message"
 								>
-									<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-										<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-										<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-									</svg>
+									<Edit3 class="w-4 h-4" />
 								</button>
 							</div>
 						</div>
@@ -254,36 +248,36 @@
 
 					<div class="flex justify-start">
 						<div class="flex items-end space-x-2 max-w-xl relative">
-							<div class="h-8 w-8 rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 flex items-center justify-center flex-shrink-0">
-								<img src="/src/lib/assets/images-removebg-preview.png" alt="Vanar Chain" class="w-5 h-5" />
+							<div class="h-8 w-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+								<Bot class="w-4 h-4 text-muted-foreground" />
 							</div>
-							<div class="rounded-2xl rounded-bl-sm bg-white px-4 py-3 shadow-lg border border-gray-100">
+							<div class="rounded-2xl rounded-bl-sm bg-card px-4 py-3 shadow-lg border">
 								{#if messageItem.isStreaming}
-									<div class="text-sm leading-relaxed text-gray-800 prose prose-sm max-w-none" bind:this={aiResponseContainer}>
+									<div class="text-sm leading-relaxed text-foreground prose prose-sm max-w-none" bind:this={aiResponseContainer}>
 										{#if messageItem.aiResponse && messageItem.aiResponse.length > 0}
 											<span>{@html renderMarkdown(messageItem.aiResponse)}</span>
-											<span class="inline-block w-0.5 h-4 bg-indigo-500 animate-pulse ml-1"></span>
+											<span class="inline-block w-0.5 h-4 bg-primary animate-pulse ml-1"></span>
 										{:else}
-											<span class="inline-block w-0.5 h-4 bg-indigo-500 animate-pulse ml-1"></span>
+											<span class="inline-block w-0.5 h-4 bg-primary animate-pulse ml-1"></span>
 										{/if}
 									</div>
 									<div class="flex items-center mt-2 space-x-2">
 										<div class="flex items-center space-x-1">
-											<div class="h-2 w-2 rounded-full bg-indigo-400 animate-pulse"></div>
-											<div class="h-2 w-2 rounded-full bg-indigo-400 animate-pulse" style="animation-delay: 0.2s"></div>
-											<div class="h-2 w-2 rounded-full bg-indigo-400 animate-pulse" style="animation-delay: 0.4s"></div>
+											<div class="h-2 w-2 rounded-full bg-primary/60 animate-pulse"></div>
+											<div class="h-2 w-2 rounded-full bg-primary/60 animate-pulse" style="animation-delay: 0.2s"></div>
+											<div class="h-2 w-2 rounded-full bg-primary/60 animate-pulse" style="animation-delay: 0.4s"></div>
 										</div>
-										<span class="text-xs text-indigo-600 font-medium">Vanar AI is typing...</span>
+										<span class="text-xs text-primary font-medium">Vanar AI is typing...</span>
 									</div>
 								{:else if messageItem.aiResponse && messageItem.aiResponse.length > 0}
-									<div class="text-sm leading-relaxed text-gray-800 prose prose-sm max-w-none" bind:this={aiResponseContainer}>
+									<div class="text-sm leading-relaxed text-foreground prose prose-sm max-w-none" bind:this={aiResponseContainer}>
 										{@html renderMarkdown(messageItem.aiResponse)}
 									</div>
-									<p class="mt-2 text-xs text-gray-400">
+									<p class="mt-2 text-xs text-muted-foreground">
 										{new Date(messageItem.createdAt).toLocaleTimeString()}
 									</p>
 								{:else}
-									<div class="text-sm text-gray-400 italic">
+									<div class="text-sm text-muted-foreground italic">
 										No response received
 									</div>
 								{/if}
@@ -297,19 +291,15 @@
 							<div class="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
 								<button 
 									on:click={() => copyResponse(messageItem.id, messageItem.aiResponse || '')}
-									class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors duration-150"
+									class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors duration-150"
 									title="Copy"
 									aria-label="Copy response"
 								>
-									<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-										{#if copiedMessageId === messageItem.id}
-											<path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-											<path d="M21 9v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-										{:else}
-											<rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2" fill="none"/>
-											<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2" fill="none"/>
-										{/if}
-									</svg>
+									{#if copiedMessageId === messageItem.id}
+										<Check class="w-4 h-4" />
+									{:else}
+										<Copy class="w-4 h-4" />
+									{/if}
 								</button>
 							</div>
 						</div>
@@ -322,7 +312,7 @@
 	{#if messages.length > 1 && !isAtBottom()}
 		<button
 			on:click={scrollToBottom}
-			class="absolute bottom-4 right-4 p-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full shadow-lg border border-indigo-400 hover:border-indigo-500 transition-all duration-200 animate-bounce"
+			class="absolute bottom-4 right-4 p-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full shadow-lg border transition-all duration-200 animate-bounce"
 			aria-label="Scroll to bottom"
 		>
 			<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -336,42 +326,44 @@
 <style>
 	:global(.prose pre) {
 		position: relative;
-		background-color: #1f2937; /* gray-800 */
-		border-radius: 0.5rem; /* rounded */
-		padding: 1rem 2.5rem 1rem 1rem; /* extra right padding for copy button */
+		background-color: hsl(var(--muted));
+		border-radius: 0.5rem;
+		padding: 1rem 2.5rem 1rem 1rem;
 		overflow: auto;
-		border: 1px solid #374151; /* gray-700 */
+		border: 1px solid hsl(var(--border));
 	}
 
 	:global(.prose pre code) {
 		background: transparent !important;
 		white-space: pre;
-		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+		font-family: var(--font-mono);
 		font-size: 0.85rem;
-		color: #f9fafb; /* near-white text */
+		color: hsl(var(--foreground));
 	}
 
 	:global(.prose pre .copy-button) {
 		position: absolute;
 		top: 0.5rem;
 		right: 0.5rem;
-		background: rgba(255, 255, 255, 0.08);
-		color: #e5e7eb; /* gray-200 */
-		border: 1px solid rgba(255, 255, 255, 0.2);
+		background: hsl(var(--muted-foreground) / 0.1);
+		color: hsl(var(--muted-foreground));
+		border: 1px solid hsl(var(--border));
 		padding: 0.25rem 0.5rem;
-		border-radius: 0.375rem; /* rounded-md */
-		font-size: 0.75rem; /* text-xs */
+		border-radius: 0.375rem;
+		font-size: 0.75rem;
 		cursor: pointer;
+		transition: all 0.2s ease;
 	}
 
 	:global(.prose pre .copy-button:hover) {
-		background: rgba(255, 255, 255, 0.12);
+		background: hsl(var(--muted-foreground) / 0.2);
+		color: hsl(var(--foreground));
 	}
 
 	:global(.prose pre .copy-button.copied) {
-		background: rgba(16, 185, 129, 0.2); /* emerald */
-		border-color: #10b981; /* emerald-500 */
-		color: #ecfdf5;
+		background: hsl(var(--primary) / 0.2);
+		border-color: hsl(var(--primary));
+		color: hsl(var(--primary));
 	}
 </style>
 

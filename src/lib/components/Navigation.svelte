@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
+	import DarkModeToggle from '$lib/components/DarkModeToggle.svelte';
 	import { goto } from '$app/navigation';
 	export let user: { id: string; role: string; name?: string | null; email?: string | null } | null = null;
 	export let currentPage: string = '';
@@ -44,27 +45,30 @@
 				{/if}
 			</div>
 			<div class="flex items-center">
-				{#if user}
-					<div class="ml-3">
-						<div class="flex items-center space-x-4">
-							<span class="text-sm text-muted-foreground">
-								{user?.role === 'admin' ? 'Admin: ' : 'Welcome, '}{user?.name || user?.email}
-							</span>
-							<Button
-								variant="destructive"
-								type="button"
-								onclick={handleSignOut}
-							>
-								Sign Out
-							</Button>
+				<div class="flex items-center space-x-2">
+					<DarkModeToggle />
+					{#if user}
+						<div class="ml-1">
+							<div class="flex items-center space-x-4">
+								<span class="text-sm text-muted-foreground">
+									{user?.role === 'admin' ? 'Admin: ' : 'Welcome, '}{user?.name || user?.email}
+								</span>
+								<Button
+									variant="destructive"
+									type="button"
+									onclick={handleSignOut}
+								>
+									Sign Out
+								</Button>
+							</div>
 						</div>
-					</div>
-				{:else}
-					<div class="flex items-center space-x-2">
-						<Button href="/auth/signin" variant="ghost">Sign In</Button>
-						<Button href="/auth/signup">Sign Up</Button>
-					</div>
-				{/if}
+					{:else}
+						<div class="flex items-center space-x-2">
+							<Button href="/auth/signin" variant="ghost">Sign In</Button>
+							<Button href="/auth/signup">Sign Up</Button>
+						</div>
+					{/if}
+				</div>
 			</div>
 		</div>
 	</div>
