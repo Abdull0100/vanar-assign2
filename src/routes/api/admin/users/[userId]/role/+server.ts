@@ -57,8 +57,8 @@ export const PATCH: RequestHandler = async ({ request, params, locals }) => {
 			userBefore.role,
 			role,
 			userBefore.email,
-			locals.request?.headers.get('x-forwarded-for') || locals.request?.headers.get('x-real-ip'),
-			locals.request?.headers.get('user-agent')
+			locals.request?.headers.get('x-forwarded-for') || locals.request?.headers.get('x-real-ip') || undefined,
+			locals.request?.headers.get('user-agent') || undefined
 		);
 
 		// If the role was changed to admin, send the promotion email

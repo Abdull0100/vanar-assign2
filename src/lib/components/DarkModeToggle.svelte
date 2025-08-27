@@ -3,7 +3,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Sun, Moon } from '@lucide/svelte';
 
-	export let size: 'sm' | 'md' | 'lg' = 'md';
+	export let size: 'sm' | 'default' | 'lg' = 'default';
 	export let variant: 'default' | 'ghost' | 'outline' | 'secondary' = 'ghost';
 	export let showLabel: boolean = false;
 </script>

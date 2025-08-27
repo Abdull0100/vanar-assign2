@@ -15,7 +15,6 @@ export const handleError: HandleClientError = async ({ error, event }) => {
 	
 	// In development, show more details
 	return {
-		message: error.message || 'An unexpected client error occurred',
-		code: error.code || 'UNKNOWN_CLIENT_ERROR'
+		message: error instanceof Error ? error.message : 'An unexpected client error occurred'
 	};
 };

@@ -42,13 +42,16 @@ export const GET: RequestHandler = async ({ params }) => {
 		const userStatsData = stats[0];
 		
 		// Add last activity details to the stats
-		userStatsData.lastActivityDetails = lastActivity.length > 0 ? {
-			description: lastActivity[0].description,
-			activityType: lastActivity[0].activityType,
-			createdAt: lastActivity[0].createdAt
-		} : null;
+		const statsWithActivity = {
+			...userStatsData,
+			lastActivityDetails: lastActivity.length > 0 ? {
+				description: lastActivity[0].description,
+				activityType: lastActivity[0].activityType,
+				createdAt: lastActivity[0].createdAt
+			} : null
+		};
 
-		return json({ stats: userStatsData });
+		return json({ stats: statsWithActivity });
 	} catch (error) {
 		console.error('Error fetching user stats:', error);
 		return json({ error: 'Failed to fetch user stats' }, { status: 500 });

@@ -3,8 +3,8 @@ import { transformDbMessagesToView } from '$lib/db/chatUtils';
 
 export type ChatMessage = {
 	id: string;
+	role: 'user' | 'assistant' | 'system';
 	content: string;
-	aiResponse: string | null;
 	createdAt: string;
 	isStreaming?: boolean;
 };
@@ -221,8 +221,8 @@ export function createChatStore(userId: string | null) {
 		}
 		const chatMessage: ChatMessage = {
 			id: generateId(),
+			role: 'user',
 			content: messageContent,
-			aiResponse: null,
 			createdAt: new Date().toISOString(),
 			isStreaming: true
 		};
@@ -234,9 +234,9 @@ export function createChatStore(userId: string | null) {
 
 		try {
 			const history = getValue(messages)
-				.filter((m) => m.aiResponse)
+				.filter((m) => m.role === 'assistant')
 				.slice(0, -1)
-				.map((m) => ({ message: m.content, response: m.aiResponse }));
+				.map((m) => ({ message: m.content, response: m.content }));
 			const convId = getValue(currentConversationId);
 			const apiConversationId = convId && convId.startsWith('temp-') ? undefined : convId;
 			const response = await fetch('/api/chat', {
@@ -267,10 +267,28 @@ export function createChatStore(userId: string | null) {
 								}
 								if (data.chunk) {
 									streamedResponse += data.chunk;
-									messages.update((msgs) => msgs.map((m) => (m.id === chatMessage.id ? { ...m, aiResponse: streamedResponse } : m)));
+									// Add or update assistant response message
+									messages.update((msgs) => {
+										const lastMsg = msgs[msgs.length - 1];
+										if (lastMsg && lastMsg.role === 'assistant' && lastMsg.isStreaming) {
+											// Update existing assistant message
+											return msgs.map((m, i) => 
+												i === msgs.length - 1 ? { ...m, content: streamedResponse } : m
+											);
+										} else {
+											// Add new assistant message
+											return [...msgs, {
+												id: generateId(),
+												role: 'assistant',
+												content: streamedResponse,
+												createdAt: new Date().toISOString(),
+												isStreaming: true
+											}];
+										}
+									});
 								}
 								if (data.done) {
-									messages.update((msgs) => msgs.map((m) => (m.id === chatMessage.id ? { ...m, isStreaming: false } : m)));
+									messages.update((msgs) => msgs.map((m) => (m.isStreaming ? { ...m, isStreaming: false } : m)));
 									if (data.conversationId && getValue(currentConversationId) !== data.conversationId) {
 										const cid = getValue(currentConversationId);
 										if (cid) {
@@ -287,7 +305,13 @@ export function createChatStore(userId: string | null) {
 			} else {
 				const data = await response.json();
 				if (response.ok) {
-					messages.update((msgs) => msgs.map((m) => (m.id === chatMessage.id ? { ...m, aiResponse: data.response, isStreaming: false } : m)));
+					messages.update((msgs) => [...msgs, {
+						id: generateId(),
+						role: 'assistant',
+						content: data.response,
+						createdAt: new Date().toISOString(),
+						isStreaming: false
+					}]);
 					if (data.conversationId && getValue(currentConversationId) !== data.conversationId) {
 						const cid = getValue(currentConversationId);
 						if (cid) {

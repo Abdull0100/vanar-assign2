@@ -54,8 +54,8 @@ export const PATCH: RequestHandler = async ({ request, params, locals }) => {
 			userId as string,
 			active ? 'enable' : 'disable',
 			userBefore.email,
-			locals.request?.headers.get('x-forwarded-for') || locals.request?.headers.get('x-real-ip'),
-			locals.request?.headers.get('user-agent')
+			locals.request?.headers.get('x-forwarded-for') || locals.request?.headers.get('x-real-ip') || undefined,
+			locals.request?.headers.get('user-agent') || undefined
 		);
 
 		return json({ message: 'User status updated successfully' });

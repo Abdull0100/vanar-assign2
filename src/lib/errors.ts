@@ -38,31 +38,19 @@ export class ValidationError extends AppError {
 
 // Helper function to throw SvelteKit errors
 export function throwError(status: number, message: string, code?: string): never {
-	throw error(status, {
-		message,
-		code
-	});
+	throw error(status, message);
 }
 
 // Helper to handle API errors gracefully
 export function handleApiError(err: unknown): never {
 	if (err instanceof AppError) {
-		throw error(err.status, {
-			message: err.message,
-			code: err.code
-		});
+		throw error(err.status, err.message);
 	}
 	
 	if (err instanceof Error) {
 		console.error('API Error:', err);
-		throw error(500, {
-			message: 'Internal server error',
-			code: 'INTERNAL_ERROR'
-		});
+		throw error(500, 'Internal server error');
 	}
 	
-	throw error(500, {
-		message: 'An unexpected error occurred',
-		code: 'UNKNOWN_ERROR'
-	});
+	throw error(500, 'An unexpected error occurred');
 }

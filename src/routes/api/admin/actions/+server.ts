@@ -41,9 +41,9 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
 		// Get recent actions by different admins
 		const recentByAdmin = actions
-			.filter(action => action.admin)
+			.filter(action => action.adminId)
 			.reduce((acc, action) => {
-				const adminName = action.admin?.name || action.admin?.email || 'Unknown';
+				const adminName = action.adminId || 'Unknown';
 				if (!acc[adminName]) {
 					acc[adminName] = [];
 				}

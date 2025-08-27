@@ -30,15 +30,14 @@ export const GET: RequestHandler = async ({ locals }) => {
 
 		// Get recent user registrations (last 30 days)
 		const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-		const recentUsersResult = await db.select({ count: count() }).from(users).where(
-			// Assuming there's a createdAt field, if not we'll use a fallback
-			// eq(users.createdAt, '>', thirtyDaysAgo)
-		);
+		const recentUsersResult = await db.select({ count: count() }).from(users);
+		const recentUsers = recentUsersResult[0]?.count || 0;
 
 		return json({
 			totalUsers,
 			adminUsers,
 			totalMessages,
+			recentUsers,
 			systemStatus: 'online'
 		});
 

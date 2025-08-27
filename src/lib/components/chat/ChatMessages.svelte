@@ -12,11 +12,10 @@
 	import 'prismjs/components/prism-sql';
 	import { Bot, User, Copy, Edit3, Check, MessageSquare } from '@lucide/svelte';
 
-	export let messages: Array<{ id: string; content: string; aiResponse: string | null; createdAt: string; isStreaming?: boolean }>= [];
+	export let messages: Array<{ id: string; role: 'user' | 'assistant' | 'system'; content: string; createdAt: string; isStreaming?: boolean }>= [];
 	export let initializing: boolean = false;
 	export let onEditMessage: ((messageId: string, newContent: string) => void) | null = null;
 
-	let aiResponseContainer: HTMLElement;
 	let messagesContainer: HTMLElement;
 	let copiedMessageId: string | null = null;
 	let editingMessageId: string | null = null;
@@ -48,101 +47,49 @@
 		setTimeout(smartScrollToBottom, 100);
 	}
 
-	$: if (messages && aiResponseContainer) {
-		setTimeout(() => {
-			if (aiResponseContainer) processCodeBlocks(aiResponseContainer);
-		}, 100);
-	}
-
 	function renderMarkdown(text: string): string {
+		if (!text) return '';
+		
+		// Configure marked options
+		marked.setOptions({
+			breaks: true,
+			gfm: true
+		});
+
 		try {
-			marked.setOptions({ breaks: true, gfm: true });
-			const sanitized = text
-				.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-				.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-				.replace(/javascript:/gi, '')
-				.replace(/on\w+\s*=/gi, '');
-			const result = marked(sanitized);
-			if (typeof result === 'string') {
-				function decodeEntities(encoded: string): string {
-					const el = document.createElement('textarea');
-					el.innerHTML = encoded;
-					return el.value;
-				}
-				const highlightedResult = result.replace(
-					/<pre><code class="language-(\w+)">([\s\S]*?)<\/code><\/pre>/g,
-					(match, lang, code) => {
-						if (lang && Prism.languages[lang]) {
-							try {
-								const decoded = decodeEntities(code);
-								const highlighted = Prism.highlight(decoded, Prism.languages[lang], lang);
-								return `<pre><code class="language-${lang}">${highlighted}</code></pre>`;
-							} catch {}
-						}
-						return match;
-					}
-				);
-				return highlightedResult;
-			}
-			return sanitized.replace(/\n/g, '<br>');
-		} catch {
-			return text
-				.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-				.replace(/\*(.*?)\*/g, '<em>$1</em>')
-				.replace(/`(.*?)`/g, '<code>$1</code>')
-				.replace(/\n/g, '<br>');
+			const result = marked(text);
+			return typeof result === 'string' ? result : text;
+		} catch (error) {
+			console.error('Markdown rendering error:', error);
+			return text;
 		}
 	}
 
-	function processCodeBlocks(container: HTMLElement) {
-		const codeBlocks = container.querySelectorAll('pre code');
-		codeBlocks.forEach((codeBlock) => {
-			const pre = codeBlock.parentElement;
-			if (!pre || pre.querySelector('.copy-button')) return;
-			const languageClass = Array.from(codeBlock.classList).find(cls => cls.startsWith('language-'));
-			const language = languageClass ? languageClass.replace('language-', '') : '';
-			pre.setAttribute('data-language', language || 'text');
-			const copyButton = document.createElement('button');
-			copyButton.className = 'copy-button';
-			copyButton.innerHTML = '📋';
-			copyButton.title = 'Copy code';
-			copyButton.addEventListener('click', async () => {
-				const codeText = codeBlock.textContent || '';
-				try {
-					await navigator.clipboard.writeText(codeText);
-					copyButton.innerHTML = '✅';
-					copyButton.classList.add('copied');
-					copyButton.title = 'Copied!';
-					setTimeout(() => {
-						copyButton.innerHTML = '📋';
-						copyButton.classList.remove('copied');
-						copyButton.title = 'Copy code';
-					}, 2000);
-				} catch {}
-			});
-			pre.appendChild(copyButton);
+	function copyUserMessage(messageId: string, content: string) {
+		navigator.clipboard.writeText(content).then(() => {
+			copiedMessageId = messageId;
+			setTimeout(() => {
+				copiedMessageId = null;
+			}, 2000);
+		}).catch(err => {
+			console.error('Failed to copy text: ', err);
 		});
 	}
 
-	async function copyResponse(messageId: string, text: string) {
-		try {
-			await navigator.clipboard.writeText(text || '');
+	function copyResponse(messageId: string, content: string) {
+		navigator.clipboard.writeText(content).then(() => {
 			copiedMessageId = messageId;
-			setTimeout(() => { copiedMessageId = null; }, 2000);
-		} catch {}
+			setTimeout(() => {
+				copiedMessageId = null;
+			}, 2000);
+		}).catch(err => {
+			console.error('Failed to copy text: ', err);
+		});
 	}
 
-	async function copyUserMessage(messageId: string, text: string) {
-		try {
-			await navigator.clipboard.writeText(text || '');
-			copiedMessageId = messageId;
-			setTimeout(() => { copiedMessageId = null; }, 2000);
-		} catch {}
-	}
-
-	function startEditMessage(messageId: string, currentText: string) {
+	function startEditMessage(messageId: string, currentContent: string) {
 		editingMessageId = messageId;
-		editText = currentText;
+		editText = currentContent;
 	}
 
 	function cancelEdit() {
@@ -178,193 +125,189 @@
 			{/if}
 		{:else}
 			<div class="mb-4 text-center">
-				<p class="text-xs text-muted-foreground italic">Each message represents a complete Q&A pair • All deletions provide guaranteed permanent erasure from all systems</p>
+				<p class="text-xs text-muted-foreground italic">Each message represents a single message with role-based content • All deletions provide guaranteed permanent erasure from all systems</p>
 			</div>
 			{#each messages as messageItem, idx (messageItem.id)}
 				<div class="mb-6 group hover:bg-muted/30 rounded-lg p-1 -m-1 transition-colors duration-200">
-					<div class="flex justify-end mb-2">
-						<div class="flex items-end space-x-2 max-w-xl relative">
-							{#if editingMessageId === messageItem.id}
-								<div class="rounded-2xl rounded-br-sm bg-card border-2 border-primary px-4 py-3 shadow-lg flex-1">
-									<textarea 
-										bind:value={editText}
-										class="w-full text-sm leading-relaxed resize-none border-none outline-none bg-transparent text-foreground placeholder:text-muted-foreground"
-										rows="3"
-										placeholder="Edit your message..."
-									></textarea>
-									<div class="flex justify-end space-x-2 mt-2">
-										<button 
-											on:click={cancelEdit}
-											class="px-3 py-1 text-xs rounded border border-border hover:bg-muted text-foreground"
-										>
-											Cancel
-										</button>
-										<button 
-											on:click={() => saveEdit(messageItem.id)}
-											class="px-3 py-1 text-xs rounded bg-primary hover:bg-primary/90 text-primary-foreground"
-										>
-											Save
-										</button>
-									</div>
-								</div>
-							{:else}
-								<div class="rounded-2xl rounded-br-sm bg-primary px-4 py-3 text-primary-foreground shadow-lg">
-									<p class="text-sm leading-relaxed">{messageItem.content}</p>
-								</div>
-							{/if}
-							<div class="h-8 w-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-								<User class="w-4 h-4 text-muted-foreground" />
-							</div>
-						</div>
-					</div>
-					
-					<!-- User message action buttons -->
-					{#if editingMessageId !== messageItem.id}
-						<div class="flex justify-end mr-10 mb-1">
-							<div class="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-								<button 
-									on:click={() => copyUserMessage(messageItem.id + '_user', messageItem.content)}
-									class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors duration-150"
-									title="Copy"
-									aria-label="Copy message"
-								>
-									{#if copiedMessageId === messageItem.id + '_user'}
-										<Check class="w-4 h-4" />
-									{:else}
-										<Copy class="w-4 h-4" />
-									{/if}
-								</button>
-								<button 
-									on:click={() => startEditMessage(messageItem.id, messageItem.content)}
-									class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors duration-150"
-									title="Edit"
-									aria-label="Edit message"
-								>
-									<Edit3 class="w-4 h-4" />
-								</button>
-							</div>
-						</div>
-					{/if}
-
-					<div class="flex justify-start">
-						<div class="flex items-end space-x-2 max-w-xl relative">
-							<div class="h-8 w-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-								<Bot class="w-4 h-4 text-muted-foreground" />
-							</div>
-							<div class="rounded-2xl rounded-bl-sm bg-card px-4 py-3 shadow-lg border">
-								{#if messageItem.isStreaming}
-									<div class="text-sm leading-relaxed text-foreground prose prose-sm max-w-none" bind:this={aiResponseContainer}>
-										{#if messageItem.aiResponse && messageItem.aiResponse.length > 0}
-											<span>{@html renderMarkdown(messageItem.aiResponse)}</span>
-											<span class="inline-block w-0.5 h-4 bg-primary animate-pulse ml-1"></span>
-										{:else}
-											<span class="inline-block w-0.5 h-4 bg-primary animate-pulse ml-1"></span>
-										{/if}
-									</div>
-									<div class="flex items-center mt-2 space-x-2">
-										<div class="flex items-center space-x-1">
-											<div class="h-2 w-2 rounded-full bg-primary/60 animate-pulse"></div>
-											<div class="h-2 w-2 rounded-full bg-primary/60 animate-pulse" style="animation-delay: 0.2s"></div>
-											<div class="h-2 w-2 rounded-full bg-primary/60 animate-pulse" style="animation-delay: 0.4s"></div>
+					{#if messageItem.role === 'user'}
+						<!-- User Message -->
+						<div class="flex justify-end mb-2">
+							<div class="flex items-end space-x-2 max-w-xl relative">
+								{#if editingMessageId === messageItem.id}
+									<div class="rounded-2xl rounded-br-sm bg-card border-2 border-primary px-4 py-3 shadow-lg flex-1">
+										<textarea 
+											bind:value={editText}
+											class="w-full text-sm leading-relaxed resize-none border-none outline-none bg-transparent text-foreground placeholder:text-muted-foreground"
+											rows="3"
+											placeholder="Edit your message..."
+										></textarea>
+										<div class="flex justify-end space-x-2 mt-2">
+											<button 
+												on:click={cancelEdit}
+												class="px-3 py-1 text-xs rounded border border-border hover:bg-muted text-foreground"
+											>
+												Cancel
+											</button>
+											<button 
+												on:click={() => saveEdit(messageItem.id)}
+												class="px-3 py-1 text-xs rounded bg-primary hover:bg-primary/90 text-primary-foreground"
+											>
+												Save
+											</button>
 										</div>
-										<span class="text-xs text-primary font-medium">Vanar AI is typing...</span>
 									</div>
-								{:else if messageItem.aiResponse && messageItem.aiResponse.length > 0}
-									<div class="text-sm leading-relaxed text-foreground prose prose-sm max-w-none" bind:this={aiResponseContainer}>
-										{@html renderMarkdown(messageItem.aiResponse)}
-									</div>
-									<p class="mt-2 text-xs text-muted-foreground">
-										{new Date(messageItem.createdAt).toLocaleTimeString()}
-									</p>
 								{:else}
-									<div class="text-sm text-muted-foreground italic">
-										No response received
+									<div class="rounded-2xl rounded-br-sm bg-primary px-4 py-3 text-primary-foreground shadow-lg">
+										<p class="text-sm leading-relaxed">{messageItem.content}</p>
 									</div>
 								{/if}
+								<div class="h-8 w-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+									<User class="w-4 h-4 text-muted-foreground" />
+								</div>
 							</div>
 						</div>
-					</div>
-					
-					<!-- AI response action button -->
-					{#if messageItem.aiResponse && messageItem.aiResponse.length > 0 && !messageItem.isStreaming}
-						<div class="flex justify-start ml-10 mt-1">
-							<div class="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-								<button 
-									on:click={() => copyResponse(messageItem.id, messageItem.aiResponse || '')}
-									class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors duration-150"
-									title="Copy"
-									aria-label="Copy response"
-								>
-									{#if copiedMessageId === messageItem.id}
-										<Check class="w-4 h-4" />
+						
+						<!-- User message action buttons -->
+						{#if editingMessageId !== messageItem.id}
+							<div class="flex justify-end mr-10 mb-1">
+								<div class="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+									<button 
+										on:click={() => copyUserMessage(messageItem.id + '_user', messageItem.content)}
+										class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors duration-150"
+										title="Copy"
+										aria-label="Copy message"
+									>
+										{#if copiedMessageId === messageItem.id + '_user'}
+											<Check class="w-4 h-4" />
+										{:else}
+											<Copy class="w-4 h-4" />
+										{/if}
+									</button>
+									<button 
+										on:click={() => startEditMessage(messageItem.id, messageItem.content)}
+										class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors duration-150"
+										title="Edit"
+										aria-label="Edit message"
+									>
+										<Edit3 class="w-4 h-4" />
+									</button>
+								</div>
+							</div>
+						{/if}
+					{:else if messageItem.role === 'assistant'}
+						<!-- Assistant Message -->
+						<div class="flex justify-start">
+							<div class="flex items-end space-x-2 max-w-xl relative">
+								<div class="h-8 w-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+									<Bot class="w-4 h-4 text-muted-foreground" />
+								</div>
+								<div class="rounded-2xl rounded-bl-sm bg-card px-4 py-3 shadow-lg border">
+									{#if messageItem.isStreaming}
+										<div class="text-sm leading-relaxed text-foreground prose prose-sm max-w-none">
+											{#if messageItem.content && messageItem.content.length > 0}
+												<span>{@html renderMarkdown(messageItem.content)}</span>
+												<span class="inline-block w-0.5 h-4 bg-primary animate-pulse ml-1"></span>
+											{:else}
+												<span class="inline-block w-0.5 h-4 bg-primary animate-pulse ml-1"></span>
+											{/if}
+										</div>
+										<div class="flex items-center mt-2 space-x-2">
+											<div class="flex items-center space-x-1">
+												<div class="h-2 w-2 rounded-full bg-primary/60 animate-pulse"></div>
+												<div class="h-2 w-2 rounded-full bg-primary/60 animate-pulse" style="animation-delay: 0.2s"></div>
+												<div class="h-2 w-2 rounded-full bg-primary/60 animate-pulse" style="animation-delay: 0.4s"></div>
+											</div>
+											<span class="text-xs text-primary font-medium">Vanar AI is typing...</span>
+										</div>
+									{:else if messageItem.content && messageItem.content.length > 0}
+										<div class="text-sm leading-relaxed text-foreground prose prose-sm max-w-none">
+											{@html renderMarkdown(messageItem.content)}
+										</div>
+										<p class="mt-2 text-xs text-muted-foreground">
+											{new Date(messageItem.createdAt).toLocaleTimeString()}
+										</p>
 									{:else}
-										<Copy class="w-4 h-4" />
+										<div class="text-sm text-muted-foreground italic">
+											No response received
+										</div>
 									{/if}
-								</button>
+								</div>
 							</div>
 						</div>
+						
+						<!-- AI response action button -->
+						{#if messageItem.content && messageItem.content.length > 0 && !messageItem.isStreaming}
+							<div class="flex justify-start ml-10 mt-1">
+								<div class="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+									<button 
+										on:click={() => copyResponse(messageItem.id, messageItem.content)}
+										class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors duration-150"
+										title="Copy"
+										aria-label="Copy response"
+									>
+										{#if copiedMessageId === messageItem.id}
+											<Check class="w-4 h-4" />
+										{:else}
+											<Copy class="w-4 h-4" />
+										{/if}
+									</button>
+								</div>
+							</div>
+						{/if}
 					{/if}
 				</div>
 			{/each}
 		{/if}
 	</div>
-
-	{#if messages.length > 1 && !isAtBottom()}
-		<button
-			on:click={scrollToBottom}
-			class="absolute bottom-4 right-4 p-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full shadow-lg border transition-all duration-200 animate-bounce"
-			aria-label="Scroll to bottom"
-		>
-			<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-				<path d="M7 13l5 5 5-5"/>
-				<path d="M7 6l5 5 5-5"/>
-			</svg>
-		</button>
-	{/if}
 </div>
 
 <style>
+	:global(.prose) {
+		max-width: none;
+	}
+	
 	:global(.prose pre) {
-		position: relative;
 		background-color: hsl(var(--muted));
+		border: 1px solid hsl(var(--border));
 		border-radius: 0.5rem;
-		padding: 1rem 2.5rem 1rem 1rem;
-		overflow: auto;
-		border: 1px solid hsl(var(--border));
+		padding: 1rem;
+		overflow-x: auto;
 	}
-
+	
+	:global(.prose code) {
+		background-color: hsl(var(--muted));
+		padding: 0.125rem 0.25rem;
+		border-radius: 0.25rem;
+		font-size: 0.875em;
+	}
+	
 	:global(.prose pre code) {
-		background: transparent !important;
-		white-space: pre;
-		font-family: var(--font-mono);
-		font-size: 0.85rem;
-		color: hsl(var(--foreground));
+		background-color: transparent;
+		padding: 0;
 	}
-
-	:global(.prose pre .copy-button) {
-		position: absolute;
-		top: 0.5rem;
-		right: 0.5rem;
-		background: hsl(var(--muted-foreground) / 0.1);
+	
+	:global(.prose blockquote) {
+		border-left: 4px solid hsl(var(--border));
+		padding-left: 1rem;
+		margin: 1rem 0;
+		font-style: italic;
 		color: hsl(var(--muted-foreground));
+	}
+	
+	:global(.prose table) {
+		border-collapse: collapse;
+		width: 100%;
+		margin: 1rem 0;
+	}
+	
+	:global(.prose th, .prose td) {
 		border: 1px solid hsl(var(--border));
-		padding: 0.25rem 0.5rem;
-		border-radius: 0.375rem;
-		font-size: 0.75rem;
-		cursor: pointer;
-		transition: all 0.2s ease;
+		padding: 0.5rem;
+		text-align: left;
 	}
-
-	:global(.prose pre .copy-button:hover) {
-		background: hsl(var(--muted-foreground) / 0.2);
-		color: hsl(var(--foreground));
-	}
-
-	:global(.prose pre .copy-button.copied) {
-		background: hsl(var(--primary) / 0.2);
-		border-color: hsl(var(--primary));
-		color: hsl(var(--primary));
+	
+	:global(.prose th) {
+		background-color: hsl(var(--muted));
+		font-weight: 600;
 	}
 </style>
-
-

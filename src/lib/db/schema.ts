@@ -75,19 +75,23 @@ export const conversations = pgTable('conversations', {
 // When aiResponse is NULL: it's a user message waiting for AI response
 // When aiResponse has content: it's a complete Q&A pair with user context + AI response
 export const chatMessages = pgTable('chatMessages', {
-	id: uuid('id').primaryKey().defaultRandom(), // This is messageId
+	id: uuid('id').primaryKey().defaultRandom(), // Unique message ID
 	conversationId: uuid('conversationId')
-		.notNull()
-		.references(() => conversations.id, { onDelete: 'cascade' }),
+	  .notNull()
+	  .references(() => conversations.id, { onDelete: 'cascade' }),
 	userId: uuid('userId')
-		.notNull()
-		.references(() => users.id, { onDelete: 'cascade' }),
-	content: text('content').notNull(), // User query/context
-	aiResponse: text('aiResponse'), // AI response text (null for pending user messages, text for complete Q&A pairs)
-	previousId: uuid('previousId'), // ID of previous chat in same room for conversation flow
-	createdAt: timestamp('createdAt').defaultNow().notNull(), // Timestamp of the Q&A pair
-	updatedAt: timestamp('updatedAt').defaultNow().notNull() // When message was last updated
-});
+	  .notNull()
+	  .references(() => users.id, { onDelete: 'cascade' }),
+	role: text('role').notNull().default('user'), // 'user' | 'assistant' | 'system'
+	content: text('content').notNull(), // Message content
+	parentId: uuid('parentId'), // Parent message ID (null for root)
+	childrenIds: jsonb('childrenIds').$type<string[]>().default([]), // Forks stored here
+	createdAt: timestamp('createdAt').defaultNow().notNull(),
+	updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+	// Legacy flat conversation pointer
+	previousId: uuid('previousId') // (deprecated, linear flow only)
+  });
+  
 
 // User Sessions table - tracks user login sessions
 export const userSessions = pgTable('userSessions', {
@@ -186,7 +190,7 @@ export const conversationsRelations = relations(conversations, ({ one, many }) =
 	messages: many(chatMessages)
 }));
 
-export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
+export const chatMessagesRelations = relations(chatMessages, ({ one, many }) => ({
 	user: one(users, {
 		fields: [chatMessages.userId],
 		references: [users.id]
@@ -194,6 +198,14 @@ export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
 	conversation: one(conversations, {
 		fields: [chatMessages.conversationId],
 		references: [conversations.id]
+	}),
+	parent: one(chatMessages, {
+		fields: [chatMessages.parentId],
+		references: [chatMessages.id],
+		relationName: 'messageParent'
+	}),
+	children: many(chatMessages, {
+		relationName: 'messageParent'
 	})
 }));
 

@@ -1,11 +1,14 @@
 // See https://svelte.dev/docs/kit/types#app.d.ts
 // for information about these interfaces
-import type { DefaultSession } from '@auth/core/types';
+import type { DefaultSession, Session } from '@auth/core/types';
 
 declare global {
 	namespace App {
 		// interface Error {}
-		// interface Locals {}
+		interface Locals {
+			getSession?: () => Promise<Session | null>;
+			request?: Request;
+		}
 		// interface PageData {}
 		// interface PageState {}
 		// interface Platform {}

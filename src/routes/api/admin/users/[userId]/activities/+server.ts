@@ -63,8 +63,8 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			chatMessages: userChatMessages.map(msg => ({
 				id: msg.id,
 				content: msg.content,
-				sender: msg.sender,
-				aiResponse: msg.aiResponse,
+				userId: msg.userId,
+				role: msg.role,
 				createdAt: msg.createdAt
 			})),
 			conversations: userConversations.map(conv => ({

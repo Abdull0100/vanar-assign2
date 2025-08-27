@@ -132,11 +132,11 @@ export class ActivityTracker {
 				where: eq(userStats.userId, userId)
 			});
 
-			const now = new Date().toISOString();
-			const updateData: any = {
-				lastActivity: now,
-				updatedAt: now
-			};
+					const now = new Date();
+		const updateData: any = {
+			lastActivity: now,
+			updatedAt: now
+		};
 
 			// Update specific counters based on activity type
 			switch (activityType) {

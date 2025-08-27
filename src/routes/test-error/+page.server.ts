@@ -6,20 +6,11 @@ export const load: PageServerLoad = async ({ url }) => {
 	
 	switch (errorType) {
 		case '404':
-			throw error(404, {
-				message: 'This is a test 404 error page',
-				code: 'TEST_NOT_FOUND'
-			});
+			throw error(404, 'This is a test 404 error page');
 		case '403':
-			throw error(403, {
-				message: 'This is a test 403 forbidden error',
-				code: 'TEST_FORBIDDEN'
-			});
+			throw error(403, 'This is a test 403 forbidden error');
 		case '500':
 		default:
-			throw error(500, {
-				message: 'This is a test 500 server error',
-				code: 'TEST_SERVER_ERROR'
-			});
+			throw error(500, 'This is a test 500 server error');
 	}
 };

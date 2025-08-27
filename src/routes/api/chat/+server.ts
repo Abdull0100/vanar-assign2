@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { db } from '$lib/db';
 import { chatMessages, conversations } from '$lib/db/schema';
 import { buildRecentTranscript } from '$lib/db/chatUtils';
-import { eq, inArray, and } from 'drizzle-orm';
+import { eq, inArray, and, asc, desc } from 'drizzle-orm';
 import { AuthError, ValidationError, handleApiError } from '$lib/errors';
 
 // Import env vars from $env
@@ -30,7 +30,7 @@ function getRandomFallbackResponse(): string {
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	let userMessage: any = null; // Declare at function level for error handling
-	let targetConversationId: string; // Declare at function level for error handling
+	let targetConversationId: string | undefined; // Declare at function level for error handling
 	
 	try {
 		const body = await request.json();
@@ -98,36 +98,36 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				eq(chatMessages.conversationId, targetConversationId), // Use target conversation ID
 				eq(chatMessages.userId, session.user.id)
 			),
-			orderBy: (chatMessages, { desc }) => [desc(chatMessages.createdAt)],
-			columns: { id: true, aiResponse: true, content: true, conversationId: true }
+			orderBy: [desc(chatMessages.createdAt)],
+			columns: { id: true, role: true, content: true, conversationId: true }
 		});
 
 		// Determine the appropriate previousId and conversationId based on conversation state
 		let previousId = null;
 		
 		if (mostRecentMessage) {
-			if (mostRecentMessage.aiResponse) {
-				// If the most recent message has an AI response, link to it
+			if (mostRecentMessage.role === 'assistant') {
+				// If the most recent message is an assistant response, link to it
 				previousId = mostRecentMessage.id;
 				targetConversationId = mostRecentMessage.conversationId; // Use the conversation from previous message
 				console.log(`Linking to completed message: ${previousId} in conversation: ${targetConversationId} (content: "${mostRecentMessage.content?.substring(0, 50)}...")`);
 			} else {
-				// If the most recent message is still waiting for AI response, 
-				// find the last completed message to maintain conversation flow
-				const lastCompletedMessage = await db.query.chatMessages.findFirst({
+				// If the most recent message is a user message, 
+				// find the last assistant message to maintain conversation flow
+				const lastAssistantMessage = await db.query.chatMessages.findFirst({
 					where: and(
 						eq(chatMessages.conversationId, targetConversationId), // Use target conversation ID
 						eq(chatMessages.userId, session.user.id),
-						eq(chatMessages.aiResponse, 'IS NOT NULL')
+						eq(chatMessages.role, 'assistant')
 					),
-					orderBy: (chatMessages, { desc }) => [desc(chatMessages.createdAt)],
+					orderBy: [desc(chatMessages.createdAt)],
 					columns: { id: true, conversationId: true }
 				});
-				previousId = lastCompletedMessage?.id || null;
-				if (lastCompletedMessage?.conversationId) {
-					targetConversationId = lastCompletedMessage.conversationId;
+				previousId = lastAssistantMessage?.id || null;
+				if (lastAssistantMessage?.conversationId) {
+					targetConversationId = lastAssistantMessage.conversationId;
 				}
-				console.log(`Linking to last completed message: ${previousId} in conversation: ${targetConversationId} (skipping pending message: ${mostRecentMessage.id})`);
+				console.log(`Linking to last assistant message: ${previousId} in conversation: ${targetConversationId} (skipping user message: ${mostRecentMessage.id})`);
 			}
 		} else {
 			console.log('First message in conversation, no previousId');
@@ -135,13 +135,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		console.log(`Creating new message with previousId: ${previousId} in conversation: ${targetConversationId} for user: ${session.user.id}`);
 
-		// Save user message and prepare for AI response in a single row
+		// Save user message
 		const [userMessage] = await db.insert(chatMessages).values({
 			conversationId: targetConversationId, // Use the conversation from previousId
 			userId: session.user.id,
+			role: 'user',
 			content: message,
-			aiResponse: null, // Will be filled when AI responds
-			previousId: previousId, // Link to the previous message in this conversation
+			parentId: previousId, // Link to the previous message in this conversation
 			createdAt: new Date(),
 			updatedAt: new Date()
 		}).returning();
@@ -155,14 +155,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// Check if Gemini API is available
 		if (!genAI) {
-			// Fallback: Save a simple response
+			// Fallback: Create assistant response message
 			const fallbackResponse = "I'm sorry, but I'm currently unable to process your request. Please try again later.";
-			await db.update(chatMessages)
-				.set({ 
-					aiResponse: fallbackResponse,
-					updatedAt: new Date()
-				})
-				.where(eq(chatMessages.id, userMessage.id));
+			await db.insert(chatMessages).values({
+				conversationId: targetConversationId,
+				userId: session.user.id,
+				role: 'assistant',
+				content: fallbackResponse,
+				parentId: userMessage.id,
+				createdAt: new Date(),
+				updatedAt: new Date()
+			});
 			
 			return json({
 				success: true,
@@ -180,7 +183,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				eq(chatMessages.conversationId, targetConversationId), // Use target conversation ID
 				eq(chatMessages.userId, session.user.id)
 			),
-			orderBy: (chatMessages, { asc }) => [asc(chatMessages.createdAt)],
+			orderBy: [asc(chatMessages.createdAt)],
 			limit: 10
 		});
 
@@ -209,12 +212,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			while (currentMessage && !processedIds.has(currentMessage.id) && validMessageIds.has(currentMessage.id)) {
 				processedIds.add(currentMessage.id);
 				
-				if (currentMessage.aiResponse) {
-					// Complete Q&A pair
-					transcript = `User: ${currentMessage.content}\nVanar: ${currentMessage.aiResponse}\n\n` + transcript;
-				} else {
-					// Pending user message
-					transcript = `User: ${currentMessage.content}\nVanar: [Waiting for response]\n\n` + transcript;
+				if (currentMessage.role === 'assistant') {
+					// Assistant response
+					transcript = `Vanar: ${currentMessage.content}\n\n` + transcript;
+				} else if (currentMessage.role === 'user') {
+					// User message
+					transcript = `User: ${currentMessage.content}\n\n` + transcript;
 				}
 				
 				// Move to previous message in the chain, ensuring it's valid
@@ -257,13 +260,18 @@ Please provide a helpful response. Keep it conversational and relevant to the co
 						controller.enqueue(`data: ${JSON.stringify({ chunk: chunkText })}\n\n`);
 					}
 					
-					// Save the complete response to the database
-					await db.update(chatMessages)
-						.set({ 
-							aiResponse: fullResponse,
+					// Save the complete response as a new assistant message
+					if (session.user && targetConversationId) {
+						await db.insert(chatMessages).values({
+							conversationId: targetConversationId,
+							userId: session.user.id,
+							role: 'assistant',
+							content: fullResponse,
+							parentId: userMessage.id,
+							createdAt: new Date(),
 							updatedAt: new Date()
-						})
-						.where(eq(chatMessages.id, userMessage.id));
+						});
+					}
 					
 					// Send completion signal
 					controller.enqueue(`data: ${JSON.stringify({ 
@@ -281,7 +289,7 @@ Please provide a helpful response. Keep it conversational and relevant to the co
 						
 						const totalMessages = await db.query.chatMessages.findMany({
 							where: and(
-								eq(chatMessages.conversationId, targetConversationId), // Use target conversation ID
+								eq(chatMessages.conversationId, targetConversationId!), // Use target conversation ID
 								eq(chatMessages.userId, session.user.id)
 							),
 							columns: { id: true }
@@ -289,10 +297,10 @@ Please provide a helpful response. Keep it conversational and relevant to the co
 						if (totalMessages.length % 10 === 0 && genAI) {
 							const recentForSummary = await db.query.chatMessages.findMany({
 								where: and(
-									eq(chatMessages.conversationId, targetConversationId), // Use target conversation ID
+									eq(chatMessages.conversationId, targetConversationId!), // Use target conversation ID
 									eq(chatMessages.userId, session.user.id)
 								),
-								orderBy: (chatMessages, { asc }) => [asc(chatMessages.createdAt)],
+								orderBy: [asc(chatMessages.createdAt)],
 								limit: 16
 							});
 							
@@ -309,7 +317,7 @@ Please provide a helpful response. Keep it conversational and relevant to the co
 									summaryUpdatedAt: new Date(),
 									updatedAt: new Date()
 								})
-								.where(eq(conversations.id, targetConversationId)); // Use target conversation ID
+								.where(eq(conversations.id, targetConversationId!)); // Use target conversation ID
 						}
 					} catch (e) {
 						console.warn('Summary update skipped:', e);
@@ -319,14 +327,19 @@ Please provide a helpful response. Keep it conversational and relevant to the co
 				} catch (error) {
 					console.error('Error in stream processing:', error);
 					
-					// Save error response to database
+					// Save error response as assistant message
 					const errorMessage = "I apologize, but I encountered an error while processing your request. Please try again.";
-					await db.update(chatMessages)
-						.set({ 
-							aiResponse: errorMessage,
+					if (session.user && targetConversationId) {
+						await db.insert(chatMessages).values({
+							conversationId: targetConversationId,
+							userId: session.user.id,
+							role: 'assistant',
+							content: errorMessage,
+							parentId: userMessage.id,
+							createdAt: new Date(),
 							updatedAt: new Date()
-						})
-						.where(eq(chatMessages.id, userMessage.id));
+						});
+					}
 					
 					controller.enqueue(`data: ${JSON.stringify({ 
 						error: errorMessage,
@@ -367,15 +380,21 @@ Please provide a helpful response. Keep it conversational and relevant to the co
 			errorMessage = "I've reached my daily response limit. Please try again tomorrow or contact support for assistance.";
 		}
 		
-		// Save error response to database if it's a user-facing error and userMessage exists
-		if (shouldSaveToDb && userMessage) {
+		// Save error response as assistant message if it's a user-facing error and userMessage exists
+		if (shouldSaveToDb && userMessage && targetConversationId) {
 			try {
-				await db.update(chatMessages)
-					.set({ 
-						aiResponse: errorMessage,
+				const session = await locals.getSession?.();
+				if (session?.user) {
+					await db.insert(chatMessages).values({
+						conversationId: targetConversationId,
+						userId: session.user.id,
+						role: 'assistant',
+						content: errorMessage,
+						parentId: userMessage.id,
+						createdAt: new Date(),
 						updatedAt: new Date()
-					})
-					.where(eq(chatMessages.id, userMessage.id));
+					});
+				}
 			} catch (dbError) {
 				console.error('Failed to save error response to database:', dbError);
 			}
@@ -445,11 +464,11 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			// Query messages separately
 			const messages = await db.query.chatMessages.findMany({
 				where: eq(chatMessages.conversationId, conversationId),
-				orderBy: (chatMessages, { asc }) => [asc(chatMessages.createdAt)],
+				orderBy: [asc(chatMessages.createdAt)],
 				columns: {
 					id: true,
+					role: true,
 					content: true,
-					aiResponse: true,
 					createdAt: true,
 					updatedAt: true
 				}
@@ -463,7 +482,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			
 			const userConversations = await db.query.conversations.findMany({
 				where: eq(conversations.userId, session.user.id),
-				orderBy: (conversations, { desc }) => [desc(conversations.updatedAt)],
+				orderBy: [desc(conversations.updatedAt)],
 				columns: {
 					id: true,
 					roomName: true,

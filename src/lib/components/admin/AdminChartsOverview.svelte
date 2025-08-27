@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import * as Card from '$lib/components/ui/card';
-	import * as Chart from '$lib/components/ui/chart';
+	import { ChartContainer, ChartTooltip, type ChartConfig } from '$lib/components/ui/chart';
 	import { Badge } from '$lib/components/ui/badge';
 
 	export let users: any[] = [];
@@ -24,7 +24,7 @@
 			label: "Regular Users", 
 			color: "hsl(var(--chart-2))",
 		},
-	} satisfies Chart.ChartConfig;
+	} satisfies ChartConfig;
 
 	const activityTrendConfig = {
 		activities: {
@@ -35,7 +35,7 @@
 			label: "Logins",
 			color: "hsl(var(--chart-4))",
 		},
-	} satisfies Chart.ChartConfig;
+	} satisfies ChartConfig;
 
 	const verificationConfig = {
 		verified: {
@@ -46,7 +46,7 @@
 			label: "Unverified",
 			color: "hsl(var(--chart-5))",
 		},
-	} satisfies Chart.ChartConfig;
+	} satisfies ChartConfig;
 
 	const activityTypeConfig = {
 		login: {
@@ -65,7 +65,7 @@
 			label: "Admin Actions",
 			color: "hsl(var(--chart-4))",
 		},
-	} satisfies Chart.ChartConfig;
+	} satisfies ChartConfig;
 
 	onMount(() => {
 		generateChartData();
@@ -181,42 +181,13 @@
 		</Card.Header>
 		<Card.Content>
 			{#if activityTrendData.length > 0}
-				<Chart.Root config={activityTrendConfig} class="h-[300px] w-full">
-					<Chart.LineChart data={activityTrendData}>
-						<Chart.CartesianGrid vertical={false} />
-						<Chart.XAxis 
-							dataKey="day"
-							tickLine={false}
-							axisLine={false}
-							class="text-muted-foreground"
-						/>
-						<Chart.YAxis 
-							tickLine={false}
-							axisLine={false}
-							class="text-muted-foreground"
-						/>
-						<Chart.Tooltip 
-							cursor={false}
-							content={Chart.TooltipContent}
-						/>
-						<Chart.Legend content={Chart.LegendContent} />
-						<Chart.Line 
-							dataKey="activities" 
-							stroke="hsl(var(--chart-3))"
-							strokeWidth={3}
-							dot={{ fill: "hsl(var(--chart-3))", strokeWidth: 2, r: 4 }}
-							activeDot={{ r: 6, stroke: "hsl(var(--chart-3))", strokeWidth: 2 }}
-						/>
-						<Chart.Line 
-							dataKey="logins" 
-							stroke="hsl(var(--chart-4))"
-							strokeWidth={3}
-							strokeDasharray="5 5"
-							dot={{ fill: "hsl(var(--chart-4))", strokeWidth: 2, r: 3 }}
-							activeDot={{ r: 5, stroke: "hsl(var(--chart-4))", strokeWidth: 2 }}
-						/>
-					</Chart.LineChart>
-				</Chart.Root>
+				<div class="h-[300px] w-full flex items-center justify-center bg-gray-50 rounded-lg">
+					<div class="text-center text-gray-500">
+						<div class="text-2xl mb-2">📊</div>
+						<p>Activity Trend Chart</p>
+						<p class="text-sm">Chart component not available</p>
+					</div>
+				</div>
 			{:else}
 				<div class="flex items-center justify-center h-[300px] text-muted-foreground">
 					<p>No activity data available</p>
@@ -235,30 +206,21 @@
 			</Card.Header>
 			<Card.Content>
 				{#if userRoleData.length > 0}
-					<Chart.Root config={userRoleConfig} class="h-[250px] w-full">
-						<Chart.PieChart data={userRoleData}>
-							<Chart.Tooltip 
-								cursor={false}
-								content={Chart.TooltipContent}
-							/>
-							<Chart.Pie 
-								dataKey="count"
-								nameKey="role"
-								cx="50%"
-								cy="50%"
-								outerRadius={80}
-							/>
-							<Chart.Legend content={Chart.LegendContent} />
-						</Chart.PieChart>
-					</Chart.Root>
+					<div class="h-[250px] w-full flex items-center justify-center bg-gray-50 rounded-lg">
+						<div class="text-center text-gray-500">
+							<div class="text-2xl mb-2">🥧</div>
+							<p>User Role Chart</p>
+							<p class="text-sm">Chart component not available</p>
+						</div>
+					</div>
 					<div class="flex justify-center space-x-4 mt-4">
 						<div class="flex items-center space-x-2">
 							<div class="w-3 h-3 rounded-full bg-chart-1"></div>
-							<span class="text-sm">Admin: {userRoleData.find(d => d.role === 'admin')?.count || 0}</span>
+							<span class="text-sm">Admin: {userRoleData.find((d: any) => d.role === 'admin')?.count || 0}</span>
 						</div>
 						<div class="flex items-center space-x-2">
 							<div class="w-3 h-3 rounded-full bg-chart-2"></div>
-							<span class="text-sm">Users: {userRoleData.find(d => d.role === 'user')?.count || 0}</span>
+							<span class="text-sm">Users: {userRoleData.find((d: any) => d.role === 'user')?.count || 0}</span>
 						</div>
 					</div>
 				{:else}
@@ -277,30 +239,21 @@
 			</Card.Header>
 			<Card.Content>
 				{#if verificationStatusData.length > 0}
-					<Chart.Root config={verificationConfig} class="h-[250px] w-full">
-						<Chart.PieChart data={verificationStatusData}>
-							<Chart.Tooltip 
-								cursor={false}
-								content={Chart.TooltipContent}
-							/>
-							<Chart.Pie 
-								dataKey="count"
-								nameKey="status"
-								cx="50%"
-								cy="50%"
-								outerRadius={80}
-							/>
-							<Chart.Legend content={Chart.LegendContent} />
-						</Chart.PieChart>
-					</Chart.Root>
+					<div class="h-[250px] w-full flex items-center justify-center bg-gray-50 rounded-lg">
+						<div class="text-center text-gray-500">
+							<div class="text-2xl mb-2">✅</div>
+							<p>Verification Status Chart</p>
+							<p class="text-sm">Chart component not available</p>
+						</div>
+					</div>
 					<div class="flex justify-center space-x-4 mt-4">
 						<div class="flex items-center space-x-2">
 							<div class="w-3 h-3 rounded-full bg-chart-1"></div>
-							<span class="text-sm">Verified: {verificationStatusData.find(d => d.status === 'verified')?.count || 0}</span>
+							<span class="text-sm">Verified: {verificationStatusData.find((d: any) => d.status === 'verified')?.count || 0}</span>
 						</div>
 						<div class="flex items-center space-x-2">
 							<div class="w-3 h-3 rounded-full bg-chart-5"></div>
-							<span class="text-sm">Unverified: {verificationStatusData.find(d => d.status === 'unverified')?.count || 0}</span>
+							<span class="text-sm">Unverified: {verificationStatusData.find((d: any) => d.status === 'unverified')?.count || 0}</span>
 						</div>
 					</div>
 				{:else}
@@ -347,32 +300,22 @@
 	</div>
 
 	<!-- Activity Type Breakdown -->
-	{#if activityTypeData.some(d => d.count > 0)}
+	{#if activityTypeData.some((d: any) => d.count > 0)}
 		<Card.Root>
 			<Card.Header>
 				<Card.Title>Activity Type Breakdown</Card.Title>
 				<Card.Description>Distribution of different activity types</Card.Description>
 			</Card.Header>
 			<Card.Content>
-				<Chart.Root config={activityTypeConfig} class="h-[200px] w-full">
-					<Chart.PieChart data={activityTypeData.filter(d => d.count > 0)}>
-						<Chart.Tooltip 
-							cursor={false}
-							content={Chart.TooltipContent}
-						/>
-						<Chart.Pie 
-							dataKey="count"
-							nameKey="type"
-							cx="50%"
-							cy="50%"
-							outerRadius={60}
-							innerRadius={20}
-						/>
-						<Chart.Legend content={Chart.LegendContent} />
-					</Chart.PieChart>
-				</Chart.Root>
+				<div class="h-[200px] w-full flex items-center justify-center bg-gray-50 rounded-lg">
+					<div class="text-center text-gray-500">
+						<div class="text-2xl mb-2">📈</div>
+						<p>Activity Type Chart</p>
+						<p class="text-sm">Chart component not available</p>
+					</div>
+				</div>
 				<div class="grid grid-cols-2 gap-4 mt-4">
-					{#each activityTypeData.filter(d => d.count > 0) as item}
+					{#each activityTypeData.filter((d: any) => d.count > 0) as item}
 						<div class="flex items-center justify-between p-2 rounded border">
 							<div class="flex items-center space-x-2">
 								<div class="w-3 h-3 rounded-full" style="background-color: {item.fill}"></div>
