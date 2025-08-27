@@ -10,7 +10,7 @@
 	import 'prismjs/components/prism-css';
 	import 'prismjs/components/prism-markdown';
 	import 'prismjs/components/prism-sql';
-	import { Bot, User, Copy, Edit3, Check, MessageSquare } from '@lucide/svelte';
+	import { Bot, User, Copy, Edit, Check, MessageSquare } from '@lucide/svelte';
 
 	export let messages: Array<{ id: string; content: string; aiResponse: string | null; createdAt: string; isStreaming?: boolean }>= [];
 	export let initializing: boolean = false;
@@ -48,10 +48,17 @@
 		setTimeout(smartScrollToBottom, 100);
 	}
 
-	$: if (messages && aiResponseContainer) {
+	$: if (messages && messagesContainer) {
 		setTimeout(() => {
-			if (aiResponseContainer) processCodeBlocks(aiResponseContainer);
+			if (messagesContainer) processCodeBlocks(messagesContainer);
 		}, 100);
+	}
+
+	// Process code blocks on component mount for existing messages
+	$: if (messagesContainer && messages.length > 0) {
+		requestAnimationFrame(() => {
+			if (messagesContainer) processCodeBlocks(messagesContainer);
+		});
 	}
 
 	function renderMarkdown(text: string): string {
@@ -75,8 +82,31 @@
 						if (lang && Prism.languages[lang]) {
 							try {
 								const decoded = decodeEntities(code);
-								const highlighted = Prism.highlight(decoded, Prism.languages[lang], lang);
-								return `<pre><code class="language-${lang}">${highlighted}</code></pre>`;
+								// Remove unnecessary leading whitespace/indentation
+								const trimmedCode = decoded.replace(/^\n+/, '').replace(/\n+$/, '');
+								const lines = trimmedCode.split('\n');
+								
+								// Find minimum indentation (excluding empty lines)
+								const nonEmptyLines = lines.filter(line => line.trim().length > 0);
+								if (nonEmptyLines.length > 0) {
+									const minIndent = Math.min(...nonEmptyLines.map(line => {
+										const match = line.match(/^(\s*)/);
+										return match ? match[1].length : 0;
+									}));
+									
+									// Remove the common indentation from all lines
+									const dedentedLines = lines.map(line => {
+										if (line.trim().length === 0) return '';
+										return line.substring(minIndent);
+									});
+									
+									const finalCode = dedentedLines.join('\n');
+									const highlighted = Prism.highlight(finalCode, Prism.languages[lang], lang);
+									return `<pre><code class="language-${lang}">${highlighted}</code></pre>`;
+								} else {
+									const highlighted = Prism.highlight(trimmedCode, Prism.languages[lang], lang);
+									return `<pre><code class="language-${lang}">${highlighted}</code></pre>`;
+								}
 							} catch {}
 						}
 						return match;
@@ -95,31 +125,44 @@
 	}
 
 	function processCodeBlocks(container: HTMLElement) {
+		// Find all code blocks in the container (both new and existing)
 		const codeBlocks = container.querySelectorAll('pre code');
 		codeBlocks.forEach((codeBlock) => {
 			const pre = codeBlock.parentElement;
-			if (!pre || pre.querySelector('.copy-button')) return;
+			if (!pre || pre.querySelector('.copy-button')) return; // Skip if button already exists
+			
+			// Set up language attribute
 			const languageClass = Array.from(codeBlock.classList).find(cls => cls.startsWith('language-'));
 			const language = languageClass ? languageClass.replace('language-', '') : '';
 			pre.setAttribute('data-language', language || 'text');
+			
+			// Create copy button
 			const copyButton = document.createElement('button');
 			copyButton.className = 'copy-button';
-			copyButton.innerHTML = '📋';
+			copyButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>';
 			copyButton.title = 'Copy code';
-			copyButton.addEventListener('click', async () => {
+			copyButton.setAttribute('aria-label', `Copy ${language || 'code'} code`);
+			
+			// Add click handler for copy functionality
+			copyButton.addEventListener('click', async (e) => {
+				e.preventDefault();
+				e.stopPropagation();
 				const codeText = codeBlock.textContent || '';
 				try {
 					await navigator.clipboard.writeText(codeText);
-					copyButton.innerHTML = '✅';
+					copyButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
 					copyButton.classList.add('copied');
 					copyButton.title = 'Copied!';
 					setTimeout(() => {
-						copyButton.innerHTML = '📋';
+						copyButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>';
 						copyButton.classList.remove('copied');
 						copyButton.title = 'Copy code';
 					}, 2000);
-				} catch {}
+				} catch (err) {
+					console.warn('Failed to copy code:', err);
+				}
 			});
+			
 			pre.appendChild(copyButton);
 		});
 	}
@@ -240,7 +283,7 @@
 									title="Edit"
 									aria-label="Edit message"
 								>
-									<Edit3 class="w-4 h-4" />
+									<Edit class="w-4 h-4" />
 								</button>
 							</div>
 						</div>
@@ -264,8 +307,8 @@
 									<div class="flex items-center mt-2 space-x-2">
 										<div class="flex items-center space-x-1">
 											<div class="h-2 w-2 rounded-full bg-primary/60 animate-pulse"></div>
-											<div class="h-2 w-2 rounded-full bg-primary/60 animate-pulse" style="animation-delay: 0.2s"></div>
-											<div class="h-2 w-2 rounded-full bg-primary/60 animate-pulse" style="animation-delay: 0.4s"></div>
+											<div class="h-2 w-2 rounded-full bg-primary/60 animate-pulse [animation-delay:0.2s]"></div>
+											<div class="h-2 w-2 rounded-full bg-primary/60 animate-pulse [animation-delay:0.4s]"></div>
 										</div>
 										<span class="text-xs text-primary font-medium">Vanar AI is typing...</span>
 									</div>
@@ -324,9 +367,11 @@
 </div>
 
 <style>
-	:global(.prose pre) {
+	:global(.prose pre),
+	:global(pre[class*="language-"]),
+	:global(.prose pre[class*="language-"]) {
 		position: relative;
-		background-color: hsl(var(--muted));
+		background-color: hsl(var(--secondary)) !important;
 		border-radius: 0.5rem;
 		padding: 1rem 2.5rem 1rem 1rem;
 		overflow: auto;

@@ -7,6 +7,8 @@
 	export let onSend: () => void;	
 	export let onInput: (v: string) => void;
 
+	let textareaElement: HTMLTextAreaElement;
+
 	function handleKeyPress(event: KeyboardEvent) {
 		if (event.key === 'Enter' && !event.shiftKey) {
 			event.preventDefault();
@@ -16,6 +18,39 @@
 
 	function handleClear() {
 		onInput('');
+		// Reset height after clearing
+		if (textareaElement) {
+			textareaElement.style.height = '56px';
+		}
+	}
+
+	function handleInput(e: Event) {
+		const target = e.target as HTMLTextAreaElement;
+		onInput(target.value);
+		autoResize(target);
+	}
+
+	function autoResize(textarea: HTMLTextAreaElement) {
+		// Reset height to auto to get the correct scrollHeight
+		textarea.style.height = 'auto';
+		
+		// Calculate the new height based on content
+		const minHeight = 56; // Minimum height (roughly 2 rows with padding)
+		const maxHeight = 200; // Maximum height before scrolling
+		const newHeight = Math.min(Math.max(textarea.scrollHeight, minHeight), maxHeight);
+		
+		// Set the new height
+		textarea.style.height = `${newHeight}px`;
+	}
+
+	// Auto-resize when value changes programmatically
+	$: if (textareaElement && value !== undefined) {
+		if (value === '') {
+			// Reset to default height when input is empty
+			textareaElement.style.height = '56px';
+		} else {
+			autoResize(textareaElement);
+		}
 	}
 </script>
 
@@ -24,12 +59,13 @@
 		<div class="flex-1">
 			<div class="relative">
 				<textarea
+					bind:this={textareaElement}
 					value={value}
-					oninput={(e) => onInput((e.target as HTMLTextAreaElement).value)}
+					oninput={handleInput}
 					onkeydown={handleKeyPress}
 					placeholder="Type your message here... (Press Enter to send, Shift+Enter for new line)"
-					rows="2"
 					maxlength="2000"
+					style="height: 56px; min-height: 56px; max-height: 200px; overflow-y: auto;"
 					class="
 						block w-full resize-none rounded-xl border border-border shadow-sm
 						focus:border-primary focus:ring-1 focus:ring-primary/20 focus:outline-none
