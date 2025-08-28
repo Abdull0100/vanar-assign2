@@ -10,6 +10,8 @@
 	import 'prismjs/components/prism-css';
 	import 'prismjs/components/prism-markdown';
 	import 'prismjs/components/prism-sql';
+	import MessageVersionPills from './MessageVersionPills.svelte';
+	import BranchNavigation from './BranchNavigation.svelte';
 
 	export let messages: Array<{ id: string; content: string; aiResponse: string | null; createdAt: string; isStreaming?: boolean }>= [];
 	export let initializing: boolean = false;
@@ -18,12 +20,21 @@
 	export let versionInfo: { currentVersion: number; totalVersions: number; canGoBack: boolean; canGoForward: boolean } | null = null;
 	export let onGoToPreviousVersion: (() => void) | null = null;
 	export let onGoToNextVersion: (() => void) | null = null;
+	// New props for message forking
+	export let onForkMessage: ((messageId: string, editedContent: string) => void) | null = null;
+	export let onGetBranchVersions: ((messageId: string) => Promise<any[]>) | null = null;
+	export let onSetActiveVersion: ((branchId: string, versionId: string) => Promise<void>) | null = null;
+	export let selectedVersionByBranch: Record<string, string> = {};
 
 	let aiResponseContainer: HTMLElement;
 	let messagesContainer: HTMLElement;
 	let copiedMessageId: string | null = null;
 	let editingMessageId: string | null = null;
 	let editText: string = '';
+	
+	// Branch navigation state
+	let branchVersions: Record<string, any[]> = {};
+	let loadingBranches: Record<string, boolean> = {};
 
 
 
@@ -57,6 +68,17 @@
 		setTimeout(() => {
 			if (aiResponseContainer) processCodeBlocks(aiResponseContainer);
 		}, 100);
+	}
+
+	// Load branch versions for messages that have been forked
+	$: if (messages && onGetBranchVersions) {
+		messages.forEach(message => {
+			// Check if this message might have branches (has been edited/forked)
+			// Load for all messages with AI responses to check for branches
+			if (message.aiResponse && !loadingBranches[message.id] && !branchVersions[message.id]) {
+				loadBranchVersions(message.id);
+			}
+		});
 	}
 
 	function renderMarkdown(text: string): string {
@@ -209,11 +231,72 @@
 	}
 
 	function saveEdit(messageId: string) {
-		if (onEditMessage && editText.trim()) {
-			onEditMessage(messageId, editText.trim());
+		if (editText.trim()) {
+			// Use fork message instead of edit message
+			if (onForkMessage) {
+				onForkMessage(messageId, editText);
+			} else if (onEditMessage) {
+				// Fallback to old edit behavior
+				onEditMessage(messageId, editText);
+			}
 		}
 		editingMessageId = null;
 		editText = '';
+	}
+
+	// Branch navigation functions
+	async function loadBranchVersions(messageId: string) {
+		if (!onGetBranchVersions || branchVersions[messageId] || loadingBranches[messageId]) {
+			return;
+		}
+
+		loadingBranches[messageId] = true;
+		try {
+			const versions = await onGetBranchVersions(messageId);
+			branchVersions[messageId] = versions;
+		} catch (error) {
+			console.error('Failed to load branch versions:', error);
+			branchVersions[messageId] = [];
+		} finally {
+			loadingBranches[messageId] = false;
+		}
+	}
+
+	function getBranchInfo(messageId: string) {
+		const versions = branchVersions[messageId] || [];
+		const activeVersionId = selectedVersionByBranch[messageId] || versions[0]?.id;
+		const currentIndex = versions.findIndex(v => v.id === activeVersionId) + 1;
+		
+		// If we have versions but no active version is set, default to the first one
+		const finalCurrentIndex = currentIndex || (versions.length > 0 ? 1 : 1);
+		
+		return {
+			versions,
+			activeVersionId,
+			currentIndex: finalCurrentIndex,
+			totalCount: versions.length || 1,
+			hasMultipleVersions: versions.length > 1
+		};
+	}
+
+	async function goToPreviousVersion(messageId: string) {
+		const branchInfo = getBranchInfo(messageId);
+		if (branchInfo.currentIndex > 1) {
+			const previousVersion = branchInfo.versions[branchInfo.currentIndex - 2];
+			if (previousVersion && onSetActiveVersion) {
+				await onSetActiveVersion(messageId, previousVersion.id);
+			}
+		}
+	}
+
+	async function goToNextVersion(messageId: string) {
+		const branchInfo = getBranchInfo(messageId);
+		if (branchInfo.currentIndex < branchInfo.totalCount) {
+			const nextVersion = branchInfo.versions[branchInfo.currentIndex];
+			if (nextVersion && onSetActiveVersion) {
+				await onSetActiveVersion(messageId, nextVersion.id);
+			}
+		}
 	}
 </script>
 
@@ -235,63 +318,6 @@
 			</div>
 			{/if}
 		{:else}
-			<!-- Debug Version Info -->
-			<div class="mb-2 text-center text-xs text-gray-500">
-				Debug: versionInfo = {JSON.stringify(versionInfo)}
-			</div>
-			
-			<!-- Test Version Creation Button -->
-			<div class="mb-2 text-center">
-				<button 
-					on:click={() => {
-						// Test version creation by editing the first message
-						if (messages.length > 0) {
-							const firstMessage = messages[0];
-							console.log('Creating test version by editing first message...');
-							// Simulate editing the first message
-							if (onEditMessage) {
-								onEditMessage(firstMessage.id, firstMessage.content + ' (edited)');
-							}
-						}
-					}}
-					class="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
-				>
-					Test Create Version
-				</button>
-			</div>
-			
-			<!-- Version Navigation -->
-			{#if versionInfo && versionInfo.totalVersions >= 1}
-				<div class="flex items-center justify-center mb-4">
-					<div class="flex items-center space-x-2 bg-white rounded-lg border border-gray-200 px-3 py-2 shadow-sm">
-						<button
-							on:click={onGoToPreviousVersion}
-							disabled={!versionInfo.canGoBack}
-							class="flex items-center justify-center w-6 h-6 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-gray-600"
-							title="Previous version"
-						>
-							<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<path d="M15 18l-6-6 6-6"/>
-							</svg>
-						</button>
-						
-						<span class="text-sm font-medium text-gray-700">
-							{versionInfo.currentVersion} / {versionInfo.totalVersions}
-						</span>
-						
-						<button
-							on:click={onGoToNextVersion}
-							disabled={!versionInfo.canGoForward}
-							class="flex items-center justify-center w-6 h-6 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-gray-600"
-							title="Next version"
-						>
-							<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<path d="M9 18l6-6-6-6"/>
-							</svg>
-						</button>
-					</div>
-				</div>
-			{/if}
 			<div class="mb-4 text-center">
 				<p class="text-xs text-gray-400 italic">💡 Each message represents a complete Q&A pair • All deletions provide guaranteed permanent erasure from all systems</p>
 			</div>
@@ -395,6 +421,21 @@
 									<div class="text-sm leading-relaxed text-gray-800 prose prose-sm max-w-none" bind:this={aiResponseContainer}>
 										{@html renderMarkdown(messageItem.aiResponse)}
 									</div>
+									
+									<!-- Branch Navigation -->
+									{#if onGetBranchVersions && onSetActiveVersion}
+										{@const branchInfo = getBranchInfo(messageItem.id)}
+										{#if branchInfo.hasMultipleVersions || branchVersions[messageItem.id]?.length > 1}
+											<BranchNavigation
+												currentIndex={branchInfo.currentIndex}
+												totalCount={branchInfo.totalCount}
+												onPrevious={async () => await goToPreviousVersion(messageItem.id)}
+												onNext={async () => await goToNextVersion(messageItem.id)}
+												disabled={loadingBranches[messageItem.id]}
+											/>
+										{/if}
+									{/if}
+									
 									<p class="mt-2 text-xs text-gray-400">
 										{new Date(messageItem.createdAt).toLocaleTimeString()}
 									</p>

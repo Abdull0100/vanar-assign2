@@ -131,7 +131,10 @@
 								<div class="flex-1 bg-gray-50 rounded-lg px-3 py-2">
 									<div class="h-4 bg-gray-200 rounded animate-pulse"></div>
 								</div>
-								<button class="h-8 w-8 bg-indigo-300 rounded-lg flex items-center justify-center hover:bg-indigo-400 transition-colors">
+								<button 
+									class="h-8 w-8 bg-indigo-300 rounded-lg flex items-center justify-center hover:bg-indigo-400 transition-colors"
+									aria-label="Send message"
+								>
 									<svg class="w-4 h-4 text-indigo-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
 									</svg>

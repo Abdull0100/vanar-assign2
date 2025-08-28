@@ -211,46 +211,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			where: eq(conversations.id, targetConversationId)
 		});
 
-		// Analyze message content to determine response formatting requirements
-		const lowerMessage = message.toLowerCase();
-		let formattingInstructions = "";
-		
-		if (lowerMessage.includes('table') || lowerMessage.includes('list') || lowerMessage.includes('data')) {
-			formattingInstructions = `
-CRITICAL: If the user is asking for a table, list, or data presentation, you MUST respond with a properly formatted Markdown table.
-Use this exact format:
-| Column 1 | Column 2 | Column 3 |
-|----------|----------|----------|
-| Data 1   | Data 2   | Data 3   |
-| Data 4   | Data 5   | Data 6   |
-
-Do not use any other table format. Always use | for column separators and - for header separators.`;
-		} else if (lowerMessage.includes('explain') || lowerMessage.includes('how') || lowerMessage.includes('why')) {
-			formattingInstructions = `
-Please provide a detailed and comprehensive explanation with clear structure.
-Use bullet points or numbered lists when appropriate for better readability.`;
-		} else if (lowerMessage.includes('compare') || lowerMessage.includes('difference') || lowerMessage.includes('vs')) {
-			formattingInstructions = `
-Please provide a clear comparison with structured points.
-Use a table format if comparing multiple items, or use clear bullet points for differences.`;
-		} else if (lowerMessage.includes('code') || lowerMessage.includes('programming') || lowerMessage.includes('script')) {
-			formattingInstructions = `
-Please provide clean, well-commented code with explanations.
-Use proper code blocks with language specification.`;
-		}
+		// No automatic formatting instructions - let the AI respond naturally
+		const formattingInstructions = "";
 
 		// Prepare the prompt with conversation context
 		const prompt = `You are Vanar, a helpful AI assistant. You are having a conversation with a user. Please respond naturally and helpfully to their message.
 
 IMPORTANT FORMATTING INSTRUCTIONS:
-- When presenting tables, always use proper Markdown table formatting with headers and aligned columns
+- Only create tables when explicitly requested by the user
+- When tables are requested, use proper Markdown table formatting with headers and aligned columns
 - Use | to separate columns and - to create header separators
 - Ensure tables are properly aligned and readable
-- Example table format:
-  | Column 1 | Column 2 | Column 3 |
-  |----------|----------|----------|
-  | Data 1   | Data 2   | Data 3   |
-  | Data 4   | Data 5   | Data 6   |
 
 ${formattingInstructions}
 
@@ -275,35 +246,8 @@ Please provide a helpful response. Keep it conversational and relevant to the co
 						controller.enqueue(`data: ${JSON.stringify({ chunk: chunkText })}\n\n`);
 					}
 					
-					// Post-process the response to ensure proper formatting
-					let processedResponse = fullResponse;
-					
-					// If user asked for a table, ensure the response contains proper table formatting
-					if (lowerMessage.includes('table') || lowerMessage.includes('list') || lowerMessage.includes('data')) {
-						// Check if response contains table-like content but not properly formatted
-						if (fullResponse.includes('|') && !fullResponse.includes('|----|')) {
-							// Try to fix table formatting by adding header separators
-							const lines = fullResponse.split('\n');
-							const processedLines = [];
-							let foundTable = false;
-							
-							for (let i = 0; i < lines.length; i++) {
-								const line = lines[i];
-								processedLines.push(line);
-								
-								// If this line looks like a table header (contains | and has multiple columns)
-								if (line.includes('|') && line.split('|').length > 2 && !foundTable) {
-									// Add header separator on the next line
-									const columnCount = line.split('|').length - 2; // -2 because split creates empty strings at start/end
-									const separator = '|' + '----|'.repeat(columnCount);
-									processedLines.push(separator);
-									foundTable = true;
-								}
-							}
-							
-							processedResponse = processedLines.join('\n');
-						}
-					}
+					// Use the response as-is without automatic table formatting
+					const processedResponse = fullResponse;
 					
 					// Save the processed response to the database
 					await db.update(chatMessages)

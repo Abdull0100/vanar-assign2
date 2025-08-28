@@ -35,6 +35,9 @@ export function createChatStore(userId: string | null) {
 	const loading = writable(false);
 	const error = writable('');
 
+	// Version management for message branching
+	const selectedVersionByBranch = writable<Record<string, string>>({});
+
 	const showDeleteModal = writable(false);
 	const deleteTarget = writable<{ id: string; title: string } | null>(null);
 	const showDeleteAllModal = writable(false);
@@ -319,29 +322,8 @@ export function createChatStore(userId: string | null) {
 			await new Promise((r) => setTimeout(r, 0));
 		}
 		
-		// MESSAGE MODIFICATION: Create contextual instruction based on user message
-		let instruction = "";
-		
-		// Analyze the message content to determine appropriate instruction
-		const lowerMessage = messageContent.toLowerCase();
-		
-		if (lowerMessage.includes('table') || lowerMessage.includes('list') || lowerMessage.includes('data')) {
-			instruction = "\n\nPlease provide a well-formatted response with clear structure and organization.";
-		} else if (lowerMessage.includes('explain') || lowerMessage.includes('how') || lowerMessage.includes('why')) {
-			instruction = "\n\nPlease provide a detailed and comprehensive explanation.";
-		} else if (lowerMessage.includes('compare') || lowerMessage.includes('difference') || lowerMessage.includes('vs')) {
-			instruction = "\n\nPlease provide a clear comparison with structured points.";
-		} else if (lowerMessage.includes('code') || lowerMessage.includes('programming') || lowerMessage.includes('script')) {
-			instruction = "\n\nPlease provide clean, well-commented code with explanations.";
-		} else if (lowerMessage.includes('help') || lowerMessage.includes('assist') || lowerMessage.includes('support')) {
-			instruction = "\n\nPlease provide helpful and supportive guidance.";
-		} else if (lowerMessage.includes('thank') || lowerMessage.includes('thanks')) {
-			instruction = "\n\nPlease respond warmly and acknowledge the gratitude.";
-		} else {
-			instruction = "\n\nPlease provide a helpful and informative response.";
-		}
-		
-		const modifiedMessage = messageContent + instruction;
+		// Send the message as-is without automatic modifications
+		const modifiedMessage = messageContent;
 		
 		const chatMessage: ChatMessage = {
 			id: generateId(),
@@ -559,27 +541,8 @@ export function createChatStore(userId: string | null) {
 		error.set('');
 		
 		try {
-			// MESSAGE MODIFICATION: Create contextual instruction based on user message
-			let instruction = "";
-			const lowerMessage = newContent.toLowerCase();
-			
-			if (lowerMessage.includes('table') || lowerMessage.includes('list') || lowerMessage.includes('data')) {
-				instruction = "\n\nPlease provide a well-formatted response with clear structure and organization.";
-			} else if (lowerMessage.includes('explain') || lowerMessage.includes('how') || lowerMessage.includes('why')) {
-				instruction = "\n\nPlease provide a detailed and comprehensive explanation.";
-			} else if (lowerMessage.includes('compare') || lowerMessage.includes('difference') || lowerMessage.includes('vs')) {
-				instruction = "\n\nPlease provide a clear comparison with structured points.";
-			} else if (lowerMessage.includes('code') || lowerMessage.includes('programming') || lowerMessage.includes('script')) {
-				instruction = "\n\nPlease provide clean, well-commented code with explanations.";
-			} else if (lowerMessage.includes('help') || lowerMessage.includes('assist') || lowerMessage.includes('support')) {
-				instruction = "\n\nPlease provide helpful and supportive guidance.";
-			} else if (lowerMessage.includes('thank') || lowerMessage.includes('thanks')) {
-				instruction = "\n\nPlease respond warmly and acknowledge the gratitude.";
-			} else {
-				instruction = "\n\nPlease provide a helpful and informative response.";
-			}
-			
-			const modifiedMessage = newContent + instruction;
+			// Send the message as-is without automatic modifications
+			const modifiedMessage = newContent;
 			
 			// Prepare conversation history for the API
 			const history = truncatedMessages
@@ -783,7 +746,133 @@ export function createChatStore(userId: string | null) {
 		return v;
 	}
 
-			return {
+	// Fork message function - creates a new branch instead of overwriting
+	async function forkMessage(messageId: string, editedContent: string) {
+		const currentMessages = getValue(messages);
+		const messageIndex = currentMessages.findIndex(m => m.id === messageId);
+		
+		if (messageIndex === -1) return;
+		
+		loading.set(true);
+		error.set('');
+		
+		// First, update the message content to show the edited version immediately
+		messages.update((msgs) => msgs.map((m) => 
+			m.id === messageId ? { ...m, content: editedContent, aiResponse: null, isStreaming: true } : m
+		));
+		
+		try {
+			const response = await fetch('/api/chat/fork', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ messageId, editedContent })
+			});
+
+			if (response.ok && response.headers.get('content-type')?.includes('text/event-stream')) {
+				const reader = response.body?.getReader();
+				const decoder = new TextDecoder();
+				let streamedResponse = '';
+				let newMessageId = '';
+				
+				if (reader) {
+					while (true) {
+						const { done, value } = await reader.read();
+						if (done) break;
+						const chunk = decoder.decode(value);
+						const lines = chunk.split('\n');
+						for (const line of lines) {
+							if (!line.startsWith('data: ')) continue;
+							try {
+								const data = JSON.parse(line.slice(6));
+								if (data.error) {
+									error.set(data.error);
+									break;
+								}
+								if (data.chunk) {
+									streamedResponse += data.chunk;
+									// Update the forked message with streaming response
+									messages.update((msgs) => msgs.map((m) => 
+										m.id === messageId ? { ...m, aiResponse: streamedResponse, isStreaming: true } : m
+									));
+								}
+								if (data.done) {
+									newMessageId = data.messageId;
+									messages.update((msgs) => msgs.map((m) => 
+										m.id === messageId ? { ...m, isStreaming: false } : m
+									));
+									// Reload chat history to get the new forked message and maintain conversation flow
+									setTimeout(() => loadChatHistory(), 100);
+								}
+							} catch {}
+						}
+					}
+				}
+			} else {
+				const data = await response.json();
+				if (response.ok) {
+					// Reload chat history to get the new forked message
+					setTimeout(() => loadChatHistory(), 100);
+				} else {
+					error.set(data.error || 'Failed to fork message');
+				}
+			}
+		} catch (error) {
+			console.error('Fork message error:', error);
+			error.set('Failed to fork message');
+		} finally {
+			loading.set(false);
+		}
+	}
+
+	// Get branch versions for a message
+	async function getBranchVersions(messageId: string) {
+		try {
+			const response = await fetch(`/api/chat/branches?messageId=${messageId}`);
+			if (response.ok) {
+				const data = await response.json();
+				return data.versions || [];
+			}
+		} catch (error) {
+			console.error('Get branch versions error:', error);
+		}
+		return [];
+	}
+
+	// Set active version for a branch
+	async function setActiveVersion(branchId: string, versionId: string) {
+		selectedVersionByBranch.update(versions => ({
+			...versions,
+			[branchId]: versionId
+		}));
+
+		// Update the displayed message content to show the selected version
+		try {
+			const response = await fetch(`/api/chat/branches?messageId=${branchId}`);
+			if (response.ok) {
+				const data = await response.json();
+				const versions = data.versions || [];
+				const selectedVersion = versions.find(v => v.id === versionId);
+				
+				if (selectedVersion) {
+					// Update the message in the store to show the selected version
+					messages.update(msgs => msgs.map(msg => {
+						if (msg.id === branchId) {
+							return {
+								...msg,
+								content: selectedVersion.content,
+								aiResponse: selectedVersion.aiResponse
+							};
+						}
+						return msg;
+					}));
+				}
+			}
+		} catch (error) {
+			console.error('Failed to update message content for version:', error);
+		}
+	}
+
+	return {
 			// state
 			messages,
 			conversations,
@@ -818,7 +907,11 @@ export function createChatStore(userId: string | null) {
 			navigateToVersion,
 			getCurrentVersionInfo,
 			goToPreviousVersion,
-			goToNextVersion
+			goToNextVersion,
+			forkMessage,
+			getBranchVersions,
+			setActiveVersion,
+			selectedVersionByBranch
 		};
 }
 

@@ -48,7 +48,11 @@
 		continueFromMessage,
 		getCurrentVersionInfo,
 		goToPreviousVersion,
-		goToNextVersion
+		goToNextVersion,
+		forkMessage,
+		getBranchVersions,
+		setActiveVersion,
+		selectedVersionByBranch
 	} = store;
 
 	let messageText = '';
@@ -239,11 +243,15 @@
 								bind:this={chatMessagesRef}
 								messages={$messages}
 								{initializing}
-								onEditMessage={editMessage}
+								onEditMessage={forkMessage}
 								onContinueFromMessage={continueFromMessage}
 								{versionInfo}
 								onGoToPreviousVersion={goToPreviousVersion}
 								onGoToNextVersion={goToNextVersion}
+								onForkMessage={forkMessage}
+								onGetBranchVersions={getBranchVersions}
+								onSetActiveVersion={setActiveVersion}
+								selectedVersionByBranch={$selectedVersionByBranch}
 							/>
 						</div>
 						
