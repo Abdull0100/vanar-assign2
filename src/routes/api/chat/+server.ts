@@ -874,97 +874,120 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
 					if (!newContent) {
 						throw new ValidationError('New content is required for forking');
 					}
-					
-									const originalMessage = treeManager.getMessage(messageId);
-				if (!originalMessage) {
-					console.error('Original message not found:', messageId);
-					console.log('Available messages in tree manager:', Array.from(treeManager.getAllMessages()).map(m => ({ id: m.id, content: m.content.substring(0, 50) })));
-					console.log('All messages from database:', allMessages.map(m => ({ id: m.id, content: m.content.substring(0, 50) })));
-					throw new ValidationError('Message not found');
-				}
-					
+
+					const originalMessage = treeManager.getMessage(messageId);
+					if (!originalMessage) {
+						console.error('Original message not found:', messageId);
+						console.log('Available messages in tree manager:', Array.from(treeManager.getAllMessages()).map(m => ({ id: m.id, content: m.content.substring(0, 50) })));
+						console.log('All messages from database:', allMessages.map(m => ({ id: m.id, content: m.content.substring(0, 50) })));
+						throw new ValidationError('Message not found');
+					}
+
 					console.log('Forking message:', messageId, 'with content:', newContent);
 
-				// Create forked message in tree
-				const forkedMessage = treeManager.forkMessage(messageId, newContent);
-				console.log('Created forked message:', forkedMessage.id);
-				
-				// Determine previousId for database compatibility
-				let previousId = null;
-				if (forkedMessage.parentId) {
-					// If forked message has a parent, use the parent's previousId
-					const parent = await db.query.chatMessages.findFirst({
-						where: eq(chatMessages.id, forkedMessage.parentId)
-					});
-					previousId = parent?.previousId || forkedMessage.parentId;
-				}
-				
-				// Save forked message to database
-				try {
-					await db.insert(chatMessages).values({
-						id: forkedMessage.id,
-						conversationId: forkedMessage.conversationId,
-						userId: forkedMessage.userId,
-						role: forkedMessage.role,
-						content: forkedMessage.content,
-						parentId: forkedMessage.parentId,
-						childrenIds: forkedMessage.childrenIds,
-						previousId: previousId, // Set previousId for database compatibility
-						createdAt: new Date(forkedMessage.createdAt),
-						updatedAt: new Date(forkedMessage.updatedAt)
-					});
-					console.log('Saved forked message to database');
-				} catch (dbError) {
-					console.error('Failed to save forked message to database:', dbError);
-					throw new Error('Failed to save forked message to database');
-				}
+					// Create forked message in tree
+					const forkedMessage = treeManager.forkMessage(messageId, newContent);
+					console.log('Created forked message:', forkedMessage.id);
 
-				// Update parent's childrenIds if it exists
-				if (forkedMessage.parentId) {
-					try {
+					// Determine previousId for database compatibility
+					let previousId = null;
+					if (forkedMessage.parentId) {
 						const parent = await db.query.chatMessages.findFirst({
 							where: eq(chatMessages.id, forkedMessage.parentId)
 						});
-						if (parent) {
-							// Get the current childrenIds from the tree manager (which has the updated list)
-							const treeParent = treeManager.getMessage(forkedMessage.parentId);
-							const updatedChildrenIds = treeParent ? treeParent.childrenIds : [...(parent.childrenIds || []), forkedMessage.id];
-							
-							await db.update(chatMessages)
-								.set({ 
-									childrenIds: updatedChildrenIds,
-									updatedAt: new Date()
-								})
-								.where(eq(chatMessages.id, forkedMessage.parentId));
-							console.log('Updated parent childrenIds to:', updatedChildrenIds);
-						}
-					} catch (parentError) {
-						console.error('Failed to update parent childrenIds:', parentError);
-						// Don't throw here, the fork was successful
+						previousId = parent?.previousId || forkedMessage.parentId;
 					}
-				}
 
-				// If this is a user message fork, generate AI response
-				if (forkedMessage.role === 'user' && genAI) {
+					// Save forked message to database
 					try {
-						// Get conversation context for AI response
-						const activeConversation = treeManager.getActiveConversation();
-						// Convert TreeNode[] to the format expected by buildRecentTranscript
-						const conversationForTranscript = activeConversation.map(msg => ({
-							id: msg.id,
-							role: msg.role,
-							content: msg.content,
-							createdAt: new Date(msg.createdAt),
-							updatedAt: new Date(msg.updatedAt),
-							userId: msg.userId,
-							conversationId: msg.conversationId,
-							parentId: msg.parentId,
-							childrenIds: msg.childrenIds,
-							previousId: null // Not needed for transcript
-						}));
-						const transcript = buildRecentTranscript(conversationForTranscript);
-						
-						const prompt = `You are Vanar, a helpful AI assistant. You are having a conversation with a user. Please respond naturally and helpfully to their message.
+						await db.insert(chatMessages).values({
+							id: forkedMessage.id,
+							conversationId: forkedMessage.conversationId,
+							userId: forkedMessage.userId,
+							role: forkedMessage.role,
+							content: forkedMessage.content,
+							parentId: forkedMessage.parentId,
+							childrenIds: forkedMessage.childrenIds,
+							previousId: previousId,
+							createdAt: new Date(forkedMessage.createdAt),
+							updatedAt: new Date(forkedMessage.updatedAt)
+						});
+						console.log('Saved forked message to database');
+					} catch (dbError) {
+						console.error('Failed to save forked message to database:', dbError);
+						throw new Error('Failed to save forked message to database');
+					}
+
+					// Update parent's childrenIds if it exists
+					if (forkedMessage.parentId) {
+						try {
+							const parent = await db.query.chatMessages.findFirst({
+								where: eq(chatMessages.id, forkedMessage.parentId)
+							});
+							if (parent) {
+								const treeParent = treeManager.getMessage(forkedMessage.parentId);
+								const updatedChildrenIds = treeParent ? treeParent.childrenIds : [...(parent.childrenIds || []), forkedMessage.id];
+
+								await db.update(chatMessages)
+									.set({
+										childrenIds: updatedChildrenIds,
+										updatedAt: new Date()
+									})
+									.where(eq(chatMessages.id, forkedMessage.parentId));
+								console.log('Updated parent childrenIds to:', updatedChildrenIds);
+							}
+						} catch (parentError) {
+							console.error('Failed to update parent childrenIds:', parentError);
+						}
+					}
+
+					// Get the updated active conversation and tree data BEFORE AI response
+					const activeConversationBeforeAI = treeManager.getActiveConversation();
+					const activePathBeforeAI = activeConversationBeforeAI.map(msg => msg.id);
+					const branchNavigationBeforeAI: BranchNavigation[] = [];
+
+					// Calculate branch navigation
+					for (const msgId of activePathBeforeAI) {
+						const message = treeManager.getMessage(msgId);
+						if (message && message.childrenIds && message.childrenIds.length > 1) {
+							let currentChildIndex = 0;
+							for (let i = 0; i < message.childrenIds.length; i++) {
+								const childId = message.childrenIds[i];
+								const childIndex = activePathBeforeAI.indexOf(childId);
+								if (childIndex !== -1) {
+									currentChildIndex = i;
+									break;
+								}
+							}
+
+							branchNavigationBeforeAI.push({
+								messageId: msgId,
+								currentIndex: currentChildIndex,
+								totalBranches: message.childrenIds.length,
+								childrenIds: message.childrenIds
+							});
+						}
+					}
+
+					// If this is a user message fork, generate AI response
+					if (forkedMessage.role === 'user' && genAI) {
+						try {
+							// Get conversation context for AI response
+							const conversationForTranscript = activeConversationBeforeAI.map(msg => ({
+								id: msg.id,
+								role: msg.role,
+								content: msg.content,
+								createdAt: new Date(msg.createdAt),
+								updatedAt: new Date(msg.updatedAt),
+								userId: msg.userId,
+								conversationId: msg.conversationId,
+								parentId: msg.parentId,
+								childrenIds: msg.childrenIds,
+								previousId: null
+							}));
+							const transcript = buildRecentTranscript(conversationForTranscript);
+
+							const prompt = `You are Vanar, a helpful AI assistant. You are having a conversation with a user. Please respond naturally and helpfully to their message.
 
 Recent Conversation Context:\n${transcript}
 
@@ -972,73 +995,152 @@ User's latest message: ${newContent}
 
 Please provide a helpful response. Keep it conversational and relevant to the context.`;
 
-						// Generate AI response
-						const aiResult = await genAI.getGenerativeModel({ model: 'gemini-1.5-flash' }).generateContent(prompt);
-						const aiResponse = aiResult.response.text();
+							// Generate AI response
+							const aiResult = await genAI.getGenerativeModel({ model: 'gemini-1.5-flash' }).generateContent(prompt);
+							const aiResponse = aiResult.response.text();
 
-						// Create AI response message in tree
-						const aiMessage = treeManager.addMessage({
-							id: crypto.randomUUID(),
-							role: 'assistant',
-							content: aiResponse,
-							createdAt: new Date().toISOString(),
-							updatedAt: new Date().toISOString(),
-							conversationId: forkedMessage.conversationId,
-							userId: forkedMessage.userId
-						});
+							// Create AI response message in tree
+							const aiMessage = treeManager.addMessage({
+								id: crypto.randomUUID(),
+								role: 'assistant',
+								content: aiResponse,
+								createdAt: new Date().toISOString(),
+								updatedAt: new Date().toISOString(),
+								conversationId: forkedMessage.conversationId,
+								userId: forkedMessage.userId
+							});
 
-						// Save AI response to database
-						await db.insert(chatMessages).values({
-							id: aiMessage.id,
-							conversationId: aiMessage.conversationId,
-							userId: aiMessage.userId,
-							role: aiMessage.role,
-							content: aiMessage.content,
-							parentId: aiMessage.parentId,
-							childrenIds: aiMessage.childrenIds,
-							previousId: forkedMessage.id, // Link to the forked user message
-							createdAt: new Date(aiMessage.createdAt),
-							updatedAt: new Date(aiMessage.updatedAt)
-						});
+							// Save AI response to database
+							await db.insert(chatMessages).values({
+								id: aiMessage.id,
+								conversationId: aiMessage.conversationId,
+								userId: aiMessage.userId,
+								role: aiMessage.role,
+								content: aiMessage.content,
+								parentId: aiMessage.parentId,
+								childrenIds: aiMessage.childrenIds,
+								previousId: forkedMessage.id,
+								createdAt: new Date(aiMessage.createdAt),
+								updatedAt: new Date(aiMessage.updatedAt)
+							});
 
-						// Update parent's childrenIds
-						if (aiMessage.parentId) {
-							const treeParent = treeManager.getMessage(aiMessage.parentId);
-							const updatedChildrenIds = treeParent ? treeParent.childrenIds : aiMessage.childrenIds;
-							
-							await db.update(chatMessages)
-								.set({ 
-									childrenIds: updatedChildrenIds,
-									updatedAt: new Date()
-								})
-								.where(eq(chatMessages.id, aiMessage.parentId));
-							console.log('Updated AI response parent childrenIds to:', updatedChildrenIds);
+							// Update parent's childrenIds
+							if (aiMessage.parentId) {
+								const treeParent = treeManager.getMessage(aiMessage.parentId);
+								const updatedChildrenIds = treeParent ? treeParent.childrenIds : aiMessage.childrenIds;
+
+								await db.update(chatMessages)
+									.set({
+										childrenIds: updatedChildrenIds,
+										updatedAt: new Date()
+									})
+									.where(eq(chatMessages.id, aiMessage.parentId));
+								console.log('Updated AI response parent childrenIds to:', updatedChildrenIds);
+							}
+
+							// Get FINAL tree data after AI response
+							const finalActiveConversation = treeManager.getActiveConversation();
+							const finalActivePath = finalActiveConversation.map(msg => msg.id);
+							const finalBranchNavigation: BranchNavigation[] = [];
+
+							// Recalculate branch navigation after AI response
+							for (const msgId of finalActivePath) {
+								const message = treeManager.getMessage(msgId);
+								if (message && message.childrenIds && message.childrenIds.length > 1) {
+									let currentChildIndex = 0;
+									for (let i = 0; i < message.childrenIds.length; i++) {
+										const childId = message.childrenIds[i];
+										const childIndex = finalActivePath.indexOf(childId);
+										if (childIndex !== -1) {
+											currentChildIndex = i;
+											break;
+										}
+									}
+
+									finalBranchNavigation.push({
+										messageId: msgId,
+										currentIndex: currentChildIndex,
+										totalBranches: message.childrenIds.length,
+										childrenIds: message.childrenIds
+									});
+								}
+							}
+
+							// Also check for branch navigation on messages that have multiple children but might not be in active path
+							const treeMessages = treeManager.getAllMessages();
+							for (const message of treeMessages) {
+								if (message.childrenIds && message.childrenIds.length > 1 && !finalBranchNavigation.find(nav => nav.messageId === message.id)) {
+									let currentChildIndex = 0;
+									for (let i = 0; i < message.childrenIds.length; i++) {
+										const childId = message.childrenIds[i];
+										const childIndex = finalActivePath.indexOf(childId);
+										if (childIndex !== -1) {
+											currentChildIndex = i;
+											break;
+										}
+									}
+
+									finalBranchNavigation.push({
+										messageId: message.id,
+										currentIndex: currentChildIndex,
+										totalBranches: message.childrenIds.length,
+										childrenIds: message.childrenIds
+									});
+								}
+							}
+
+							result = {
+								success: true,
+								message: 'Message forked and AI response generated',
+								forkedMessage,
+								aiResponse: aiMessage,
+								activePath: finalActivePath,
+								activeConversation: finalActiveConversation.map(msg => ({
+									id: msg.id,
+									role: msg.role,
+									content: msg.content,
+									createdAt: msg.createdAt,
+									isStreaming: false
+								})),
+								treeStructure: treeManager.getTreeStructure(),
+								branchNavigation: finalBranchNavigation
+							};
+						} catch (aiError) {
+							console.error('Failed to generate AI response for fork:', aiError);
+							result = {
+								success: true,
+								message: 'Message forked successfully, but AI response failed',
+								forkedMessage,
+								activePath: activePathBeforeAI,
+								activeConversation: activeConversationBeforeAI.map(msg => ({
+									id: msg.id,
+									role: msg.role,
+									content: msg.content,
+									createdAt: msg.createdAt,
+									isStreaming: false
+								})),
+								treeStructure: treeManager.getTreeStructure(),
+								branchNavigation: branchNavigationBeforeAI
+							};
 						}
-
+					} else {
+						// For assistant message forks or when AI is not available
 						result = {
 							success: true,
-							message: 'Message forked and AI response generated',
+							message: 'Message forked successfully',
 							forkedMessage,
-							aiResponse: aiMessage,
-							activePath: treeManager.getActiveConversation().map(msg => msg.id)
-						};
-					} catch (aiError) {
-						console.error('Failed to generate AI response for fork:', aiError);
-						result = {
-							success: true,
-							message: 'Message forked successfully, but AI response failed',
-							forkedMessage,
-							activePath: treeManager.getActiveConversation().map(msg => msg.id)
+							activePath: activePathBeforeAI,
+							activeConversation: activeConversationBeforeAI.map(msg => ({
+								id: msg.id,
+								role: msg.role,
+								content: msg.content,
+								createdAt: msg.createdAt,
+								isStreaming: false
+							})),
+							treeStructure: treeManager.getTreeStructure(),
+							branchNavigation: branchNavigationBeforeAI
 						};
 					}
-				} else {
-					result = {
-						success: true,
-						message: 'Message forked successfully',
-						forkedMessage,
-						activePath: treeManager.getActiveConversation().map(msg => msg.id)
-					};
-				}
 				} catch (forkError) {
 					console.error('Fork operation failed:', forkError);
 					const errorMessage = forkError instanceof Error ? forkError.message : 'Unknown error';

@@ -88,6 +88,28 @@ export function createChatStore(userId: string | null) {
 		return transformDbMessagesToView(dbMessages);
 	}
 
+	// Helper function to update tree-related data
+	function updateTreeData(data: any) {
+		if (data.treeStructure) {
+			console.log('Updating tree structure:', data.treeStructure);
+			treeStructure.set(data.treeStructure);
+		}
+		if (data.branchNavigation) {
+			console.log('Updating branch navigation:', data.branchNavigation);
+			branchNavigation.set(data.branchNavigation);
+		} else {
+			console.log('No branch navigation data received, clearing');
+			branchNavigation.set([]);
+		}
+		if (data.activePath) {
+			console.log('Updating active path:', data.activePath);
+			activePath.set(data.activePath);
+		} else {
+			console.log('No active path data received, clearing');
+			activePath.set([]);
+		}
+	}
+
 	async function loadChatHistory() {
 		try {
 			const response = await fetch('/api/chat');
@@ -154,24 +176,8 @@ export function createChatStore(userId: string | null) {
 			const transformed = transformDatabaseMessages(data.messages || []);
 			messages.set(transformed);
 
-			// Update tree-related stores
-			if (data.treeStructure) {
-				treeStructure.set(data.treeStructure);
-			}
-			if (data.branchNavigation) {
-				console.log('Setting branch navigation:', data.branchNavigation);
-				branchNavigation.set(data.branchNavigation);
-			} else {
-				console.log('No branch navigation data received');
-				branchNavigation.set([]);
-			}
-			if (data.activePath) {
-				console.log('Setting active path:', data.activePath);
-				activePath.set(data.activePath);
-			} else {
-				console.log('No active path data received');
-				activePath.set([]);
-			}
+			// Update tree-related data
+			updateTreeData(data);
 
 			conversations.update((convs) => convs.map((c) => (c.id === id ? { ...c, messages: transformed, messageCount: transformed.length } : c)));
 		} catch {
@@ -195,6 +201,10 @@ export function createChatStore(userId: string | null) {
 		conversations.update((convs) => [newConv, ...convs]);
 		currentConversationId.set(tempId);
 		messages.set([]);
+		// Clear tree data for new conversation
+		treeStructure.set(null);
+		branchNavigation.set([]);
+		activePath.set([]);
 		debouncedSaveToStorage();
 	}
 
@@ -271,7 +281,7 @@ export function createChatStore(userId: string | null) {
 		messages.update((msgs) => [...msgs, chatMessage]);
 
 		if (getValue(messages).length === 1) {
-			updateConversationRoomName(messageContent.length > 40 ? messageContent.slice(0, 40) + '…' : messageContent);
+			updateConversationRoomName(messageContent.length > 40 ? messageContent.slice(0, 40) + 'â€¦' : messageContent);
 		}
 
 		try {
@@ -339,13 +349,13 @@ export function createChatStore(userId: string | null) {
 										currentConversationId.set(data.conversationId);
 										setTimeout(() => loadChatHistory(), 100);
 									}
-									// Reload conversation to get updated tree structure and branch navigation
-									setTimeout(() => {
+									// IMMEDIATE reload for tree structure after message completion
+									setTimeout(async () => {
 										const conversationId = getValue(currentConversationId);
 										if (conversationId) {
-											selectConversation(conversationId);
+											await refreshConversationData(conversationId);
 										}
-									}, 500); // Increased delay to ensure server processing is complete
+									}, 100); // Reduced delay for faster updates
 								}
 							} catch {}
 						}
@@ -371,13 +381,13 @@ export function createChatStore(userId: string | null) {
 						currentConversationId.set(data.conversationId);
 						setTimeout(() => loadChatHistory(), 100);
 					}
-					// Reload conversation to get updated tree structure and branch navigation
-					setTimeout(() => {
+					// IMMEDIATE reload for tree structure after message completion
+					setTimeout(async () => {
 						const conversationId = getValue(currentConversationId);
 						if (conversationId) {
-							selectConversation(conversationId);
+							await refreshConversationData(conversationId);
 						}
-					}, 500); // Increased delay to ensure server processing is complete
+					}, 100); // Reduced delay for faster updates
 				} else {
 					error.set(data.error || 'Failed to get response from AI');
 					messages.update((msgs) => msgs.filter((m) => m.id !== chatMessage.id));
@@ -388,6 +398,35 @@ export function createChatStore(userId: string | null) {
 			messages.update((msgs) => msgs.filter((m) => m.id !== chatMessage.id));
 		} finally {
 			loading.set(false);
+		}
+	}
+
+	// New helper function for refreshing conversation data without full reload
+	async function refreshConversationData(conversationId: string) {
+		try {
+			const res = await fetch(`/api/chat?conversationId=${conversationId}`);
+			if (!res.ok) return;
+			
+			const data = await res.json();
+			console.log('Refreshing conversation data:', data);
+			
+			// Update tree-related data immediately
+			updateTreeData(data);
+			
+			// Update messages if they've changed (important for branch switches)
+			const transformed = transformDatabaseMessages(data.messages || []);
+			messages.set(transformed);
+			
+			// Update conversation in store
+			conversations.update((convs) => 
+				convs.map((c) => 
+					c.id === conversationId 
+						? { ...c, messages: transformed, messageCount: transformed.length } 
+						: c
+				)
+			);
+		} catch (error) {
+			console.error('Failed to refresh conversation data:', error);
 		}
 	}
 
@@ -446,29 +485,15 @@ export function createChatStore(userId: string | null) {
 		conversations.set([]);
 		messages.set([]);
 		currentConversationId.set(null);
+		// Clear tree data
+		treeStructure.set(null);
+		branchNavigation.set([]);
+		activePath.set([]);
 		debouncedSaveToStorage();
 	}
 
-	function editMessage(messageId: string, newContent: string) {
-		messages.update((msgs) => 
-			msgs.map((m) => 
-				m.id === messageId ? { ...m, content: newContent } : m
-			)
-		);
-		// Update the conversation as well
-		const id = getValue(currentConversationId);
-		if (id) {
-			conversations.update((convs) => 
-				convs.map((c) => 
-					c.id === id ? { ...c, messages: getValue(messages), updatedAt: new Date().toISOString() } : c
-				)
-			);
-		}
-		debouncedSaveToStorage();
-	}
-
-	// Tree-related functions
-		async function forkMessage(messageId: string, newContent: string) {
+	// ChatGPT-like edit functionality (creates branches when editing)
+	async function editMessage(messageId: string, newContent: string) {
 		const conversationId = getValue(currentConversationId);
 		if (!conversationId) return;
 
@@ -488,22 +513,38 @@ export function createChatStore(userId: string | null) {
 			});
 
 			if (response.ok) {
-				// Always reload the conversation to get updated tree structure and branch navigation
-				await selectConversation(conversationId);
+				const data = await response.json();
+				console.log('Edit/fork response:', data);
+				
+				// Immediately update the UI with the response data
+				if (data.activePath) {
+					activePath.set(data.activePath);
+				}
+				
+				// Refresh conversation data to get the latest tree structure
+				await refreshConversationData(conversationId);
 			} else {
 				const errorData = await response.json();
-				error.set(errorData.error || 'Failed to fork message');
+				error.set(errorData.error || 'Failed to edit message');
 			}
 		} catch (err) {
-			error.set('An error occurred while forking the message');
+			console.error('Edit message error:', err);
+			error.set('An error occurred while editing the message');
 		} finally {
 			loading.set(false);
 		}
 	}
 
+	// Keep legacy forkMessage for backward compatibility but make it alias to editMessage
+	async function forkMessage(messageId: string, newContent: string) {
+		return editMessage(messageId, newContent);
+	}
+
 	async function switchBranch(parentMessageId: string, branchIndex: number) {
 		const conversationId = getValue(currentConversationId);
 		if (!conversationId) return;
+
+		console.log('Switching branch:', { parentMessageId, branchIndex, conversationId });
 
 		try {
 			const response = await fetch('/api/chat', {
@@ -520,17 +561,43 @@ export function createChatStore(userId: string | null) {
 			if (response.ok) {
 				const data = await response.json();
 				console.log('Switch branch response:', data);
-				// Update messages with the new active conversation
-				messages.set(data.activeConversation || []);
-				// Update tree structure
-				treeStructure.set(data.treeStructure);
-				branchNavigation.set(data.branchNavigation || []);
-				activePath.set(data.activePath || []);
+				
+				// IMMEDIATELY update UI with response data - no delay
+				if (data.activeConversation && Array.isArray(data.activeConversation)) {
+					messages.set(data.activeConversation);
+				}
+				if (data.branchNavigation) {
+					branchNavigation.set(data.branchNavigation);
+				}
+				if (data.activePath) {
+					activePath.set(data.activePath);
+				}
+				if (data.treeStructure) {
+					treeStructure.set(data.treeStructure);
+				}
+				
+				// Update the conversation in the store
+				const id = getValue(currentConversationId);
+				if (id && data.activeConversation) {
+					conversations.update((convs) =>
+						convs.map((c) => 
+							c.id === id 
+								? { 
+									...c, 
+									messages: data.activeConversation, 
+									updatedAt: new Date().toISOString(),
+									messageCount: data.activeConversation.length
+								} 
+								: c
+						)
+					);
+				}
 			} else {
 				const errorData = await response.json();
 				error.set(errorData.error || 'Failed to switch branch');
 			}
 		} catch (err) {
+			console.error('Switch branch error:', err);
 			error.set('An error occurred while switching branches');
 		}
 	}
@@ -539,8 +606,8 @@ export function createChatStore(userId: string | null) {
 		const message = getValue(messages).find(m => m.id === messageId);
 		if (!message || message.role !== 'assistant') return;
 
-		// Fork the message with the same content (this will create a new branch for regeneration)
-		await forkMessage(messageId, message.content);
+		// Use editMessage (which creates a branch) with the same content
+		await editMessage(messageId, message.content);
 	}
 
 	function getValue<T>(store: Writable<T>): T {
@@ -585,11 +652,11 @@ export function createChatStore(userId: string | null) {
 		closeDeleteAllModal,
 		confirmDeleteAllConversations,
 		editMessage,
-		// tree actions
+		// tree actions (forkMessage is now an alias to editMessage)
 		forkMessage,
 		switchBranch,
-		regenerateMessage
+		regenerateMessage,
+		// internal helper
+		refreshConversationData
 	};
 }
-
-
