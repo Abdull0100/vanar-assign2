@@ -10,11 +10,20 @@
 	import 'prismjs/components/prism-css';
 	import 'prismjs/components/prism-markdown';
 	import 'prismjs/components/prism-sql';
-	import { Bot, User, Copy, Edit3, Check, MessageSquare } from '@lucide/svelte';
+	import { Bot, User, Copy, Edit3, Check, MessageSquare, RotateCcw, ChevronLeft, ChevronRight, GitBranch } from '@lucide/svelte';
 
 	export let messages: Array<{ id: string; role: 'user' | 'assistant' | 'system'; content: string; createdAt: string; isStreaming?: boolean }>= [];
 	export let initializing: boolean = false;
 	export let onEditMessage: ((messageId: string, newContent: string) => void) | null = null;
+	export let onForkMessage: ((messageId: string, newContent: string) => void) | null = null;
+	export let onRegenerateMessage: ((messageId: string) => void) | null = null;
+	export let onSwitchBranch: ((parentMessageId: string, branchIndex: number) => void) | null = null;
+	export let branchNavigation: Array<{ messageId: string; currentIndex: number; totalBranches: number; childrenIds: string[] }> = [];
+
+	// Debug branch navigation data
+	$: if (branchNavigation && branchNavigation.length > 0) {
+		console.log('ChatMessages received branch navigation:', branchNavigation);
+	}
 
 	let messagesContainer: HTMLElement;
 	let copiedMessageId: string | null = null;
@@ -104,6 +113,53 @@
 		editingMessageId = null;
 		editText = '';
 	}
+
+	function startForkMessage(messageId: string, currentContent: string) {
+		console.log('Starting fork for message ID:', messageId, 'with content:', currentContent);
+		editingMessageId = messageId;
+		editText = currentContent;
+	}
+
+	function saveFork(messageId: string) {
+		console.log('Saving fork for message ID:', messageId, 'with new content:', editText.trim());
+		if (onForkMessage && editText.trim()) {
+			onForkMessage(messageId, editText.trim());
+		}
+		editingMessageId = null;
+		editText = '';
+	}
+
+	function handleRegenerate(messageId: string) {
+		if (onRegenerateMessage) {
+			onRegenerateMessage(messageId);
+		}
+	}
+
+	function handleSwitchBranch(parentMessageId: string, direction: 'prev' | 'next') {
+		if (!onSwitchBranch) return;
+		
+		const nav = branchNavigation.find(n => n.messageId === parentMessageId);
+		if (!nav) return;
+		
+		let newIndex = nav.currentIndex;
+		if (direction === 'prev') {
+			newIndex = Math.max(0, newIndex - 1);
+		} else {
+			newIndex = Math.min(nav.totalBranches - 1, newIndex + 1);
+		}
+		
+		if (newIndex !== nav.currentIndex) {
+			onSwitchBranch(parentMessageId, newIndex);
+		}
+	}
+
+	function getBranchNavigationForMessage(messageId: string) {
+		const nav = branchNavigation.find(n => n.messageId === messageId);
+		if (nav) {
+			console.log('Found branch navigation for message:', messageId, 'nav:', nav);
+		}
+		return nav;
+	}
 </script>
 
 <div class="flex-1 overflow-y-auto bg-background">
@@ -125,10 +181,14 @@
 			{/if}
 		{:else}
 			<div class="mb-4 text-center">
-				<p class="text-xs text-muted-foreground italic">Each message represents a single message with role-based content • All deletions provide guaranteed permanent erasure from all systems</p>
+				<p class="text-xs text-muted-foreground italic">Tree-structured chat with forking support • Edit & Fork creates new branches • Use navigation controls to switch between branches</p>
 			</div>
 			{#each messages as messageItem, idx (messageItem.id)}
-				<div class="mb-6 group hover:bg-muted/30 rounded-lg p-1 -m-1 transition-colors duration-200">
+				<div class="mb-6 group hover:bg-muted/30 rounded-lg p-1 -m-1 transition-colors duration-200 relative">
+					<!-- Tree branch indicator -->
+					{#if getBranchNavigationForMessage(messageItem.id)}
+						<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary/30 rounded-l-lg"></div>
+					{/if}
 					{#if messageItem.role === 'user'}
 						<!-- User Message -->
 						<div class="flex justify-end mb-2">
@@ -141,19 +201,30 @@
 											rows="3"
 											placeholder="Edit your message..."
 										></textarea>
-										<div class="flex justify-end space-x-2 mt-2">
-											<button 
-												on:click={cancelEdit}
-												class="px-3 py-1 text-xs rounded border border-border hover:bg-muted text-foreground"
-											>
-												Cancel
-											</button>
-											<button 
-												on:click={() => saveEdit(messageItem.id)}
-												class="px-3 py-1 text-xs rounded bg-primary hover:bg-primary/90 text-primary-foreground"
-											>
-												Save
-											</button>
+										<div class="flex justify-between items-center mt-2">
+											<div class="text-xs text-muted-foreground">
+												{messageItem.role === 'user' ? 'Edit & Fork creates a new branch' : 'Edit & Fork creates a new branch'}
+											</div>
+											<div class="flex space-x-2">
+												<button 
+													on:click={cancelEdit}
+													class="px-3 py-1 text-xs rounded border border-border hover:bg-muted text-foreground"
+												>
+													Cancel
+												</button>
+												<button 
+													on:click={() => saveEdit(messageItem.id)}
+													class="px-3 py-1 text-xs rounded bg-muted hover:bg-muted/80 text-foreground"
+												>
+													Save
+												</button>
+												<button 
+													on:click={() => saveFork(messageItem.id)}
+													class="px-3 py-1 text-xs rounded bg-primary hover:bg-primary/90 text-primary-foreground"
+												>
+													Edit & Fork
+												</button>
+											</div>
 										</div>
 									</div>
 								{:else}
@@ -190,6 +261,14 @@
 										aria-label="Edit message"
 									>
 										<Edit3 class="w-4 h-4" />
+									</button>
+									<button 
+										on:click={() => startForkMessage(messageItem.id, messageItem.content)}
+										class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors duration-150"
+										title="Edit & Fork"
+										aria-label="Edit and fork message"
+									>
+										<GitBranch class="w-4 h-4" />
 									</button>
 								</div>
 							</div>
@@ -235,10 +314,10 @@
 							</div>
 						</div>
 						
-						<!-- AI response action button -->
+						<!-- AI response action buttons -->
 						{#if messageItem.content && messageItem.content.length > 0 && !messageItem.isStreaming}
 							<div class="flex justify-start ml-10 mt-1">
-								<div class="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+								<div class="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
 									<button 
 										on:click={() => copyResponse(messageItem.id, messageItem.content)}
 										class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors duration-150"
@@ -250,6 +329,48 @@
 										{:else}
 											<Copy class="w-4 h-4" />
 										{/if}
+									</button>
+									<button
+										on:click={() => handleRegenerate(messageItem.id)}
+										class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors duration-150"
+										title="Regenerate & Fork"
+										aria-label="Regenerate response"
+									>
+										<RotateCcw class="w-4 h-4" />
+									</button>
+								</div>
+							</div>
+						{/if}
+
+					{/if}
+
+					<!-- Branch Navigation for messages with multiple children -->
+					{#if (() => {
+						const branchNav = getBranchNavigationForMessage(messageItem.id);
+						return branchNav && branchNav.totalBranches > 1;
+					})()}
+						{@const branchNav = getBranchNavigationForMessage(messageItem.id)}
+						{#if branchNav}
+							<div class="flex justify-center my-2">
+								<div class="flex items-center space-x-2 bg-muted/50 rounded-lg px-3 py-1">
+									<button
+										on:click={() => handleSwitchBranch(messageItem.id, 'prev')}
+										disabled={branchNav.currentIndex === 0}
+										class="flex items-center justify-center w-6 h-6 rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+										title="Previous branch"
+									>
+										<ChevronLeft class="w-4 h-4" />
+									</button>
+									<span class="text-xs text-muted-foreground font-medium">
+										{branchNav.currentIndex + 1}/{branchNav.totalBranches}
+									</span>
+									<button
+										on:click={() => handleSwitchBranch(messageItem.id, 'next')}
+										disabled={branchNav.currentIndex === branchNav.totalBranches - 1}
+										class="flex items-center justify-center w-6 h-6 rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+										title="Next branch"
+									>
+										<ChevronRight class="w-4 h-4" />
 									</button>
 								</div>
 							</div>

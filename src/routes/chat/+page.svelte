@@ -26,6 +26,9 @@
 		showDeleteAllModal,
 		deleteAllTarget,
 		currentConversation,
+		treeStructure,
+		branchNavigation,
+		activePath,
 		loadConversationsFromStorage,
 		loadChatHistory,
 		selectConversation,
@@ -43,7 +46,10 @@
 		openDeleteAllModal,
 		closeDeleteAllModal,
 		confirmDeleteAllConversations,
-		editMessage
+		editMessage,
+		forkMessage,
+		switchBranch,
+		regenerateMessage
 	} = store;
 
 	let messageText = '';
@@ -97,6 +103,10 @@
 						messages={$messages}
 						{initializing}
 						onEditMessage={editMessage}
+						onForkMessage={forkMessage}
+						onRegenerateMessage={regenerateMessage}
+						onSwitchBranch={switchBranch}
+						branchNavigation={$branchNavigation}
 					/>
 					{#if $error}
 						<ChatErrorBanner

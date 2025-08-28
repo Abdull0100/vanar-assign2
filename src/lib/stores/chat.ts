@@ -1,5 +1,6 @@
 import { writable, derived, type Writable } from 'svelte/store';
 import { transformDbMessagesToView } from '$lib/db/chatUtils';
+import { ChatTreeManager, type TreeNode, type BranchNavigation } from '$lib/chat/ChatTreeManager';
 
 export type ChatMessage = {
 	id: string;
@@ -24,6 +25,12 @@ export function createChatStore(userId: string | null) {
 	const currentConversationId = writable<string | null>(null);
 	const loading = writable(false);
 	const error = writable('');
+
+	// Tree-related stores
+	const treeManager = new ChatTreeManager();
+	const treeStructure = writable<any>(null);
+	const branchNavigation = writable<BranchNavigation[]>([]);
+	const activePath = writable<string[]>([]);
 
 	const showDeleteModal = writable(false);
 	const deleteTarget = writable<{ id: string; title: string } | null>(null);
@@ -67,6 +74,17 @@ export function createChatStore(userId: string | null) {
 	}
 
 	function transformDatabaseMessages(dbMessages: any[]): ChatMessage[] {
+		// If messages are already in the correct format (from tree structure), return as-is
+		if (dbMessages && dbMessages.length > 0 && dbMessages[0].role) {
+			return dbMessages.map((msg: any) => ({
+				id: msg.id,
+				role: msg.role || 'user',
+				content: msg.content || '',
+				createdAt: msg.createdAt,
+				isStreaming: false
+			}));
+		}
+		// Fallback to the original transformation
 		return transformDbMessagesToView(dbMessages);
 	}
 
@@ -128,14 +146,38 @@ export function createChatStore(userId: string | null) {
 			const res = await fetch(`/api/chat?conversationId=${id}`);
 			if (!res.ok) {
 				messages.set([]);
+				branchNavigation.set([]);
+				activePath.set([]);
 				return;
 			}
 			const data = await res.json();
 			const transformed = transformDatabaseMessages(data.messages || []);
 			messages.set(transformed);
+
+			// Update tree-related stores
+			if (data.treeStructure) {
+				treeStructure.set(data.treeStructure);
+			}
+			if (data.branchNavigation) {
+				console.log('Setting branch navigation:', data.branchNavigation);
+				branchNavigation.set(data.branchNavigation);
+			} else {
+				console.log('No branch navigation data received');
+				branchNavigation.set([]);
+			}
+			if (data.activePath) {
+				console.log('Setting active path:', data.activePath);
+				activePath.set(data.activePath);
+			} else {
+				console.log('No active path data received');
+				activePath.set([]);
+			}
+
 			conversations.update((convs) => convs.map((c) => (c.id === id ? { ...c, messages: transformed, messageCount: transformed.length } : c)));
 		} catch {
 			messages.set([]);
+			branchNavigation.set([]);
+			activePath.set([]);
 		}
 		debouncedSaveToStorage();
 	}
@@ -297,6 +339,13 @@ export function createChatStore(userId: string | null) {
 										currentConversationId.set(data.conversationId);
 										setTimeout(() => loadChatHistory(), 100);
 									}
+									// Reload conversation to get updated tree structure and branch navigation
+									setTimeout(() => {
+										const conversationId = getValue(currentConversationId);
+										if (conversationId) {
+											selectConversation(conversationId);
+										}
+									}, 500); // Increased delay to ensure server processing is complete
 								}
 							} catch {}
 						}
@@ -322,6 +371,13 @@ export function createChatStore(userId: string | null) {
 						currentConversationId.set(data.conversationId);
 						setTimeout(() => loadChatHistory(), 100);
 					}
+					// Reload conversation to get updated tree structure and branch navigation
+					setTimeout(() => {
+						const conversationId = getValue(currentConversationId);
+						if (conversationId) {
+							selectConversation(conversationId);
+						}
+					}, 500); // Increased delay to ensure server processing is complete
 				} else {
 					error.set(data.error || 'Failed to get response from AI');
 					messages.update((msgs) => msgs.filter((m) => m.id !== chatMessage.id));
@@ -411,6 +467,82 @@ export function createChatStore(userId: string | null) {
 		debouncedSaveToStorage();
 	}
 
+	// Tree-related functions
+		async function forkMessage(messageId: string, newContent: string) {
+		const conversationId = getValue(currentConversationId);
+		if (!conversationId) return;
+
+		loading.set(true);
+		error.set('');
+
+		try {
+			const response = await fetch('/api/chat', {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					action: 'fork_message',
+					messageId,
+					newContent,
+					conversationId
+				})
+			});
+
+			if (response.ok) {
+				// Always reload the conversation to get updated tree structure and branch navigation
+				await selectConversation(conversationId);
+			} else {
+				const errorData = await response.json();
+				error.set(errorData.error || 'Failed to fork message');
+			}
+		} catch (err) {
+			error.set('An error occurred while forking the message');
+		} finally {
+			loading.set(false);
+		}
+	}
+
+	async function switchBranch(parentMessageId: string, branchIndex: number) {
+		const conversationId = getValue(currentConversationId);
+		if (!conversationId) return;
+
+		try {
+			const response = await fetch('/api/chat', {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					action: 'switch_branch',
+					messageId: parentMessageId,
+					branchIndex,
+					conversationId
+				})
+			});
+
+			if (response.ok) {
+				const data = await response.json();
+				console.log('Switch branch response:', data);
+				// Update messages with the new active conversation
+				messages.set(data.activeConversation || []);
+				// Update tree structure
+				treeStructure.set(data.treeStructure);
+				branchNavigation.set(data.branchNavigation || []);
+				activePath.set(data.activePath || []);
+			} else {
+				const errorData = await response.json();
+				error.set(errorData.error || 'Failed to switch branch');
+			}
+		} catch (err) {
+			error.set('An error occurred while switching branches');
+		}
+	}
+
+	async function regenerateMessage(messageId: string) {
+		const message = getValue(messages).find(m => m.id === messageId);
+		if (!message || message.role !== 'assistant') return;
+
+		// Fork the message with the same content (this will create a new branch for regeneration)
+		await forkMessage(messageId, message.content);
+	}
+
 	function getValue<T>(store: Writable<T>): T {
 		let v: T;
 		store.subscribe((val) => (v = val))();
@@ -430,6 +562,10 @@ export function createChatStore(userId: string | null) {
 		showDeleteAllModal,
 		deleteAllTarget,
 		currentConversation,
+		// tree state
+		treeStructure,
+		branchNavigation,
+		activePath,
 		// actions
 		loadConversationsFromStorage,
 		loadChatHistory,
@@ -448,7 +584,11 @@ export function createChatStore(userId: string | null) {
 		openDeleteAllModal,
 		closeDeleteAllModal,
 		confirmDeleteAllConversations,
-		editMessage
+		editMessage,
+		// tree actions
+		forkMessage,
+		switchBranch,
+		regenerateMessage
 	};
 }
 

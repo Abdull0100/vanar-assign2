@@ -188,7 +188,7 @@ export function getConversationThread(messages: ChatMessage[], rootMessageId: st
  * Check if a message has any forks (children)
  */
 export function hasForks(message: ChatMessage): boolean {
-	return message.childrenIds && message.childrenIds.length > 0;
+	return Boolean(message.childrenIds && message.childrenIds.length > 0);
 }
 
 /**
@@ -200,7 +200,7 @@ export function getMessageDepth(messages: ChatMessage[], messageId: string): num
 
 	while (currentMessage?.parentId) {
 		depth++;
-		currentMessage = messages.find(msg => msg.id === currentMessage.parentId);
+		currentMessage = messages.find(msg => msg.id === currentMessage?.parentId);
 	}
 
 	return depth;
