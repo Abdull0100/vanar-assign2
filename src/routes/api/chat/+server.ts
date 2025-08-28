@@ -582,10 +582,45 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			}
 			const treeStructure = treeManager.getTreeStructure();
 			
-			// Get branch navigation data (not the store)
+						// Get branch navigation data (not the store)
 			const branchNavigationData: BranchNavigation[] = [];
 			const activePath = finalMessages.map(msg => msg.id);
-			
+
+			// For navigation calculation, we need the full path including virtual roots
+			const fullActivePathIds = treeManager.getFullActivePath(); // Get full path IDs including virtual roots
+
+			// Check for virtual root navigation first (multiple root messages)
+			const virtualRoots = treeManager.getAllMessages().filter(msg => msg.id.startsWith('virtual-root-'));
+			if (virtualRoots.length > 0) {
+				const virtualRoot = virtualRoots[0];
+				if (virtualRoot.childrenIds && virtualRoot.childrenIds.length > 1) {
+					// Sort children by creation time for consistent ordering
+					const sortedChildrenIds = virtualRoot.childrenIds
+						.map(childId => treeManager.getMessage(childId))
+						.filter(Boolean)
+						.sort((a, b) => new Date(a!.createdAt).getTime() - new Date(b!.createdAt).getTime())
+						.map(msg => msg!.id);
+
+					// Find which root message is currently active
+					let currentRootIndex = 0;
+					for (let i = 0; i < sortedChildrenIds.length; i++) {
+						const rootId = sortedChildrenIds[i];
+						if (fullActivePathIds.includes(rootId)) {
+							currentRootIndex = i;
+							break;
+						}
+					}
+
+					branchNavigationData.push({
+						messageId: virtualRoot.id,
+						currentIndex: currentRootIndex,
+						totalBranches: sortedChildrenIds.length,
+						childrenIds: sortedChildrenIds
+					});
+					console.log('Added virtual root navigation:', virtualRoot.id, 'current index:', currentRootIndex, 'children:', sortedChildrenIds);
+				}
+			}
+
 			// Check each message in the active path for branch navigation
 			for (const messageId of activePath) {
 				const message = treeManager.getMessage(messageId);
@@ -939,6 +974,8 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
 						} catch (parentError) {
 							console.error('Failed to update parent childrenIds:', parentError);
 						}
+					} else {
+						console.log('Forked message is a root message (no parent), skipping parent update');
 					}
 
 					// Get the updated active conversation and tree data BEFORE AI response
@@ -1153,17 +1190,77 @@ Please provide a helpful response. Keep it conversational and relevant to the co
 					throw new ValidationError('Branch index is required for switching branches');
 				}
 
-				const parentMessage = treeManager.getMessage(messageId);
-				if (!parentMessage) {
-					throw new ValidationError('Parent message not found');
-				}
+				// Handle virtual root switching
+				if (messageId.startsWith('virtual-root-')) {
+					console.log('Switching virtual root branch:', messageId, 'to index:', branchIndex);
 
-				treeManager.switchToBranchByIndex(messageId, branchIndex);
+					// Get all root messages (messages with no parent or parented to virtual root)
+					const rootMessages = treeManager.getAllMessages().filter(msg => {
+						if (msg.id.startsWith('virtual-root-')) return false;
+						if (!msg.parentId) return true; // True root messages
+						return msg.parentId && msg.parentId.startsWith('virtual-root-'); // Messages parented to virtual root
+					});
+
+					if (branchIndex < 0 || branchIndex >= rootMessages.length) {
+						throw new ValidationError(`Invalid branch index ${branchIndex} for ${rootMessages.length} root messages`);
+					}
+
+					// Sort root messages by creation time to ensure consistent ordering
+					const sortedRoots = rootMessages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+					const targetRootMessage = sortedRoots[branchIndex];
+
+					console.log('Switching to root message:', targetRootMessage.id, 'content:', targetRootMessage.content.substring(0, 30));
+
+					// Switch to the target root message branch
+					treeManager.switchBranch(targetRootMessage.id);
+				} else {
+					// Handle regular message branch switching
+					const parentMessage = treeManager.getMessage(messageId);
+					if (!parentMessage) {
+						throw new ValidationError('Parent message not found');
+					}
+
+					treeManager.switchToBranchByIndex(messageId, branchIndex);
+				}
 				const switchedActiveConversation = treeManager.getActiveConversation();
 
 				// Recalculate branch navigation after switching
 				const switchedActivePath = switchedActiveConversation.map(msg => msg.id);
 				const switchedBranchNavigationData: BranchNavigation[] = [];
+
+				// For navigation calculation, we need the full path including virtual roots
+				const switchedFullActivePathIds = treeManager.getFullActivePath();
+
+				// Check for virtual root navigation first (multiple root messages)
+				const virtualRoots = treeManager.getAllMessages().filter(msg => msg.id.startsWith('virtual-root-'));
+				if (virtualRoots.length > 0) {
+					const virtualRoot = virtualRoots[0];
+					if (virtualRoot.childrenIds && virtualRoot.childrenIds.length > 1) {
+						// Sort children by creation time for consistent ordering
+						const sortedChildrenIds = virtualRoot.childrenIds
+							.map(childId => treeManager.getMessage(childId))
+							.filter(Boolean)
+							.sort((a, b) => new Date(a!.createdAt).getTime() - new Date(b!.createdAt).getTime())
+							.map(msg => msg!.id);
+
+						// Find which root message is currently active after switch
+						let currentRootIndex = 0;
+						for (let i = 0; i < sortedChildrenIds.length; i++) {
+							const rootId = sortedChildrenIds[i];
+							if (switchedFullActivePathIds.includes(rootId)) {
+								currentRootIndex = i;
+								break;
+							}
+						}
+
+						switchedBranchNavigationData.push({
+							messageId: virtualRoot.id,
+							currentIndex: currentRootIndex,
+							totalBranches: sortedChildrenIds.length,
+							childrenIds: sortedChildrenIds
+						});
+					}
+				}
 
 				// Check each message in the new active path for branch navigation
 				for (const msgId of switchedActivePath) {

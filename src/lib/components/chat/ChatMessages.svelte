@@ -100,20 +100,33 @@
 		}
 	}
 
-	function handleSwitchBranch(event: CustomEvent<{ parentMessageId: string, direction: 'prev' | 'next' }>) {
-        const { parentMessageId, direction } = event.detail;
+	function handleSwitchBranch(eventOrParentId: string | CustomEvent, direction?: 'prev' | 'next') {
 		if (!onSwitchBranch) return;
-		
+
+		let parentMessageId: string;
+		let navDirection: 'prev' | 'next';
+
+		// Handle CustomEvent from BranchNavigator component
+		if (eventOrParentId instanceof CustomEvent) {
+			const { parentMessageId: msgId, direction: dir } = eventOrParentId.detail;
+			parentMessageId = msgId;
+			navDirection = dir;
+		} else {
+			// Handle direct call with parameters
+			parentMessageId = eventOrParentId;
+			navDirection = direction!;
+		}
+
 		const nav = branchNavigation.find(n => n.messageId === parentMessageId);
 		if (!nav) return;
-		
+
 		let newIndex = nav.currentIndex;
-		if (direction === 'prev') {
+		if (navDirection === 'prev') {
 			newIndex = Math.max(0, newIndex - 1);
 		} else {
 			newIndex = Math.min(nav.totalBranches - 1, newIndex + 1);
 		}
-		
+
 		if (newIndex !== nav.currentIndex) {
 			onSwitchBranch(parentMessageId, newIndex);
 		}
@@ -121,6 +134,36 @@
 
 	function getBranchNavigationForMessage(messageId: string) {
 		return branchNavigation.find(n => n.messageId === messageId);
+	}
+
+	// Check if there's virtual root navigation (for multiple root messages)
+	function getVirtualRootNavigation() {
+		return branchNavigation.find(n => n.messageId.startsWith('virtual-root-'));
+	}
+
+	// Check if a message is a root message with siblings (for showing branch navigation)
+	function isRootMessageWithSiblings(messageId: string): boolean {
+		const virtualRootNav = getVirtualRootNavigation();
+		if (!virtualRootNav) return false;
+
+		// Check if this message is one of the virtual root's children
+		return virtualRootNav.childrenIds.includes(messageId);
+	}
+
+	// Get branch navigation data for a root message
+	function getRootBranchNavigation(messageId: string) {
+		const virtualRootNav = getVirtualRootNavigation();
+		if (!virtualRootNav) return null;
+
+		const childIndex = virtualRootNav.childrenIds.indexOf(messageId);
+		if (childIndex === -1) return null;
+
+		return {
+			messageId: virtualRootNav.messageId,
+			currentIndex: childIndex,
+			totalBranches: virtualRootNav.totalBranches,
+			childrenIds: virtualRootNav.childrenIds
+		};
 	}
     
     // Helper function to find the true parent of a forked user message
@@ -208,7 +251,9 @@
 										{#if messageItem.role === 'user'}
 											{@const navForUserAsParent = getBranchNavigationForMessage(messageItem.id)}
 											{@const navForUserAsChild = findParentNavData(idx)}
-											{#if navForUserAsParent || navForUserAsChild}
+											{@const rootBranchNav = getRootBranchNavigation(messageItem.id)}
+											{@const isRootMessage = isRootMessageWithSiblings(messageItem.id)}
+											{#if (navForUserAsParent || navForUserAsChild) && !isRootMessage}
 												<div class="flex items-center text-xs text-muted-foreground gap-1 mr-2">
 													{#if navForUserAsParent}
 														<BranchNavigator branchNav={navForUserAsParent} on:switch={handleSwitchBranch} />
@@ -218,15 +263,55 @@
 												</div>
 											{/if}
 										{/if}
-										<!-- Action buttons -->
+										<!-- Action buttons - Always visible for user messages -->
 										<button on:click={() => copyUserMessage(messageItem.id + '_user', messageItem.content)} class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground" title="Copy">
 											{#if copiedMessageId === messageItem.id + '_user'}<Check class="w-4 h-4" />{:else}<Copy class="w-4 h-4" />{/if}
 										</button>
-										<button on:click={() => startEditOrForkMessage(messageItem.id, messageItem.content)} class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground" title="Edit & Send">
+										<button
+											on:click={() => startEditOrForkMessage(messageItem.id, messageItem.content)}
+											class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-primary/20 text-primary hover:text-primary-foreground transition-colors"
+											title="Edit & Send (Creates New Branch)"
+										>
 											<Edit class="w-4 h-4" />
 										</button>
 									</div>
 								</div>
+							{/if}
+
+							<!-- Root Message Branch Navigation (below the message) -->
+							{#if messageItem.role === 'user' && isRootMessageWithSiblings(messageItem.id)}
+								{@const rootNav = getRootBranchNavigation(messageItem.id)}
+								{#if rootNav}
+									<div class="flex justify-end mr-10 mt-1">
+										<div class="flex items-center space-x-2 bg-muted/50 rounded-lg px-3 py-1">
+											<button
+												on:click={() => handleSwitchBranch(rootNav.messageId, 'prev')}
+												disabled={rootNav.currentIndex === 0}
+												class="flex items-center justify-center w-6 h-6 rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+												title="Previous branch"
+												aria-label="Previous conversation branch"
+											>
+												<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+												</svg>
+											</button>
+											<span class="text-xs text-muted-foreground font-medium">
+												{rootNav.currentIndex + 1}/{rootNav.totalBranches}
+											</span>
+											<button
+												on:click={() => handleSwitchBranch(rootNav.messageId, 'next')}
+												disabled={rootNav.currentIndex === rootNav.totalBranches - 1}
+												class="flex items-center justify-center w-6 h-6 rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+												title="Next branch"
+												aria-label="Next conversation branch"
+											>
+												<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+												</svg>
+											</button>
+										</div>
+									</div>
+								{/if}
 							{/if}
 						{:else if messageItem.role === 'assistant'}
 							<!-- Assistant Message -->

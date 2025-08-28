@@ -404,27 +404,43 @@ export function createChatStore(userId: string | null) {
 	// New helper function for refreshing conversation data without full reload
 	async function refreshConversationData(conversationId: string) {
 		try {
+			console.log('Refreshing conversation data for:', conversationId);
 			const res = await fetch(`/api/chat?conversationId=${conversationId}`);
-			if (!res.ok) return;
-			
+			if (!res.ok) {
+				console.error('Failed to fetch conversation data, status:', res.status);
+				return;
+			}
+
 			const data = await res.json();
-			console.log('Refreshing conversation data:', data);
-			
+			console.log('Received conversation data:', {
+				messagesCount: data.messages?.length || 0,
+				hasTreeStructure: !!data.treeStructure,
+				branchNavigationCount: data.branchNavigation?.length || 0,
+				hasActivePath: !!data.activePath
+			});
+
 			// Update tree-related data immediately
 			updateTreeData(data);
-			
+
 			// Update messages if they've changed (important for branch switches)
-			const transformed = transformDatabaseMessages(data.messages || []);
-			messages.set(transformed);
-			
-			// Update conversation in store
-			conversations.update((convs) => 
-				convs.map((c) => 
-					c.id === conversationId 
-						? { ...c, messages: transformed, messageCount: transformed.length } 
-						: c
-				)
-			);
+			if (data.messages && data.messages.length > 0) {
+				const transformed = transformDatabaseMessages(data.messages);
+				messages.set(transformed);
+
+				// Update conversation in store
+				conversations.update((convs) =>
+					convs.map((c) =>
+						c.id === conversationId
+							? {
+								...c,
+								messages: transformed,
+								updatedAt: new Date().toISOString(),
+								messageCount: transformed.length
+							}
+							: c
+					)
+				);
+			}
 		} catch (error) {
 			console.error('Failed to refresh conversation data:', error);
 		}
@@ -497,6 +513,7 @@ export function createChatStore(userId: string | null) {
 		const conversationId = getValue(currentConversationId);
 		if (!conversationId) return;
 
+		console.log('Attempting to fork/edit message:', messageId, 'with content length:', newContent.length);
 		loading.set(true);
 		error.set('');
 
@@ -512,19 +529,33 @@ export function createChatStore(userId: string | null) {
 				})
 			});
 
+			console.log('Fork request sent, response status:', response.status);
+
 			if (response.ok) {
 				const data = await response.json();
-				console.log('Edit/fork response:', data);
-				
+				console.log('Fork successful, response data:', {
+					hasActivePath: !!data.activePath,
+					activePathLength: data.activePath?.length,
+					hasActiveConversation: !!data.activeConversation,
+					activeConversationLength: data.activeConversation?.length
+				});
+
 				// Immediately update the UI with the response data
 				if (data.activePath) {
 					activePath.set(data.activePath);
 				}
-				
+				if (data.activeConversation) {
+					messages.set(data.activeConversation);
+				}
+				if (data.branchNavigation) {
+					branchNavigation.set(data.branchNavigation);
+				}
+
 				// Refresh conversation data to get the latest tree structure
 				await refreshConversationData(conversationId);
 			} else {
 				const errorData = await response.json();
+				console.error('Fork failed:', errorData);
 				error.set(errorData.error || 'Failed to edit message');
 			}
 		} catch (err) {
