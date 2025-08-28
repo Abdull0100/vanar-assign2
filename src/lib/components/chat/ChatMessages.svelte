@@ -13,13 +13,24 @@
 	import MessageVersionPills from './MessageVersionPills.svelte';
 	import BranchNavigation from './BranchNavigation.svelte';
 
-	export let messages: Array<{ id: string; content: string; aiResponse: string | null; createdAt: string; isStreaming?: boolean }>= [];
+	export let messages: Array<{ 
+		id: string; 
+		content: string; 
+		aiResponse: string | null; 
+		createdAt: string; 
+		isStreaming?: boolean;
+		versionGroupId?: string;
+		versionNumber?: number;
+		parentMessageId?: string;
+		originalMessageId?: string;
+		branchId?: string;
+		messageIndex?: number;
+		isForked?: boolean;
+	}> = [];
 	export let initializing: boolean = false;
 	export let onEditMessage: ((messageId: string, newContent: string) => void) | null = null;
 	export let onContinueFromMessage: ((messageId: string) => void) | null = null;
-	export let versionInfo: { currentVersion: number; totalVersions: number; canGoBack: boolean; canGoForward: boolean } | null = null;
-	export let onGoToPreviousVersion: (() => void) | null = null;
-	export let onGoToNextVersion: (() => void) | null = null;
+	// Removed unused version navigation props - using new versioning system instead
 	// New props for message forking
 	export let onForkMessage: ((messageId: string, editedContent: string) => void) | null = null;
 	export let onGetBranchVersions: ((messageId: string) => Promise<any[]>) | null = null;
@@ -73,9 +84,12 @@
 	// Load branch versions for messages that have been forked
 	$: if (messages && onGetBranchVersions) {
 		messages.forEach(message => {
-			// Check if this message might have branches (has been edited/forked)
-			// Load for all messages with AI responses to check for branches
-			if (message.aiResponse && !loadingBranches[message.id] && !branchVersions[message.id]) {
+			// Load branches for messages that have AI responses and haven't been loaded yet
+			// For the new versioning system, check if message has versionNumber > 1 or isForked
+			if (message.aiResponse && 
+				!loadingBranches[message.id] && 
+				!branchVersions[message.id] &&
+				((message.versionNumber && message.versionNumber > 1) || message.isForked || message.branchId)) {
 				loadBranchVersions(message.id);
 			}
 		});
@@ -230,21 +244,34 @@
 		editText = '';
 	}
 
-	function saveEdit(messageId: string) {
+	async function saveEdit(messageId: string) {
 		if (editText.trim()) {
-			// Use fork message instead of edit message
-			if (onForkMessage) {
-				onForkMessage(messageId, editText);
-			} else if (onEditMessage) {
-				// Fallback to old edit behavior
-				onEditMessage(messageId, editText);
+			try {
+				console.log('=== SAVE EDIT START ===');
+				console.log('Saving edit for message:', messageId, 'with content:', editText);
+				console.log('onForkMessage available:', !!onForkMessage);
+				console.log('onEditMessage available:', !!onEditMessage);
+				
+				// Use fork message instead of edit message
+				if (onForkMessage) {
+					console.log('Calling onForkMessage...');
+					await onForkMessage(messageId, editText);
+					console.log('onForkMessage completed');
+				} else if (onEditMessage) {
+					// Fallback to old edit behavior
+					console.log('Calling onEditMessage...');
+					onEditMessage(messageId, editText);
+				}
+				console.log('=== SAVE EDIT END ===');
+			} catch (error) {
+				console.error('Failed to save edit:', error);
 			}
 		}
 		editingMessageId = null;
 		editText = '';
 	}
 
-	// Branch navigation functions
+	// Version navigation functions for new versioning system
 	async function loadBranchVersions(messageId: string) {
 		if (!onGetBranchVersions || branchVersions[messageId] || loadingBranches[messageId]) {
 			return;
@@ -253,9 +280,9 @@
 		loadingBranches[messageId] = true;
 		try {
 			const versions = await onGetBranchVersions(messageId);
-			branchVersions[messageId] = versions;
+			branchVersions[messageId] = versions || [];
 		} catch (error) {
-			console.error('Failed to load branch versions:', error);
+			console.error('Failed to load branch versions for message:', messageId, error);
 			branchVersions[messageId] = [];
 		} finally {
 			loadingBranches[messageId] = false;
@@ -269,6 +296,15 @@
 		
 		// If we have versions but no active version is set, default to the first one
 		const finalCurrentIndex = currentIndex || (versions.length > 0 ? 1 : 1);
+		
+		// Debug logging
+		console.log(`Branch info for ${messageId}:`, {
+			versions: versions.length,
+			activeVersionId,
+			currentIndex: finalCurrentIndex,
+			totalCount: versions.length || 1,
+			hasMultipleVersions: versions.length > 1
+		});
 		
 		return {
 			versions,
@@ -284,6 +320,7 @@
 		if (branchInfo.currentIndex > 1) {
 			const previousVersion = branchInfo.versions[branchInfo.currentIndex - 2];
 			if (previousVersion && onSetActiveVersion) {
+				// Use the new versioning system - this will reload the branch
 				await onSetActiveVersion(messageId, previousVersion.id);
 			}
 		}
@@ -294,6 +331,7 @@
 		if (branchInfo.currentIndex < branchInfo.totalCount) {
 			const nextVersion = branchInfo.versions[branchInfo.currentIndex];
 			if (nextVersion && onSetActiveVersion) {
+				// Use the new versioning system - this will reload the branch
 				await onSetActiveVersion(messageId, nextVersion.id);
 			}
 		}
@@ -322,6 +360,9 @@
 				<p class="text-xs text-gray-400 italic">💡 Each message represents a complete Q&A pair • All deletions provide guaranteed permanent erasure from all systems</p>
 			</div>
 			{#each messages as messageItem, idx (messageItem.id)}
+				{#if onGetBranchVersions && onSetActiveVersion}
+					{@const _ = loadBranchVersions(messageItem.id)}
+				{/if}
 				<div class="mb-6 group hover:bg-gray-50 rounded-lg p-1 -m-1 transition-colors duration-200">
 					<div class="flex justify-end mb-2">
 						<div class="flex items-end space-x-2 max-w-xl relative">
@@ -422,10 +463,25 @@
 										{@html renderMarkdown(messageItem.aiResponse)}
 									</div>
 									
-									<!-- Branch Navigation -->
+									<!-- Version Navigation for New Versioning System -->
 									{#if onGetBranchVersions && onSetActiveVersion}
 										{@const branchInfo = getBranchInfo(messageItem.id)}
 										{#if branchInfo.hasMultipleVersions || branchVersions[messageItem.id]?.length > 1}
+											<!-- Version Pills - Shows available versions and allows switching -->
+											<MessageVersionPills
+												versions={branchVersions[messageItem.id] || []}
+												activeId={branchInfo.activeVersionId || ''}
+												currentMessageId={messageItem.id}
+												isLoading={loadingBranches[messageItem.id] || false}
+												onSelect={async (versionId) => {
+													if (onSetActiveVersion) {
+														// This will reload the branch and show only children of the selected version
+														await onSetActiveVersion(messageItem.id, versionId);
+													}
+												}}
+											/>
+											
+											<!-- Branch Navigation (alternative) -->
 											<BranchNavigation
 												currentIndex={branchInfo.currentIndex}
 												totalCount={branchInfo.totalCount}
@@ -546,27 +602,7 @@
 		color: #ecfdf5;
 	}
 
-	/* Editing state styling */
-	.editing-message {
-		border: 2px solid #4f46e5;
-		box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-	}
-
-	/* Continue from message indicator */
-	.continue-indicator {
-		position: relative;
-	}
-
-	.continue-indicator::before {
-		content: '';
-		position: absolute;
-		left: -8px;
-		top: 0;
-		bottom: 0;
-		width: 3px;
-		background: linear-gradient(to bottom, #4f46e5, #7c3aed);
-		border-radius: 2px;
-	}
+	/* Removed unused CSS selectors */
 </style>
 
 

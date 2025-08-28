@@ -18,6 +18,7 @@
 	const store = createChatStore(user?.id ?? null) as any;
 	const {
 		messages,
+		activeTranscript,
 		conversations,
 		currentConversationId,
 		loading,
@@ -44,23 +45,18 @@
 		openDeleteAllModal,
 		closeDeleteAllModal,
 		confirmDeleteAllConversations,
-		editMessage,
-		continueFromMessage,
-		getCurrentVersionInfo,
-		goToPreviousVersion,
-		goToNextVersion,
 		forkMessage,
 		getBranchVersions,
 		setActiveVersion,
-		selectedVersionByBranch
+		selectedVersionByBranch,
+		activeVersions
 	} = store;
 
 	let messageText = '';
 	let chatMessagesRef: any;
 	let initializing = true;
 	
-	// Reactive version info - watch both conversations and messages for changes
-	$: versionInfo = $conversations.length > 0 ? getCurrentVersionInfo() : null;
+	// Version info is now handled by the new versioning system
 
 	onMount(() => {
 		loadConversationsFromStorage();
@@ -241,13 +237,9 @@
 						<div class="relative z-10 flex-1 min-h-0">
 							<ChatMessages
 								bind:this={chatMessagesRef}
-								messages={$messages}
+								messages={$activeTranscript}
 								{initializing}
 								onEditMessage={forkMessage}
-								onContinueFromMessage={continueFromMessage}
-								{versionInfo}
-								onGoToPreviousVersion={goToPreviousVersion}
-								onGoToNextVersion={goToNextVersion}
 								onForkMessage={forkMessage}
 								onGetBranchVersions={getBranchVersions}
 								onSetActiveVersion={setActiveVersion}

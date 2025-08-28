@@ -94,6 +94,13 @@ export function transformDbMessagesToView(dbMessages: any[]): Array<{
   aiResponse: string | null;
   createdAt: string;
   isStreaming?: boolean;
+  versionGroupId?: string;
+  versionNumber?: number;
+  parentMessageId?: string;
+  originalMessageId?: string;
+  branchId?: string;
+  messageIndex?: number;
+  isForked?: boolean;
 }> {
   if (!dbMessages || !Array.isArray(dbMessages)) return [];
   return dbMessages.map((msg: any) => ({
@@ -101,7 +108,14 @@ export function transformDbMessagesToView(dbMessages: any[]): Array<{
     content: msg.content || '',
     aiResponse: msg.aiResponse ?? null,
     createdAt: msg.createdAt,
-    isStreaming: false
+    isStreaming: false,
+    versionGroupId: msg.versionGroupId,
+    versionNumber: msg.versionNumber,
+    parentMessageId: msg.parentMessageId,
+    originalMessageId: msg.originalMessageId,
+    branchId: msg.branchId,
+    messageIndex: msg.messageIndex,
+    isForked: msg.isForked
   }));
 }
 

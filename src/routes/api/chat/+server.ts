@@ -3,7 +3,8 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { db } from '$lib/db';
 import { chatMessages, conversations } from '$lib/db/schema';
 import { buildRecentTranscript } from '$lib/db/chatUtils';
-import { eq, inArray, and } from 'drizzle-orm';
+import { getBranchMessages, buildBranchAwareTranscript } from '$lib/services/chat/buildBranchAwareTranscript';
+import { eq, inArray, and, sql } from 'drizzle-orm';
 import { AuthError, ValidationError, handleApiError } from '$lib/errors';
 
 // Import env vars from $env
@@ -115,18 +116,56 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				console.log(`Linking to last completed message: ${previousId} in conversation: ${targetConversationId} (skipping pending message: ${mostRecentMessage.id})`);
 			}
 		} else {
-			console.log('First message in conversation, no previousId');
+			// For new conversations, try to find the most recent completed message from any conversation
+			// to maintain some context continuity
+			const lastCompletedMessageAnywhere = await db.query.chatMessages.findFirst({
+				where: and(
+					eq(chatMessages.userId, session.user.id),
+					eq(chatMessages.aiResponse, 'IS NOT NULL')
+				),
+				orderBy: (chatMessages, { desc }) => [desc(chatMessages.createdAt)],
+				columns: { id: true, conversationId: true }
+			});
+			
+			if (lastCompletedMessageAnywhere) {
+				// Link to the last completed message from any conversation for context continuity
+				previousId = lastCompletedMessageAnywhere.id;
+				// Use the conversation from the last completed message to maintain context
+				targetConversationId = lastCompletedMessageAnywhere.conversationId;
+				console.log(`New conversation linking to last completed message from conversation ${targetConversationId}: ${previousId} for context continuity`);
+			} else {
+				console.log('First message ever, no previousId');
+			}
 		}
 
 		console.log(`Creating new message with previousId: ${previousId} in conversation: ${targetConversationId} for user: ${session.user.id}`);
 
-		// Save user message and prepare for AI response in a single row
+		// Calculate the next message index for this conversation
+		const maxMessageIndexResult = await db
+			.select({ maxIndex: sql<number>`MAX(${chatMessages.messageIndex})` })
+			.from(chatMessages)
+			.where(eq(chatMessages.conversationId, targetConversationId));
+		
+		const nextMessageIndex = (maxMessageIndexResult[0]?.maxIndex || 0) + 1;
+
+		// Generate a new versionGroupId for this message (new message = new version group)
+		const versionGroupId = crypto.randomUUID();
+
+		// Save user message using the new versioning system
 		const [userMessage] = await db.insert(chatMessages).values({
-			conversationId: targetConversationId, // Use the conversation from previousId
+			conversationId: targetConversationId,
 			userId: session.user.id,
 			content: message,
 			aiResponse: null, // Will be filled when AI responds
-			previousId: previousId, // Link to the previous message in this conversation
+			// New versioning system
+			parentId: previousId, // Link to the previous message using parentId
+			versionGroupId: versionGroupId, // New version group for this message
+			versionNumber: 1, // First version in this group
+			messageIndex: nextMessageIndex, // Set the message index for version tracking
+			// Legacy fields for backward compatibility
+			previousId: previousId,
+			branchId: versionGroupId, // Use versionGroupId as branchId for compatibility
+			isForked: false, // This is a new message, not a fork
 			createdAt: new Date(),
 			updatedAt: new Date()
 		}).returning();
@@ -151,60 +190,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			});
 		}
 
-		// Build conversation context from DB: stored summary + last 10 messages
-		// Fetch last 10 messages for compact context, using previousId for proper threading
-		const recentDbMessages = await db.query.chatMessages.findMany({
-			where: and(
-				eq(chatMessages.conversationId, targetConversationId), // Use target conversation ID
-				eq(chatMessages.userId, session.user.id)
-			),
-			orderBy: (chatMessages, { asc }) => [asc(chatMessages.createdAt)],
-			limit: 10
-		});
-
-		// Build threaded conversation context using previousId with security validation
-		const buildThreadedTranscript = (messages: any[]) => {
-			if (!messages || messages.length === 0 || !session.user) return '';
-			
-			let transcript = '';
-			const messageMap = new Map();
-			const validMessageIds = new Set();
-			
-			// Validate that all messages belong to the current user and conversation
-			messages.forEach(msg => {
-				if (msg.userId === session.user!.id && msg.conversationId === targetConversationId) { // Use target conversation ID
-					messageMap.set(msg.id, msg);
-					validMessageIds.add(msg.id);
-				} else {
-					console.warn(`Skipping unauthorized message: ${msg.id} (userId: ${msg.userId}, conversationId: ${msg.conversationId})`);
-				}
-			});
-			
-			// Build transcript following the previousId chain, only using validated messages
-			const processedIds = new Set();
-			let currentMessage = messages[messages.length - 1]; // Start with the most recent
-			
-			while (currentMessage && !processedIds.has(currentMessage.id) && validMessageIds.has(currentMessage.id)) {
-				processedIds.add(currentMessage.id);
-				
-				if (currentMessage.aiResponse) {
-					// Complete Q&A pair
-					transcript = `User: ${currentMessage.content}\nVanar: ${currentMessage.aiResponse}\n\n` + transcript;
-				} else {
-					// Pending user message
-					transcript = `User: ${currentMessage.content}\nVanar: [Waiting for response]\n\n` + transcript;
-				}
-				
-				// Move to previous message in the chain, ensuring it's valid
-				currentMessage = currentMessage.previousId && validMessageIds.has(currentMessage.previousId) 
-					? messageMap.get(currentMessage.previousId) 
-					: null;
-			}
-			
-			return transcript.trim();
-		};
-
-		const transcript = buildThreadedTranscript(recentDbMessages);
+		// Build conversation context using the new versioning system
+		// This ensures we only include active versions and hide abandoned children
+		const transcript = await buildBranchAwareTranscript(targetConversationId);
 
 		// Get the target conversation for summary and other metadata
 		const targetConversation = await db.query.conversations.findFirst({
@@ -279,17 +267,9 @@ Please provide a helpful response. Keep it conversational and relevant to the co
 							columns: { id: true }
 						});
 						if (totalMessages.length % 10 === 0 && genAI) {
-							const recentForSummary = await db.query.chatMessages.findMany({
-								where: and(
-									eq(chatMessages.conversationId, targetConversationId), // Use target conversation ID
-									eq(chatMessages.userId, session.user.id)
-								),
-								orderBy: (chatMessages, { asc }) => [asc(chatMessages.createdAt)],
-								limit: 16
-							});
-							
-							// Use the same threaded approach for summary generation
-							const recentTranscript = buildThreadedTranscript(recentForSummary);
+							// Use the new versioning system for summary generation
+							// This ensures we only include active versions in the summary
+							const recentTranscript = await buildBranchAwareTranscript(targetConversationId);
 							const summaryText = targetConversation?.summary as string | null;
 							const modelForSummary = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 							const summaryPrompt = `You maintain a concise, rolling summary of a chat between User and Vanar.\n\nExisting summary (may be empty):\n${summaryText || '(none)'}\n\nNew recent messages to incorporate (chronological):\n${recentTranscript}\n\nUpdate the summary in 5-10 short bullet points capturing key facts, decisions, tasks, user preferences, and unresolved questions.\n- Max 200 words.\n- Do not include timestamps or salutations.\n- Do not quote large passages; paraphrase.\n- Keep it neutral and factual.\n- Output only the updated summary.`;
@@ -407,7 +387,18 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		}
 
 		const conversationId = url.searchParams.get('conversationId');
-		console.log('GET /api/chat - conversationId:', conversationId, 'userId:', session.user.id);
+		const activeVersionsParam = url.searchParams.get('activeVersions');
+		let activeVersions: Record<string, string> | undefined;
+		
+		if (activeVersionsParam) {
+			try {
+				activeVersions = JSON.parse(decodeURIComponent(activeVersionsParam));
+			} catch (error) {
+				console.error('Failed to parse activeVersions:', error);
+			}
+		}
+		
+		console.log('GET /api/chat - conversationId:', conversationId, 'activeVersions:', activeVersions, 'userId:', session.user.id);
 
 		if (conversationId) {
 			// Get messages for a specific conversation
@@ -434,21 +425,12 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 				throw new AuthError('Conversation not found or access denied');
 			}
 
-			// Query messages separately
-			const messages = await db.query.chatMessages.findMany({
-				where: eq(chatMessages.conversationId, conversationId),
-				orderBy: (chatMessages, { asc }) => [asc(chatMessages.createdAt)],
-				columns: {
-					id: true,
-					content: true,
-					aiResponse: true,
-					createdAt: true,
-					updatedAt: true
-				}
-			});
+			// Always get messages for the active branch - never return all messages
+			// This ensures we only show active versions and hide abandoned children
+			const messages = await getBranchMessages(conversationId, activeVersions);
+			console.log(`Found ${messages.length} messages in active branch`);
 
-			console.log('Found messages:', messages.length);
-			return json({ messages });
+			return json({ messages, activeVersions });
 		} else {
 			// Get all conversations with message counts, filtering out empty ones
 			console.log('Fetching all conversations for user:', session.user.id);

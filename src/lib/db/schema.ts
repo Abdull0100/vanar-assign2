@@ -86,11 +86,15 @@ export const chatMessages = pgTable('chatMessages', {
 	aiResponse: text('aiResponse'), // AI response text (null for pending user messages, text for complete Q&A pairs)
 	previousId: uuid('previousId'), // ID of previous chat in same room for conversation flow
 	// New branching and versioning fields
+	parentId: uuid('parent_id').references(() => chatMessages.id, { onDelete: 'set null' }), // Parent message for chronological flow
+	versionGroupId: uuid('version_group_id'), // Groups all versions of the same logical message
+	versionNumber: integer('version_number').default(1).notNull(), // Version number within the group
+	// Legacy fields for backward compatibility
 	parentMessageId: uuid('parent_message_id').references(() => chatMessages.id, { onDelete: 'set null' }), // Points to the message this was forked from
 	branchId: uuid('branch_id'), // Groups related messages in the same branch (set to root message id)
-	versionNumber: integer('version_number').default(1).notNull(), // Version number within the branch
 	isForked: boolean('is_forked').default(false).notNull(), // Whether this message is a fork
 	originalMessageId: uuid('original_message_id').references(() => chatMessages.id, { onDelete: 'set null' }), // Points to the original message for quick lookup
+	messageIndex: integer('message_index'), // Position of this message in the conversation (for <messageIndex, versionIndex> format)
 	createdAt: timestamp('createdAt').defaultNow().notNull(), // Timestamp of the Q&A pair
 	updatedAt: timestamp('updatedAt').defaultNow().notNull() // When message was last updated
 });

@@ -18,25 +18,60 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			throw new ValidationError('Message ID is required');
 		}
 
-		// Verify the user owns the message
-		const message = await db.query.chatMessages.findFirst({
+		// First, try to find the message directly
+		let message = await db.query.chatMessages.findFirst({
 			where: and(
 				eq(chatMessages.id, messageId),
 				eq(chatMessages.userId, session.user.id)
 			)
 		});
 
+		// If not found, check if it's a forked message and try to find the original
 		if (!message) {
-			throw new ValidationError('Message not found or access denied');
+			// Look for messages that might be related to this messageId
+			const relatedMessages = await db.query.chatMessages.findMany({
+				where: and(
+					eq(chatMessages.userId, session.user.id),
+					eq(chatMessages.originalMessageId, messageId)
+				)
+			});
+
+			if (relatedMessages.length > 0) {
+				// Use the first related message to get branch info
+				message = relatedMessages[0];
+			} else {
+				// Check if this messageId is actually a branchId
+				const branchMessage = await db.query.chatMessages.findFirst({
+					where: and(
+						eq(chatMessages.branchId, messageId),
+						eq(chatMessages.userId, session.user.id)
+					)
+				});
+
+				if (branchMessage) {
+					message = branchMessage;
+				} else {
+					// Instead of throwing an error, return empty versions
+					// This prevents the API from failing when messages don't have branches
+					return json({
+						success: true,
+						versions: [],
+						branchId: null
+					});
+				}
+			}
 		}
 
+		// Determine the correct branch ID
+		const branchId = message.branchId || message.id;
+		
 		// Get all versions in the branch
-		const versions = await getBranchVersions(messageId);
+		const versions = await getBranchVersions(branchId);
 
 		return json({
 			success: true,
 			versions: versions,
-			branchId: message.branchId || message.id
+			branchId: branchId
 		});
 
 	} catch (error) {
