@@ -102,7 +102,6 @@
 						bind:this={chatMessagesRef}
 						messages={$messages}
 						{initializing}
-						onEditMessage={editMessage}
 						onForkMessage={forkMessage}
 						onRegenerateMessage={regenerateMessage}
 						onSwitchBranch={switchBranch}

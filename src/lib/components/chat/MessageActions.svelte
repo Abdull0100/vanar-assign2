@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Edit3, RotateCcw, MessageSquare, Copy, Check } from '@lucide/svelte';
+	import { Edit, RotateCcw, MessageSquare, Copy, Check } from '@lucide/svelte';
 
 	export let messageRole: 'user' | 'assistant' | 'system';
 	export let messageId: string;
@@ -65,7 +65,7 @@
 				class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors duration-150"
 				title="Edit & Fork"
 			>
-				<Edit3 class="w-4 h-4" />
+				<Edit class="w-4 h-4" />
 			</button>
 		{/if}
 

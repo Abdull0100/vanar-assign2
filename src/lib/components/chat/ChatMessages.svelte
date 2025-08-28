@@ -10,20 +10,15 @@
 	import 'prismjs/components/prism-css';
 	import 'prismjs/components/prism-markdown';
 	import 'prismjs/components/prism-sql';
-	import { Bot, User, Copy, Edit, Check, MessageSquare, RotateCcw, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight } from '@lucide/svelte';
+	import { Bot, User, Copy, Edit, Check, MessageSquare, RotateCcw } from '@lucide/svelte';
+    import BranchNavigator from './BranchNavigator.svelte'; // Import the new component
 
 	export let messages: Array<{ id: string; role: 'user' | 'assistant' | 'system'; content: string; createdAt: string; isStreaming?: boolean }>= [];
 	export let initializing: boolean = false;
-	export let onEditMessage: ((messageId: string, newContent: string) => void) | null = null;
 	export let onForkMessage: ((messageId: string, newContent: string) => void) | null = null;
 	export let onRegenerateMessage: ((messageId: string) => void) | null = null;
 	export let onSwitchBranch: ((parentMessageId: string, branchIndex: number) => void) | null = null;
 	export let branchNavigation: Array<{ messageId: string; currentIndex: number; totalBranches: number; childrenIds: string[] }> = [];
-
-	// Debug branch navigation data
-	$: if (branchNavigation && branchNavigation.length > 0) {
-		console.log('ChatMessages received branch navigation:', branchNavigation);
-	}
 
 	let messagesContainer: HTMLElement;
 	let copiedMessageId: string | null = null;
@@ -48,7 +43,6 @@
 		if (isAtBottom()) scrollToBottom();
 	}
 
-	// Expose methods to parent via component ref
 	export function scrollToBottomPublic() { scrollToBottom(); }
 	export function smartScrollToBottomPublic() { smartScrollToBottom(); }
 
@@ -58,13 +52,7 @@
 
 	function renderMarkdown(text: string): string {
 		if (!text) return '';
-		
-		// Configure marked options
-		marked.setOptions({
-			breaks: true,
-			gfm: true
-		});
-
+		marked.setOptions({ breaks: true, gfm: true });
 		try {
 			const result = marked(text);
 			return typeof result === 'string' ? result : text;
@@ -77,26 +65,16 @@
 	function copyUserMessage(messageId: string, content: string) {
 		navigator.clipboard.writeText(content).then(() => {
 			copiedMessageId = messageId;
-			setTimeout(() => {
-				copiedMessageId = null;
-			}, 2000);
-		}).catch(err => {
-			console.error('Failed to copy text: ', err);
-		});
+			setTimeout(() => { copiedMessageId = null; }, 2000);
+		}).catch(err => { console.error('Failed to copy text: ', err); });
 	}
 
 	function copyResponse(messageId: string, content: string) {
 		navigator.clipboard.writeText(content).then(() => {
 			copiedMessageId = messageId;
-			setTimeout(() => {
-				copiedMessageId = null;
-			}, 2000);
-		}).catch(err => {
-			console.error('Failed to copy text: ', err);
-		});
+			setTimeout(() => { copiedMessageId = null; }, 2000);
+		}).catch(err => { console.error('Failed to copy text: ', err); });
 	}
-
-
 
 	function cancelEdit() {
 		editingMessageId = null;
@@ -105,7 +83,6 @@
 
 	function saveEdit(messageId: string) {
 		if (editText.trim() && onForkMessage) {
-			console.log('Sending fork for message ID:', messageId, 'with new content:', editText.trim());
 			onForkMessage(messageId, editText.trim());
 		}
 		editingMessageId = null;
@@ -113,7 +90,6 @@
 	}
 
 	function startEditOrForkMessage(messageId: string, currentContent: string) {
-		console.log('Editing message ID:', messageId, 'with content:', currentContent);
 		editingMessageId = messageId;
 		editText = currentContent;
 	}
@@ -124,7 +100,8 @@
 		}
 	}
 
-	function handleSwitchBranch(parentMessageId: string, direction: 'prev' | 'next') {
+	function handleSwitchBranch(event: CustomEvent<{ parentMessageId: string, direction: 'prev' | 'next' }>) {
+        const { parentMessageId, direction } = event.detail;
 		if (!onSwitchBranch) return;
 		
 		const nav = branchNavigation.find(n => n.messageId === parentMessageId);
@@ -143,12 +120,23 @@
 	}
 
 	function getBranchNavigationForMessage(messageId: string) {
-		const nav = branchNavigation.find(n => n.messageId === messageId);
-		if (nav) {
-			console.log('Found branch navigation for message:', messageId, 'nav:', nav);
-		}
-		return nav;
+		return branchNavigation.find(n => n.messageId === messageId);
 	}
+    
+    // Helper function to find the true parent of a forked user message
+    function findParentNavData(userMessageIndex: number): { messageId: string; currentIndex: number; totalBranches: number; } | null {
+        if (userMessageIndex < 1) return null;
+        const currentUserMessage = messages[userMessageIndex];
+
+        // Search through all branch data provided by the parent
+        for (const nav of branchNavigation) {
+            // If the parent's children include our current user message, we've found the right navigator
+            if (nav.childrenIds?.includes(currentUserMessage.id)) {
+                return nav;
+            }
+        }
+        return null;
+    }
 </script>
 
 <div class="flex-1 overflow-y-auto bg-background">
@@ -157,6 +145,7 @@
 			{#if initializing}
 				<div class="flex items-center justify-center h-32 text-muted-foreground text-sm">Loading chat…</div>
 			{:else}
+			<!-- Welcome Message -->
 			<div class="flex flex-col items-center justify-center h-full text-center">
 				<div class="h-24 w-24 rounded-full bg-muted flex items-center justify-center mb-4">
 					<MessageSquare class="w-10 h-10 text-muted-foreground" />
@@ -173,210 +162,123 @@
 				<p class="text-xs text-muted-foreground italic">Tree-structured chat • Edit & Send creates new branches • Use navigation controls to switch between branches</p>
 			</div>
 			{#each messages as messageItem, idx (messageItem.id)}
-				<div class="mb-6 group hover:bg-muted/30 rounded-lg p-1 -m-1 transition-colors duration-200 relative">
-					<!-- Tree branch indicator -->
-					{#if getBranchNavigationForMessage(messageItem.id)}
-						<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary/30 rounded-l-lg"></div>
-					{/if}
-					{#if messageItem.role === 'user'}
-						<!-- User Message -->
-						<div class="flex justify-end mb-2">
-							<div class="flex items-end space-x-2 max-w-xl relative">
-								{#if editingMessageId === messageItem.id}
-									<div class="rounded-2xl rounded-br-sm bg-card border-2 border-primary px-4 py-3 shadow-lg flex-1">
-										<textarea 
-											bind:value={editText}
-											class="w-full text-sm leading-relaxed resize-none border-none outline-none bg-transparent text-foreground placeholder:text-muted-foreground"
-											rows="3"
-											placeholder="Edit your message..."
-										></textarea>
-										<div class="flex justify-between items-center mt-2">
-											<div class="text-xs text-muted-foreground">
-												This will create a new branch with your changes
-											</div>
-											<div class="flex space-x-2">
-												<button
-													on:click={cancelEdit}
-													class="px-3 py-1 text-xs rounded border border-border hover:bg-muted text-foreground"
-												>
-													Cancel
-												</button>
-												<button
-													on:click={() => saveEdit(messageItem.id)}
-													class="px-3 py-1 text-xs rounded bg-primary hover:bg-primary/90 text-primary-foreground"
-												>
-													Send
-												</button>
+				<div class="mb-6">
+					<div class="group hover:bg-muted/30 rounded-lg p-1 -m-1 transition-colors duration-200 relative">
+						
+						{#if messageItem.role === 'user'}
+							<!-- User Message -->
+							<div class="flex justify-end ">
+								<div class="flex items-end space-x-2 max-w-xl relative">
+									{#if editingMessageId === messageItem.id}
+                                        <!-- Edit Mode -->
+										<div class="rounded-2xl rounded-br-sm bg-card border-2 border-primary px-4 py-3 shadow-lg flex-1">
+											<textarea 
+												bind:value={editText}
+												class="w-full text-sm leading-relaxed resize-none border-none outline-none bg-transparent text-foreground placeholder:text-muted-foreground"
+												rows="3"
+												placeholder="Edit your message..."
+											></textarea>
+											<div class="flex justify-between items-center mt-2">
+												<div class="text-xs text-muted-foreground">
+													This will create a new branch with your changes
+												</div>
+												<div class="flex space-x-2">
+													<button on:click={cancelEdit} class="px-3 py-1 text-xs rounded border border-border hover:bg-muted text-foreground">Cancel</button>
+													<button on:click={() => saveEdit(messageItem.id)} class="px-3 py-1 text-xs rounded bg-primary hover:bg-primary/90 text-primary-foreground">Send</button>
+												</div>
 											</div>
 										</div>
+									{:else}
+                                        <!-- Normal Display -->
+										<div class="rounded-2xl rounded-br-sm bg-primary px-4 py-3 text-primary-foreground shadow-lg">
+											<p class="text-sm leading-relaxed">{messageItem.content}</p>
+										</div>
+									{/if}
+									<div class="h-8 w-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+										<User class="w-4 h-4 text-muted-foreground" />
 									</div>
-								{:else}
-									<div class="rounded-2xl rounded-br-sm bg-primary px-4 py-3 text-primary-foreground shadow-lg">
-										<p class="text-sm leading-relaxed">{messageItem.content}</p>
-									</div>
-								{/if}
-								<div class="h-8 w-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-									<User class="w-4 h-4 text-muted-foreground" />
 								</div>
 							</div>
-						</div>
-						
-						<!-- User message action buttons -->
-						{#if editingMessageId !== messageItem.id}
-							<div class="flex justify-end mr-10 mb-1">
-								<div class="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-									<button
-										on:click={() => copyUserMessage(messageItem.id + '_user', messageItem.content)}
-										class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors duration-150"
-										title="Copy"
-										aria-label="Copy message"
-									>
-										{#if copiedMessageId === messageItem.id + '_user'}
-											<Check class="w-4 h-4" />
-										{:else}
-											<Copy class="w-4 h-4" />
+							
+							<!-- User message action buttons -->
+							{#if editingMessageId !== messageItem.id}
+								<div class="flex justify-end mr-10 mb-1">
+									<div class="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+										<!-- Branch Navigation (if available) -->
+										{#if messageItem.role === 'user'}
+											{@const navForUserAsParent = getBranchNavigationForMessage(messageItem.id)}
+											{@const navForUserAsChild = findParentNavData(idx)}
+											{#if navForUserAsParent || navForUserAsChild}
+												<div class="flex items-center text-xs text-muted-foreground gap-1 mr-2">
+													{#if navForUserAsParent}
+														<BranchNavigator branchNav={navForUserAsParent} on:switch={handleSwitchBranch} />
+													{:else if navForUserAsChild}
+														<BranchNavigator branchNav={navForUserAsChild} on:switch={handleSwitchBranch} />
+													{/if}
+												</div>
+											{/if}
 										{/if}
-									</button>
-									<button
-										on:click={() => startEditOrForkMessage(messageItem.id, messageItem.content)}
-										class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors duration-150"
-										title="Edit & Send"
-										aria-label="Edit and send message"
-									>
-										<Edit class="w-4 h-4" />
-									</button>
+										<!-- Action buttons -->
+										<button on:click={() => copyUserMessage(messageItem.id + '_user', messageItem.content)} class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground" title="Copy">
+											{#if copiedMessageId === messageItem.id + '_user'}<Check class="w-4 h-4" />{:else}<Copy class="w-4 h-4" />{/if}
+										</button>
+										<button on:click={() => startEditOrForkMessage(messageItem.id, messageItem.content)} class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground" title="Edit & Send">
+											<Edit class="w-4 h-4" />
+										</button>
+									</div>
+								</div>
+							{/if}
+						{:else if messageItem.role === 'assistant'}
+							<!-- Assistant Message -->
+							<div class="flex justify-start">
+								<div class="flex items-end space-x-2 max-w-xl relative">
+									<div class="h-8 w-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+										<Bot class="w-4 h-4 text-muted-foreground" />
+									</div>
+									<div class="rounded-2xl rounded-bl-sm bg-card px-4 py-3 shadow-lg border">
+										{#if messageItem.isStreaming}
+                                            <!-- Streaming Display -->
+											<div class="text-sm leading-relaxed text-foreground prose prose-sm max-w-none">
+												{#if messageItem.content && messageItem.content.length > 0}<span>{@html renderMarkdown(messageItem.content)}</span><span class="inline-block w-0.5 h-4 bg-primary animate-pulse ml-1"></span>{:else}<span class="inline-block w-0.5 h-4 bg-primary animate-pulse ml-1"></span>{/if}
+											</div>
+											<div class="flex items-center mt-2 space-x-2">
+												<div class="flex items-center space-x-1">
+													<div class="h-2 w-2 rounded-full bg-primary/60 animate-pulse"></div>
+													<div class="h-2 w-2 rounded-full bg-primary/60 animate-pulse" style="animation-delay: 0.2s"></div>
+													<div class="h-2 w-2 rounded-full bg-primary/60 animate-pulse" style="animation-delay: 0.4s"></div>
+												</div>
+												<span class="text-xs text-primary font-medium">Vanar AI is typing...</span>
+											</div>
+										{:else if messageItem.content && messageItem.content.length > 0}
+                                            <!-- Normal Display -->
+											<div class="text-sm leading-relaxed text-foreground prose prose-sm max-w-none">
+												{@html renderMarkdown(messageItem.content)}
+											</div>
+											<p class="mt-2 text-xs text-muted-foreground">
+												{new Date(messageItem.createdAt).toLocaleTimeString()}
+											</p>
+										{:else}
+											<div class="text-sm text-muted-foreground italic">No response received</div>
+										{/if}
+									</div>
 								</div>
 							</div>
-						{/if}
-
-						<!-- New GPT-style branch navigation for last user message -->
-						{#if messageItem.role === 'user' && idx === messages.length - 1}
-							{@const branchNav = getBranchNavigationForMessage(messageItem.id)}
-							{#if branchNav && branchNav.totalBranches > 1}
-								<div class="flex justify-end pr-2 mt-1 text-xs text-muted-foreground gap-2">
-									<button
-										on:click={() => handleSwitchBranch(messageItem.id, 'prev')}
-										class="p-1 rounded hover:bg-muted disabled:opacity-50"
-										disabled={branchNav.currentIndex === 0}
-									>
-										<ArrowLeft size={14} />
-									</button>
-
-									<span>{branchNav.currentIndex + 1} / {branchNav.totalBranches}</span>
-
-									<button
-										on:click={() => handleSwitchBranch(messageItem.id, 'next')}
-										class="p-1 rounded hover:bg-muted disabled:opacity-50"
-										disabled={branchNav.currentIndex === branchNav.totalBranches - 1}
-									>
-										<ArrowRight size={14} />
-									</button>
+							
+							<!-- AI response action buttons -->
+							{#if messageItem.content && messageItem.content.length > 0 && !messageItem.isStreaming}
+								<div class="flex justify-start ml-10 mt-1">
+									<div class="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+										<button on:click={() => copyResponse(messageItem.id, messageItem.content)} class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground" title="Copy">
+											{#if copiedMessageId === messageItem.id}<Check class="w-4 h-4" />{:else}<Copy class="w-4 h-4" />{/if}
+										</button>
+										<button on:click={() => handleRegenerate(messageItem.id)} class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground" title="Regenerate & Fork">
+											<RotateCcw class="w-4 h-4" />
+										</button>
+									</div>
 								</div>
 							{/if}
 						{/if}
-					{:else if messageItem.role === 'assistant'}
-						<!-- Assistant Message -->
-						<div class="flex justify-start">
-							<div class="flex items-end space-x-2 max-w-xl relative">
-								<div class="h-8 w-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-									<Bot class="w-4 h-4 text-muted-foreground" />
-								</div>
-								<div class="rounded-2xl rounded-bl-sm bg-card px-4 py-3 shadow-lg border">
-									{#if messageItem.isStreaming}
-										<div class="text-sm leading-relaxed text-foreground prose prose-sm max-w-none">
-											{#if messageItem.content && messageItem.content.length > 0}
-												<span>{@html renderMarkdown(messageItem.content)}</span>
-												<span class="inline-block w-0.5 h-4 bg-primary animate-pulse ml-1"></span>
-											{:else}
-												<span class="inline-block w-0.5 h-4 bg-primary animate-pulse ml-1"></span>
-											{/if}
-										</div>
-										<div class="flex items-center mt-2 space-x-2">
-											<div class="flex items-center space-x-1">
-												<div class="h-2 w-2 rounded-full bg-primary/60 animate-pulse"></div>
-												<div class="h-2 w-2 rounded-full bg-primary/60 animate-pulse" style="animation-delay: 0.2s"></div>
-												<div class="h-2 w-2 rounded-full bg-primary/60 animate-pulse" style="animation-delay: 0.4s"></div>
-											</div>
-											<span class="text-xs text-primary font-medium">Vanar AI is typing...</span>
-										</div>
-									{:else if messageItem.content && messageItem.content.length > 0}
-										<div class="text-sm leading-relaxed text-foreground prose prose-sm max-w-none">
-											{@html renderMarkdown(messageItem.content)}
-										</div>
-										<p class="mt-2 text-xs text-muted-foreground">
-											{new Date(messageItem.createdAt).toLocaleTimeString()}
-										</p>
-									{:else}
-										<div class="text-sm text-muted-foreground italic">
-											No response received
-										</div>
-									{/if}
-								</div>
-							</div>
-						</div>
-						
-						<!-- AI response action buttons -->
-						{#if messageItem.content && messageItem.content.length > 0 && !messageItem.isStreaming}
-							<div class="flex justify-start ml-10 mt-1">
-								<div class="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-									<button 
-										on:click={() => copyResponse(messageItem.id, messageItem.content)}
-										class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors duration-150"
-										title="Copy"
-										aria-label="Copy response"
-									>
-										{#if copiedMessageId === messageItem.id}
-											<Check class="w-4 h-4" />
-										{:else}
-											<Copy class="w-4 h-4" />
-										{/if}
-									</button>
-									<button
-										on:click={() => handleRegenerate(messageItem.id)}
-										class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors duration-150"
-										title="Regenerate & Fork"
-										aria-label="Regenerate response"
-									>
-										<RotateCcw class="w-4 h-4" />
-									</button>
-								</div>
-							</div>
-						{/if}
-
-					{/if}
-
-					<!-- Branch Navigation for messages with multiple children -->
-					{#if (() => {
-						const branchNav = getBranchNavigationForMessage(messageItem.id);
-						return branchNav && branchNav.totalBranches > 1;
-					})()}
-						{@const branchNav = getBranchNavigationForMessage(messageItem.id)}
-						{#if branchNav}
-							<div class="flex justify-center my-2">
-								<div class="flex items-center space-x-2 bg-muted/50 rounded-lg px-3 py-1">
-									<button
-										on:click={() => handleSwitchBranch(messageItem.id, 'prev')}
-										disabled={branchNav.currentIndex === 0}
-										class="flex items-center justify-center w-6 h-6 rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
-										title="Previous branch"
-									>
-										<ChevronLeft class="w-4 h-4" />
-									</button>
-									<span class="text-xs text-muted-foreground font-medium">
-										{branchNav.currentIndex + 1}/{branchNav.totalBranches}
-									</span>
-									<button
-										on:click={() => handleSwitchBranch(messageItem.id, 'next')}
-										disabled={branchNav.currentIndex === branchNav.totalBranches - 1}
-										class="flex items-center justify-center w-6 h-6 rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
-										title="Next branch"
-									>
-										<ChevronRight class="w-4 h-4" />
-									</button>
-								</div>
-							</div>
-						{/if}
-					{/if}
+					</div>
 				</div>
 			{/each}
 		{/if}
@@ -384,52 +286,12 @@
 </div>
 
 <style>
-	:global(.prose) {
-		max-width: none;
-	}
-	
-	:global(.prose pre) {
-		background-color: hsl(var(--muted));
-		border: 1px solid hsl(var(--border));
-		border-radius: 0.5rem;
-		padding: 1rem;
-		overflow-x: auto;
-	}
-	
-	:global(.prose code) {
-		background-color: hsl(var(--muted));
-		padding: 0.125rem 0.25rem;
-		border-radius: 0.25rem;
-		font-size: 0.875em;
-	}
-	
-	:global(.prose pre code) {
-		background-color: transparent;
-		padding: 0;
-	}
-	
-	:global(.prose blockquote) {
-		border-left: 4px solid hsl(var(--border));
-		padding-left: 1rem;
-		margin: 1rem 0;
-		font-style: italic;
-		color: hsl(var(--muted-foreground));
-	}
-	
-	:global(.prose table) {
-		border-collapse: collapse;
-		width: 100%;
-		margin: 1rem 0;
-	}
-	
-	:global(.prose th, .prose td) {
-		border: 1px solid hsl(var(--border));
-		padding: 0.5rem;
-		text-align: left;
-	}
-	
-	:global(.prose th) {
-		background-color: hsl(var(--muted));
-		font-weight: 600;
-	}
+	:global(.prose) { max-width: none; }
+	:global(.prose pre) { background-color: hsl(var(--muted)); border: 1px solid hsl(var(--border)); border-radius: 0.5rem; padding: 1rem; overflow-x: auto; }
+	:global(.prose code) { background-color: hsl(var(--muted)); padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-size: 0.875em; }
+	:global(.prose pre code) { background-color: transparent; padding: 0; }
+	:global(.prose blockquote) { border-left: 4px solid hsl(var(--border)); padding-left: 1rem; margin: 1rem 0; font-style: italic; color: hsl(var(--muted-foreground)); }
+	:global(.prose table) { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+	:global(.prose th, .prose td) { border: 1px solid hsl(var(--border)); padding: 0.5rem; text-align: left; }
+	:global(.prose th) { background-color: hsl(var(--muted)); font-weight: 600; }
 </style>
