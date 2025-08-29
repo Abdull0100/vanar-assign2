@@ -1,0 +1,1 @@
+ALTER TABLE "documentChunks" ALTER COLUMN "embedding" SET DATA TYPE jsonb;

@@ -11,6 +11,7 @@
 	import ChatErrorBanner from '$lib/components/chat/ChatErrorBanner.svelte';
 	import ChatModals from '$lib/components/chat/ChatModals.svelte';
 	import ToastNotification from '$lib/components/chat/ToastNotification.svelte';
+	import DocumentSidebar from '$lib/components/chat/DocumentSidebar.svelte';
 	import { createChatStore } from '$lib/stores/chat';
 
 	$: user = data.session?.user;
@@ -55,6 +56,8 @@
 	let messageText = '';
 	let chatMessagesRef: any;
 	let initializing = true;
+	let showDocumentSidebar = false;
+	let documentRefreshTrigger = 0;
 
 	onMount(() => {
 		loadConversationsFromStorage();
@@ -72,6 +75,21 @@
 		messageText = '';
 		sendMessage(text);
 		setTimeout(() => chatMessagesRef?.scrollToBottomPublic?.(), 50);
+	}
+
+	function toggleDocumentSidebar() {
+		showDocumentSidebar = !showDocumentSidebar;
+	}
+
+	function handleDocumentUploaded(event: CustomEvent) {
+		console.log('Document uploaded:', event.detail);
+		// Could show a toast notification here
+		documentRefreshTrigger += 1;
+	}
+
+	function handleDocumentDeleted(event: CustomEvent) {
+		console.log('Document deleted:', event.detail);
+		documentRefreshTrigger += 1;
 	}
 </script>
 
@@ -97,7 +115,12 @@
 
 			<div class="lg:col-span-3 order-1 lg:order-2 min-h-0 h-full flex flex-col">
 				<div class="rounded-xl bg-card shadow-lg overflow-hidden h-full min-h-0 flex flex-col border">
-					<ChatHeader error={$error} retryCountdown={0} {getTimeUntilRetry} />
+					<ChatHeader
+						error={$error}
+						retryCountdown={0}
+						{getTimeUntilRetry}
+						on:toggleDocuments={toggleDocumentSidebar}
+					/>
 					<ChatMessages
 						bind:this={chatMessagesRef}
 						messages={$messages}
@@ -134,4 +157,13 @@
 	/>
 
 	<ToastNotification show={false} message={''} type={'info'} />
+
+	<!-- Document Sidebar -->
+	<DocumentSidebar
+		isOpen={showDocumentSidebar}
+		refreshTrigger={documentRefreshTrigger}
+		on:close={() => showDocumentSidebar = false}
+		on:documentUploaded={handleDocumentUploaded}
+		on:documentDeleted={handleDocumentDeleted}
+	/>
 </div>

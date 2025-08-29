@@ -127,6 +127,27 @@
       "when": 1756317289685,
       "tag": "0017_wonderful_salo",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1756398012933,
+      "tag": "0018_lean_patriot",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1756400099592,
+      "tag": "0019_illegal_sheva_callister",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1756403674094,
+      "tag": "0020_certain_photon",
+      "breakpoints": true
     }
   ]
 }

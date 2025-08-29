@@ -6,6 +6,7 @@ import { buildRecentTranscript } from '$lib/db/chatUtils';
 import { eq, inArray, and, asc, desc } from 'drizzle-orm';
 import { AuthError, ValidationError, handleApiError } from '$lib/errors';
 import { ChatTreeManager, type TreeNode, type BranchNavigation } from '$lib/chat/ChatTreeManager';
+import { RAGService } from '$lib/services/RAGService';
 
 // Import env vars from $env
 import { GEMINI_API_KEY } from '$env/static/private';
@@ -299,14 +300,31 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			where: eq(conversations.id, targetConversationId)
 		});
 
-		// Prepare the prompt with conversation context
+		// Initialize RAG service
+		const ragService = new RAGService();
+
+		// Check if user has processed documents for RAG
+		const hasDocuments = await ragService.hasProcessedDocuments(session.user.id);
+
+		let ragContext = '';
+		let retrievedChunks: Awaited<ReturnType<typeof ragService.retrieveRelevantChunks>> = [];
+
+		if (hasDocuments) {
+			// Retrieve relevant document chunks
+			retrievedChunks = await ragService.retrieveRelevantChunks(message, session.user.id, 5, 0.6);
+			ragContext = ragService.buildContextString(retrievedChunks);
+		}
+
+		// Prepare the prompt with conversation context and RAG information
 		const prompt = `You are Vanar, a helpful AI assistant. You are having a conversation with a user. Please respond naturally and helpfully to their message.
 
 ${targetConversation?.summary ? `Conversation Summary:\n${targetConversation.summary}\n\n` : ''}Recent Conversation Context:\n${transcript}
 
+${ragContext}
+
 User's latest message: ${message}
 
-Please provide a helpful response. Keep it conversational and relevant to the context.`;
+${hasDocuments ? 'Please provide a helpful response based on the available context and document information when relevant. If you use information from the documents, be specific about which document the information comes from.' : 'Please provide a helpful response. Keep it conversational and relevant to the context.'}`;
 
 		// Stream the response
 		const result = await genAI.getGenerativeModel({ model: 'gemini-1.5-flash' }).generateContentStream(prompt);
@@ -354,14 +372,24 @@ Please provide a helpful response. Keep it conversational and relevant to the co
 						if (assistantTreeNode.parentId) {
 							const treeParent = treeManager.getMessage(assistantTreeNode.parentId);
 							const updatedChildrenIds = treeParent ? treeParent.childrenIds : assistantTreeNode.childrenIds;
-							
+
 							await db.update(chatMessages)
-								.set({ 
+								.set({
 									childrenIds: updatedChildrenIds,
 									updatedAt: new Date()
 								})
 								.where(eq(chatMessages.id, assistantTreeNode.parentId));
 							console.log('Updated assistant message parent childrenIds to:', updatedChildrenIds);
+						}
+
+						// Create citations if we retrieved relevant chunks
+						if (retrievedChunks.length > 0) {
+							try {
+								await ragService.createCitations(assistantTreeNode.id, retrievedChunks);
+								console.log(`Created ${retrievedChunks.length} citations for message ${assistantTreeNode.id}`);
+							} catch (citationError) {
+								console.warn('Failed to create citations:', citationError);
+							}
 						}
 					}
 					

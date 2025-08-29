@@ -1,1 +1,1 @@
-ALTER TABLE "chatMessages" DROP COLUMN "aiResponse";
+ALTER TABLE "chatMessages" DROP COLUMN IF EXISTS "aiResponse";

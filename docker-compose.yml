@@ -1,6 +1,7 @@
 services:
   db:
-    image: postgres
+    image: ankane/pgvector:latest
+    container_name: postgres-pgvector
     restart: always
     ports:
       - 5432:5432
@@ -10,5 +11,22 @@ services:
       POSTGRES_DB: local
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  embeddings-api:
+    build: ./embeddings-api
+    ports:
+      - "8000:8000"
+    environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   pgdata:

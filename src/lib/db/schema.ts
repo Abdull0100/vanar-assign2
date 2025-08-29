@@ -1,5 +1,35 @@
-import { pgTable, text, timestamp, uuid, integer, primaryKey, boolean, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, uuid, integer, primaryKey, boolean, jsonb, customType } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
+
+// Custom vector type - using JSONB for now until pgvector is properly configured
+const vector = customType<{
+    data: number[];
+    driverData: string;
+}>({
+    dataType() {
+        return `jsonb`; // Use JSONB to store vectors as arrays
+    },
+    toDriver(value: number[]): string {
+        // Store as JSON array
+        return JSON.stringify(value);
+    },
+    fromDriver(value: string | number[]): number[] {
+        try {
+            // Handle case where value is already an array (from database)
+            if (Array.isArray(value)) {
+                return value;
+            }
+
+            // Parse JSON string
+            const parsed = JSON.parse(value as string);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (error) {
+            console.error('Error parsing vector JSON:', error, 'Value:', value);
+            // Return empty array as fallback
+            return [];
+        }
+    },
+});
 
 export const users = pgTable('users', {
 	id: uuid('id').primaryKey().defaultRandom(),
@@ -165,7 +195,9 @@ export const usersRelations = relations(users, ({ many }) => ({
 	userActivities: many(userActivities),
 	adminActions: many(adminActions, { relationName: 'adminActions' }),
 	targetedAdminActions: many(adminActions, { relationName: 'targetedAdminActions' }),
-	userStats: many(userStats)
+	userStats: many(userStats),
+	documents: many(documents),
+	documentChunks: many(documentChunks)
 }));
 
 export const accountsRelations = relations(accounts, ({ one }) => ({
@@ -206,7 +238,8 @@ export const chatMessagesRelations = relations(chatMessages, ({ one, many }) => 
 	}),
 	children: many(chatMessages, {
 		relationName: 'messageParent'
-	})
+	}),
+	citations: many(citations)
 }));
 
 export const userSessionsRelations = relations(userSessions, ({ one }) => ({
@@ -242,3 +275,96 @@ export const userStatsRelations = relations(userStats, ({ one }) => ({
 		references: [users.id]
 	})
 }));
+
+// Document Management Tables
+export const documents = pgTable('documents', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	userId: uuid('userId')
+		.notNull()
+		.references(() => users.id, { onDelete: 'cascade' }),
+	fileName: text('fileName').notNull(),
+	originalName: text('originalName').notNull(),
+	fileSize: integer('fileSize').notNull(),
+	mimeType: text('mimeType').notNull(),
+	fileType: text('fileType').notNull(), // 'pdf', 'docx', 'txt'
+	status: text('status').notNull().default('processing'), // 'processing', 'completed', 'failed'
+	extractedText: text('extractedText'),
+	errorMessage: text('errorMessage'),
+	createdAt: timestamp('createdAt').defaultNow().notNull(),
+	updatedAt: timestamp('updatedAt').defaultNow().notNull()
+});
+
+export const documentChunks = pgTable('documentChunks', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	documentId: uuid('documentId')
+		.notNull()
+		.references(() => documents.id, { onDelete: 'cascade' }),
+	userId: uuid('userId')
+		.notNull()
+		.references(() => users.id, { onDelete: 'cascade' }),
+	content: text('content').notNull(),
+	chunkIndex: integer('chunkIndex').notNull(),
+	totalChunks: integer('totalChunks').notNull(),
+	embedding: vector('embedding', { dimensions: 768 }), // Vector embedding for semantic search
+	metadata: jsonb('metadata'), // Additional metadata like page numbers, headings, etc.
+	createdAt: timestamp('createdAt').defaultNow().notNull()
+});
+
+export type Document = typeof documents.$inferSelect;
+export type NewDocument = typeof documents.$inferInsert;
+export type DocumentChunk = typeof documentChunks.$inferSelect;
+export type NewDocumentChunk = typeof documentChunks.$inferInsert;
+export type Citation = typeof citations.$inferSelect;
+export type NewCitation = typeof citations.$inferInsert;
+
+export const citations = pgTable('citations', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	chatMessageId: uuid('chatMessageId')
+		.notNull()
+		.references(() => chatMessages.id, { onDelete: 'cascade' }),
+	documentId: uuid('documentId')
+		.notNull()
+		.references(() => documents.id, { onDelete: 'cascade' }),
+	chunkIds: jsonb('chunkIds').$type<string[]>().notNull(), // Array of chunk IDs used
+	relevanceScore: integer('relevanceScore'), // Optional: similarity score
+	citationText: text('citationText').notNull(), // Excerpt from the document
+	pageNumber: integer('pageNumber'), // For PDFs
+	section: text('section'), // Document section/heading
+	createdAt: timestamp('createdAt').defaultNow().notNull()
+});
+
+// Relations for new tables
+export const documentsRelations = relations(documents, ({ one, many }) => ({
+	user: one(users, {
+		fields: [documents.userId],
+		references: [users.id]
+	}),
+	chunks: many(documentChunks),
+	citations: many(citations)
+}));
+
+export const documentChunksRelations = relations(documentChunks, ({ one }) => ({
+	document: one(documents, {
+		fields: [documentChunks.documentId],
+		references: [documents.id]
+	}),
+	user: one(users, {
+		fields: [documentChunks.userId],
+		references: [users.id]
+	})
+}));
+
+export const citationsRelations = relations(citations, ({ one }) => ({
+	chatMessage: one(chatMessages, {
+		fields: [citations.chatMessageId],
+		references: [chatMessages.id]
+	}),
+	document: one(documents, {
+		fields: [citations.documentId],
+		references: [documents.id]
+	})
+}));
+
+
+
+

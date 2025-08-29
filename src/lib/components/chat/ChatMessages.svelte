@@ -12,6 +12,7 @@
 	import 'prismjs/components/prism-sql';
 	import { Bot, User, Copy, Edit, Check, MessageSquare, RotateCcw } from '@lucide/svelte';
     import BranchNavigator from './BranchNavigator.svelte'; // Import the new component
+	import CitationDisplay from './CitationDisplay.svelte';
 
 	export let messages: Array<{ id: string; role: 'user' | 'assistant' | 'system'; content: string; createdAt: string; isStreaming?: boolean }>= [];
 	export let initializing: boolean = false;
@@ -339,6 +340,7 @@
 											<div class="text-sm leading-relaxed text-foreground prose prose-sm max-w-none">
 												{@html renderMarkdown(messageItem.content)}
 											</div>
+											<CitationDisplay messageId={messageItem.id} />
 											<p class="mt-2 text-xs text-muted-foreground">
 												{new Date(messageItem.createdAt).toLocaleTimeString()}
 											</p>
