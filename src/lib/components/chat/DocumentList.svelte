@@ -10,6 +10,7 @@
 	interface Document {
 		id: string;
 		fileName: string;
+		originalName: string;
 		fileSize: number;
 		fileType: string;
 		status: 'processing' | 'completed' | 'failed';
@@ -65,6 +66,41 @@
 			error = err.message || 'Failed to delete document';
 		} finally {
 			deletingId = null;
+		}
+	}
+
+	async function downloadDocument(doc: Document) {
+		try {
+			const response = await fetch(`/api/documents/${doc.id}/download`);
+			
+			if (!response.ok) {
+				throw new Error('Failed to download document');
+			}
+
+			// Get the filename from the response headers or use the original name
+			const contentDisposition = response.headers.get('content-disposition');
+			let filename = doc.originalName;
+			
+			if (contentDisposition) {
+				const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+				if (filenameMatch) {
+					filename = filenameMatch[1];
+				}
+			}
+
+			// Create blob and download
+			const blob = await response.blob();
+			const url = window.URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = filename;
+			document.body.appendChild(a);
+			a.click();
+			window.URL.revokeObjectURL(url);
+			document.body.removeChild(a);
+		} catch (err: any) {
+			console.error('Download document error:', err);
+			error = err.message || 'Failed to download document';
 		}
 	}
 
@@ -194,7 +230,11 @@
 						<p class="upload-date">Uploaded {formatDate(doc.createdAt)}</p>
 						<div class="actions">
 							{#if doc.status === 'completed'}
-								<button class="action-btn download-btn" title="Download">
+								<button 
+									class="action-btn download-btn" 
+									title="Download"
+									onclick={() => downloadDocument(doc)}
+								>
 									<Download size={14} />
 								</button>
 							{/if}

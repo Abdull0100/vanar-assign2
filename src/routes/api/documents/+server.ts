@@ -43,7 +43,8 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			success: true,
 			documents: userDocuments.map(doc => ({
 				id: doc.id,
-				fileName: doc.originalName,
+				fileName: doc.fileName,
+				originalName: doc.originalName,
 				fileSize: doc.fileSize,
 				fileType: doc.fileType,
 				status: doc.status,

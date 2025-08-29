@@ -31,7 +31,9 @@ export class DocumentIngestionService {
 	async ingestDocument(
 		file: File,
 		userId: string,
-		onProgress?: (progress: IngestionProgress) => void
+		onProgress?: (progress: IngestionProgress) => void,
+		conversationId?: string,
+		documentId?: string
 	): Promise<IngestionResult> {
 		const startTime = Date.now();
 		let progress: IngestionProgress = {
@@ -43,10 +45,10 @@ export class DocumentIngestionService {
 		try {
 			console.log(`🔄 Starting document ingestion for user ${userId}, file: ${file.name}`);
 
-			// Step 1: Create document record
-			onProgress?.({ ...progress, currentStep: 'Creating document record...' });
-			const documentId = await this.createDocumentRecord(file, userId);
-			console.log(`✅ Document record created: ${documentId}`);
+			// Step 1: Use existing document record or create new one
+			onProgress?.({ ...progress, currentStep: 'Preparing document record...' });
+			const finalDocumentId = documentId || await this.createDocumentRecord(file, userId, conversationId);
+			console.log(`✅ Using document record: ${finalDocumentId}`);
 
 			// Step 2: Extract text from file
 			onProgress?.({
@@ -97,11 +99,12 @@ export class DocumentIngestionService {
 			});
 			console.log(`💾 Storing ${chunks.length} chunks and embeddings in database`);
 			const totalTokens = await this.storeChunksAndEmbeddings(
-				documentId,
+				finalDocumentId,
 				chunks,
 				embeddings,
 				userId,
-				metadata
+				metadata,
+				conversationId
 			);
 			console.log(`✅ Chunks stored successfully: ${chunks.length} chunks, ${totalTokens} estimated tokens`);
 
@@ -111,7 +114,7 @@ export class DocumentIngestionService {
 				progress: 95,
 				currentStep: 'Finalizing...'
 			});
-			await this.updateDocumentStatus(documentId, 'completed');
+			await this.updateDocumentStatus(finalDocumentId, 'completed');
 
 			const processingTime = Date.now() - startTime;
 
@@ -122,7 +125,7 @@ export class DocumentIngestionService {
 			});
 
 			return {
-				documentId,
+				documentId: finalDocumentId,
 				totalChunks: chunks.length,
 				totalTokens,
 				processingTime
@@ -150,16 +153,22 @@ export class DocumentIngestionService {
 	/**
 	 * Create initial document record in database
 	 */
-	private async createDocumentRecord(file: File, userId: string): Promise<string> {
+	private async createDocumentRecord(file: File, userId: string, conversationId?: string): Promise<string> {
 		try {
+			// Convert file to base64 for storage
+			const fileBuffer = await file.arrayBuffer();
+			const fileContent = Buffer.from(fileBuffer).toString('base64');
+
 			const documentData: NewDocument = {
 				userId,
+				conversationId: conversationId || undefined,
 				fileName: file.name,
 				originalName: file.name,
 				fileSize: file.size,
 				mimeType: file.type,
 				fileType: this.getFileType(file),
-				status: 'processing'
+				status: 'processing',
+				fileContent: fileContent
 			};
 
 			const [document] = await db.insert(documents).values(documentData).returning();
@@ -178,7 +187,8 @@ export class DocumentIngestionService {
 		chunks: string[],
 		embeddings: number[][],
 		userId: string,
-		documentMetadata: any
+		documentMetadata: any,
+		conversationId?: string
 	): Promise<number> {
 		try {
 			const chunkRecords: NewDocumentChunk[] = [];
@@ -199,6 +209,7 @@ export class DocumentIngestionService {
 				chunkRecords.push({
 					documentId,
 					userId,
+					conversationId: conversationId || undefined,
 					content: chunks[i],
 					chunkIndex: i,
 					totalChunks: chunks.length,
@@ -301,7 +312,7 @@ export class DocumentIngestionService {
 			}
 
 			return {
-				status: document.status,
+				status: document.status as 'processing' | 'completed' | 'failed',
 				progress,
 				currentStep,
 				errorMessage: document.errorMessage || undefined

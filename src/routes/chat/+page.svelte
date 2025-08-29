@@ -162,6 +162,7 @@
 	<DocumentSidebar
 		isOpen={showDocumentSidebar}
 		refreshTrigger={documentRefreshTrigger}
+		conversationId={$currentConversationId}
 		on:close={() => showDocumentSidebar = false}
 		on:documentUploaded={handleDocumentUploaded}
 		on:documentDeleted={handleDocumentDeleted}

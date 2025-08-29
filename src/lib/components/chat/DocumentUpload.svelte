@@ -3,6 +3,7 @@
 	import { Upload, FileText, X, Check, AlertCircle } from '@lucide/svelte';
 
 	export let disabled = false;
+	export let conversationId: string | undefined = undefined;
 
 	const dispatch = createEventDispatcher();
 
@@ -98,6 +99,9 @@
 		try {
 			const formData = new FormData();
 			formData.append('file', selectedFile);
+			if (conversationId) {
+				formData.append('conversationId', conversationId);
+			}
 
 			// Simulate progress updates
 			const progressInterval = setInterval(() => {

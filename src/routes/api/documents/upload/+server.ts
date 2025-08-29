@@ -41,6 +41,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		const formData = await request.formData();
 		const file = formData.get('file') as File | null;
+		const conversationId = formData.get('conversationId') as string | null;
 
 		if (!file) {
 			throw new ValidationError('No file provided');
@@ -61,15 +62,21 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const fileExtension = fileType === 'docx' ? 'docx' : fileType;
 		const uniqueFileName = `${crypto.randomUUID()}.${fileExtension}`;
 
+		// Convert file to base64 for storage
+		const fileBuffer = await file.arrayBuffer();
+		const fileContent = Buffer.from(fileBuffer).toString('base64');
+
 		// Create document record
 		const newDocument: NewDocument = {
 			userId: session.user.id,
+			conversationId: conversationId || undefined, // Optional conversation scoping
 			fileName: uniqueFileName,
 			originalName: file.name,
 			fileSize: file.size,
 			mimeType: file.type,
 			fileType: fileType,
-			status: 'processing'
+			status: 'processing',
+			fileContent: fileContent
 		};
 
 		const [document] = await db.insert(documents).values(newDocument).returning();
@@ -96,7 +103,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		ingestionService.ingestDocument(file, session.user.id, (progress) => {
 			console.log(`Document ${document.id} progress: ${progress.progress}% - ${progress.currentStep}`);
-		}).then((result) => {
+		}, conversationId || undefined, document.id).then((result) => {
 			console.log(`✅ Document ingestion completed: ${document.id}`, {
 				totalChunks: result.totalChunks,
 				totalTokens: result.totalTokens,

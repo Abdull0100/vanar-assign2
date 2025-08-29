@@ -76,6 +76,7 @@ class BatchEmbedResponse(BaseModel):
 class SimilarityRequest(BaseModel):
     query_embedding: List[float] = Field(..., description="Query embedding vector")
     user_id: str = Field(..., description="User ID to filter results")
+    conversation_id: Optional[str] = Field(None, description="Conversation ID to scope search to specific conversation")
     limit: int = Field(10, description="Maximum number of results")
     threshold: float = Field(0.7, description="Similarity threshold (0-1)")
 
@@ -142,30 +143,57 @@ async def vector_search(request: SimilarityRequest):
         # Convert embedding to PostgreSQL vector format
         embedding_str = "[" + ",".join(map(str, request.query_embedding)) + "]"
 
-        # Query for similar chunks using pgvector with optimized operators
-        query = """
-        SELECT
-            "id",
-            "content",
-            1 - (embedding <=> %s::vector) as similarity,
-            "documentId",
-            "metadata"
-        FROM "documentChunks"
-        WHERE "userId" = %s
-        AND embedding IS NOT NULL
-        AND 1 - (embedding <=> %s::vector) >= %s
-        ORDER BY embedding <=> %s::vector
-        LIMIT %s
-        """
-
-        cursor.execute(query, (
-            embedding_str,
-            request.user_id,
-            embedding_str,
-            request.threshold,
-            embedding_str,
-            request.limit
-        ))
+        # Query for similar chunks using pgvector with conversation scoping
+        if request.conversation_id:
+            # Search only within the specified conversation
+            query = """
+            SELECT
+                "id",
+                "content",
+                1 - (embedding <=> %s::vector) as similarity,
+                "documentId",
+                "metadata"
+            FROM "documentChunks"
+            WHERE "userId" = %s
+            AND "conversationId" = %s
+            AND embedding IS NOT NULL
+            AND 1 - (embedding <=> %s::vector) >= %s
+            ORDER BY embedding <=> %s::vector
+            LIMIT %s
+            """
+            cursor.execute(query, (
+                embedding_str,
+                request.user_id,
+                request.conversation_id,
+                embedding_str,
+                request.threshold,
+                embedding_str,
+                request.limit
+            ))
+        else:
+            # Search all user's documents (legacy behavior)
+            query = """
+            SELECT
+                "id",
+                "content",
+                1 - (embedding <=> %s::vector) as similarity,
+                "documentId",
+                "metadata"
+            FROM "documentChunks"
+            WHERE "userId" = %s
+            AND embedding IS NOT NULL
+            AND 1 - (embedding <=> %s::vector) >= %s
+            ORDER BY embedding <=> %s::vector
+            LIMIT %s
+            """
+            cursor.execute(query, (
+                embedding_str,
+                request.user_id,
+                embedding_str,
+                request.threshold,
+                embedding_str,
+                request.limit
+            ))
 
         results = cursor.fetchall()
 

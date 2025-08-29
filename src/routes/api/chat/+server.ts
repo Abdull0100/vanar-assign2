@@ -303,15 +303,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Initialize RAG service
 		const ragService = new RAGService();
 
-		// Check if user has processed documents for RAG
-		const hasDocuments = await ragService.hasProcessedDocuments(session.user.id);
+		// Check if user has processed documents for RAG in this conversation
+		const hasDocuments = await ragService.hasProcessedDocuments(session.user.id, targetConversationId);
 
 		let ragContext = '';
 		let retrievedChunks: Awaited<ReturnType<typeof ragService.retrieveRelevantChunks>> = [];
 
 		if (hasDocuments) {
-			// Retrieve relevant document chunks
-			retrievedChunks = await ragService.retrieveRelevantChunks(message, session.user.id, 5, 0.6);
+			// Retrieve relevant document chunks scoped to this conversation
+			retrievedChunks = await ragService.retrieveRelevantChunks(message, session.user.id, 5, 0.6, targetConversationId);
 			ragContext = ragService.buildContextString(retrievedChunks);
 		}
 
@@ -324,7 +324,7 @@ ${ragContext}
 
 User's latest message: ${message}
 
-${hasDocuments ? 'Please provide a helpful response based on the available context and document information when relevant. If you use information from the documents, be specific about which document the information comes from.' : 'Please provide a helpful response. Keep it conversational and relevant to the context.'}`;
+${hasDocuments ? 'Please provide a helpful response based on the available context and document information when relevant. If you use information from the documents, be specific about which document the information comes from.' : 'Please provide a helpful response. Keep it conversational and relevant to the context. Do not mention anything about documents not being found or unavailable.'}`;
 
 		// Stream the response
 		const result = await genAI.getGenerativeModel({ model: 'gemini-1.5-flash' }).generateContentStream(prompt);

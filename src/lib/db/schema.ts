@@ -227,7 +227,9 @@ export const conversationsRelations = relations(conversations, ({ one, many }) =
 		fields: [conversations.userId],
 		references: [users.id]
 	}),
-	messages: many(chatMessages)
+	messages: many(chatMessages),
+	documents: many(documents),
+	documentChunks: many(documentChunks)
 }));
 
 export const chatMessagesRelations = relations(chatMessages, ({ one, many }) => ({
@@ -290,6 +292,8 @@ export const documents = pgTable('documents', {
 	userId: uuid('userId')
 		.notNull()
 		.references(() => users.id, { onDelete: 'cascade' }),
+	conversationId: uuid('conversationId')
+		.references(() => conversations.id, { onDelete: 'cascade' }), // Optional: scope to specific conversation
 	fileName: text('fileName').notNull(),
 	originalName: text('originalName').notNull(),
 	fileSize: integer('fileSize').notNull(),
@@ -297,6 +301,7 @@ export const documents = pgTable('documents', {
 	fileType: text('fileType').notNull(), // 'pdf', 'docx', 'txt'
 	status: text('status').notNull().default('processing'), // 'processing', 'completed', 'failed'
 	extractedText: text('extractedText'),
+	fileContent: text('fileContent'), // Base64 encoded file content for download
 	errorMessage: text('errorMessage'),
 	createdAt: timestamp('createdAt').defaultNow().notNull(),
 	updatedAt: timestamp('updatedAt').defaultNow().notNull()
@@ -310,6 +315,8 @@ export const documentChunks = pgTable('documentChunks', {
 	userId: uuid('userId')
 		.notNull()
 		.references(() => users.id, { onDelete: 'cascade' }),
+	conversationId: uuid('conversationId')
+		.references(() => conversations.id, { onDelete: 'cascade' }), // Optional: scope to specific conversation
 	content: text('content').notNull(),
 	chunkIndex: integer('chunkIndex').notNull(),
 	totalChunks: integer('totalChunks').notNull(),
@@ -347,6 +354,10 @@ export const documentsRelations = relations(documents, ({ one, many }) => ({
 		fields: [documents.userId],
 		references: [users.id]
 	}),
+	conversation: one(conversations, {
+		fields: [documents.conversationId],
+		references: [conversations.id]
+	}),
 	chunks: many(documentChunks),
 	citations: many(citations)
 }));
@@ -359,6 +370,10 @@ export const documentChunksRelations = relations(documentChunks, ({ one }) => ({
 	user: one(users, {
 		fields: [documentChunks.userId],
 		references: [users.id]
+	}),
+	conversation: one(conversations, {
+		fields: [documentChunks.conversationId],
+		references: [conversations.id]
 	})
 }));
 

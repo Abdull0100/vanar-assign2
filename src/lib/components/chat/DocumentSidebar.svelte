@@ -6,6 +6,7 @@
 
 	export let isOpen = false;
 	export let refreshTrigger = 0;
+	export let conversationId: string | undefined = undefined;
 
 	const dispatch = createEventDispatcher();
 
@@ -64,6 +65,7 @@
 					Upload Document
 				</h3>
 				<DocumentUpload
+					{conversationId}
 					on:uploadSuccess={handleUploadSuccess}
 				/>
 			</div>

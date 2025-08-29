@@ -29,13 +29,61 @@ export class RAGService {
 		query: string,
 		userId: string,
 		limit: number = 5,
-		similarityThreshold: number = 0.7
+		similarityThreshold: number = 0.7,
+		conversationId?: string
 	): Promise<RetrievedChunk[]> {
 		try {
 			// Generate embedding for the query
 			const queryEmbedding = await this.generateEmbedding(query);
 
-			// Find user's documents first
+			// If conversationId is provided, search only within that conversation
+			if (conversationId) {
+				// Find documents for this specific conversation
+				const conversationDocuments = await db.query.documents.findMany({
+					where: and(
+						eq(documents.userId, userId),
+						eq(documents.conversationId, conversationId),
+						eq(documents.status, 'completed')
+					),
+					columns: { id: true, originalName: true }
+				});
+
+				if (conversationDocuments.length === 0) {
+					return []; // No documents in this conversation
+				}
+
+				const documentIds = conversationDocuments.map(doc => doc.id);
+
+				// Perform vector similarity search within conversation
+				const similarChunks = await this.findSimilarChunks(
+					queryEmbedding,
+					documentIds,
+					limit * 2, // Get more candidates for better selection
+					conversationId
+				);
+
+				// Filter by similarity threshold and limit
+				const relevantChunks = similarChunks
+					.filter(result => result.similarity >= similarityThreshold)
+					.slice(0, limit);
+
+				// Enrich with document names
+				const enrichedChunks: RetrievedChunk[] = [];
+				for (const result of relevantChunks) {
+					const document = conversationDocuments.find(doc => doc.id === result.chunk.documentId);
+					if (document) {
+						enrichedChunks.push({
+							chunk: result.chunk,
+							documentName: document.originalName,
+							similarity: result.similarity
+						});
+					}
+				}
+
+				return enrichedChunks;
+			}
+
+			// Legacy behavior: search all user's documents
 			const userDocuments = await db.query.documents.findMany({
 				where: and(
 					eq(documents.userId, userId),
@@ -181,7 +229,8 @@ export class RAGService {
 	private async findSimilarChunks(
 		queryEmbedding: number[],
 		documentIds: string[],
-		limit: number
+		limit: number,
+		conversationId?: string
 	): Promise<Array<{ chunk: DocumentChunk; similarity: number }>> {
 		try {
 			// Use FastAPI embeddings service for vector search
@@ -193,6 +242,7 @@ export class RAGService {
 				body: JSON.stringify({
 					query_embedding: queryEmbedding,
 					user_id: documentIds.length > 0 ? (await this.getUserIdFromDocument(documentIds[0])) : 'system',
+					conversation_id: conversationId || undefined,
 					limit: limit,
 					threshold: 0.6
 				}),
@@ -475,17 +525,24 @@ export class RAGService {
 	}
 
 	/**
-	 * Check if user has any processed documents
+	 * Check if user has any processed documents (optionally scoped to conversation)
 	 */
-	async hasProcessedDocuments(userId: string): Promise<boolean> {
+	async hasProcessedDocuments(userId: string, conversationId?: string): Promise<boolean> {
 		try {
+			const whereConditions = [
+				eq(documents.userId, userId),
+				eq(documents.status, 'completed')
+			];
+
+			// If conversationId is provided, scope to that conversation
+			if (conversationId) {
+				whereConditions.push(eq(documents.conversationId, conversationId));
+			}
+
 			const result = await db
 				.select({ count: sql<number>`count(*)` })
 				.from(documents)
-				.where(and(
-					eq(documents.userId, userId),
-					eq(documents.status, 'completed')
-				));
+				.where(and(...whereConditions));
 
 			return result[0].count > 0;
 		} catch (error) {
