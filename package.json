@@ -86,7 +86,7 @@
 		"mammoth": "^1.10.0",
 		"marked": "^16.2.0",
 		"nodemailer": "^7.0.5",
-		"pdf-parse": "^1.1.1",
+		"pdfreader": "^3.0.7",
 		"pgvector": "^0.2.1",
 		"postgres": "^3.4.5",
 		"prismjs": "^1.30.0",

@@ -27,20 +27,52 @@ export class DocumentProcessor {
 	 */
 	private async extractTextFromPDF(file: File): Promise<string> {
 		try {
-			// For server-side PDF processing, we'll use pdf-parse
-			// This is a placeholder implementation - in a real app you'd use pdf-parse or similar
+			console.log(`Extracting text from PDF: ${file.name} (${file.size} bytes)`);
+
 			const arrayBuffer = await file.arrayBuffer();
-			const uint8Array = new Uint8Array(arrayBuffer);
+			const buffer = Buffer.from(arrayBuffer);
 
-			// Mock PDF text extraction - replace with actual PDF parsing
-			// In production, use: import pdf from 'pdf-parse';
-			const mockText = `Extracted text from PDF: ${file.name}
-This is a placeholder for actual PDF text extraction.
-In a real implementation, you would use pdf-parse or similar library to extract text from PDF files.`;
+			// Use pdfreader for reliable Node.js PDF text extraction
+			const { PdfReader } = await import('pdfreader');
 
-			return mockText;
-		} catch (error) {
-			throw new Error(`PDF processing failed: ${error}`);
+			return new Promise((resolve, reject) => {
+				let extractedText = '';
+				let pageCount = 0;
+
+				new PdfReader().parseBuffer(buffer, (err, item) => {
+					if (err) {
+						console.error('PDF parsing error:', err);
+						reject(new Error(`PDF parsing failed: ${err.message}`));
+						return;
+					}
+
+					if (!item) {
+						// End of parsing
+						console.log(`PDF extraction completed: ${pageCount} pages, ${extractedText.length} characters extracted`);
+
+						if (!extractedText || extractedText.trim().length === 0) {
+							reject(new Error('No text could be extracted from the PDF. The PDF might be image-based or contain no selectable text.'));
+							return;
+						}
+
+						resolve(extractedText.trim());
+						return;
+					}
+
+					// Track pages
+					if (item.page) {
+						pageCount = Math.max(pageCount, item.page);
+					}
+
+					// Extract text content
+					if (item.text) {
+						extractedText += item.text + ' ';
+					}
+				});
+			});
+		} catch (error: any) {
+			console.error('PDF extraction error:', error);
+			throw new Error(`PDF processing failed: ${error.message}`);
 		}
 	}
 
@@ -49,20 +81,30 @@ In a real implementation, you would use pdf-parse or similar library to extract 
 	 */
 	private async extractTextFromDOCX(file: File): Promise<string> {
 		try {
-			// For server-side DOCX processing, we'd use mammoth or similar
-			// This is a placeholder implementation
+			console.log(`Extracting text from DOCX: ${file.name} (${file.size} bytes)`);
+
 			const arrayBuffer = await file.arrayBuffer();
-			const uint8Array = new Uint8Array(arrayBuffer);
+			const buffer = Buffer.from(arrayBuffer);
 
-			// Mock DOCX text extraction - replace with actual DOCX parsing
-			// In production, use: import mammoth from 'mammoth';
-			const mockText = `Extracted text from DOCX: ${file.name}
-This is a placeholder for actual DOCX text extraction.
-In a real implementation, you would use mammoth or similar library to extract text from DOCX files.`;
+			// Dynamically import mammoth to avoid build-time issues
+			const mammoth = await import('mammoth');
+			const result = await mammoth.extractRawText({ buffer });
 
-			return mockText;
-		} catch (error) {
-			throw new Error(`DOCX processing failed: ${error}`);
+			console.log(`DOCX extraction completed: ${result.value.length} characters extracted`);
+
+			if (!result.value || result.value.trim().length === 0) {
+				throw new Error('No text could be extracted from the DOCX file. The file might be corrupted or empty.');
+			}
+
+			// Log any warnings from mammoth
+			if (result.messages.length > 0) {
+				console.warn('DOCX extraction warnings:', result.messages);
+			}
+
+			return result.value;
+		} catch (error: any) {
+			console.error('DOCX extraction error:', error);
+			throw new Error(`DOCX processing failed: ${error.message}`);
 		}
 	}
 
