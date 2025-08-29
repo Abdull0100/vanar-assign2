@@ -203,7 +203,7 @@
 						<div class="file-info">
 							<FileText class="file-icon" size={20} />
 							<div class="file-details">
-								<h4 class="file-name" title={doc.fileName}>{doc.fileName}</h4>
+								<h4 class="file-name" title={doc.fileName}>{doc.originalName}</h4>
 								<p class="file-meta">
 									{formatFileSize(doc.fileSize)} • {doc.fileType.toUpperCase()}
 								</p>

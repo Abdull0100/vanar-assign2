@@ -36,6 +36,9 @@ export function createChatStore(userId: string | null) {
 	const deleteTarget = writable<{ id: string; title: string } | null>(null);
 	const showDeleteAllModal = writable(false);
 	const deleteAllTarget = writable<{ title: string } | null>(null);
+	
+	// Active document state
+	const activeDocument = writable<{ id: string; originalName: string } | null>(null);
 
 	let retryCountdown = 0;
 	let retryTimer: ReturnType<typeof setInterval> | null = null;
@@ -153,6 +156,8 @@ export function createChatStore(userId: string | null) {
 
 	async function selectConversation(id: string) {
 		currentConversationId.set(id);
+		// Clear active document when switching conversations
+		activeDocument.set(null);
 		const existing = getValue(conversations).find((c) => c.id === id);
 		if (existing?.messages?.length) {
 			messages.set(existing.messages);
@@ -205,6 +210,8 @@ export function createChatStore(userId: string | null) {
 		treeStructure.set(null);
 		branchNavigation.set([]);
 		activePath.set([]);
+		// Clear active document for new conversation
+		activeDocument.set(null);
 		debouncedSaveToStorage();
 	}
 
@@ -641,6 +648,14 @@ export function createChatStore(userId: string | null) {
 		await editMessage(messageId, message.content);
 	}
 
+	function setActiveDocument(documentId: string, originalName: string) {
+		activeDocument.set({ id: documentId, originalName });
+	}
+
+	function clearActiveDocument() {
+		activeDocument.set(null);
+	}
+
 	function getValue<T>(store: Writable<T>): T {
 		let v: T;
 		store.subscribe((val) => (v = val))();
@@ -664,6 +679,8 @@ export function createChatStore(userId: string | null) {
 		treeStructure,
 		branchNavigation,
 		activePath,
+		// document state
+		activeDocument,
 		// actions
 		loadConversationsFromStorage,
 		loadChatHistory,
@@ -687,6 +704,9 @@ export function createChatStore(userId: string | null) {
 		forkMessage,
 		switchBranch,
 		regenerateMessage,
+		// document actions
+		setActiveDocument,
+		clearActiveDocument,
 		// internal helper
 		refreshConversationData
 	};

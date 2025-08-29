@@ -133,7 +133,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			success: true,
 			document: {
 				id: document.id,
-				fileName: document.originalName,
+				fileName: document.fileName,
+				originalName: document.originalName,
 				fileSize: document.fileSize,
 				fileType: document.fileType,
 				status: document.status,

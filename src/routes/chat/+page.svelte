@@ -30,6 +30,7 @@
 		treeStructure,
 		branchNavigation,
 		activePath,
+		activeDocument,
 		loadConversationsFromStorage,
 		loadChatHistory,
 		selectConversation,
@@ -48,6 +49,7 @@
 		closeDeleteAllModal,
 		confirmDeleteAllConversations,
 		editMessage,
+		setActiveDocument,
 		forkMessage,
 		switchBranch,
 		regenerateMessage
@@ -83,6 +85,10 @@
 
 	function handleDocumentUploaded(event: CustomEvent) {
 		console.log('Document uploaded:', event.detail);
+		// Set the active document for this conversation
+		if (event.detail.document && event.detail.document.originalName) {
+			setActiveDocument(event.detail.document.id, event.detail.document.originalName);
+		}
 		// Could show a toast notification here
 		documentRefreshTrigger += 1;
 	}
@@ -121,6 +127,16 @@
 						{getTimeUntilRetry}
 						on:toggleDocuments={toggleDocumentSidebar}
 					/>
+					
+					<!-- Document Indicator -->
+					{#if $activeDocument}
+						<div class="px-4 py-2 bg-blue-50 border-b border-blue-200">
+							<p class="text-sm text-blue-600">
+								Using document: <span class="font-medium">{$activeDocument.originalName}</span>
+							</p>
+						</div>
+					{/if}
+					
 					<ChatMessages
 						bind:this={chatMessagesRef}
 						messages={$messages}
