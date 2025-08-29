@@ -142,16 +142,17 @@ async def vector_search(request: SimilarityRequest):
         # Convert embedding to PostgreSQL vector format
         embedding_str = "[" + ",".join(map(str, request.query_embedding)) + "]"
 
-        # Query for similar chunks using pgvector
+        # Query for similar chunks using pgvector with optimized operators
         query = """
         SELECT
-            id,
-            content,
+            "id",
+            "content",
             1 - (embedding <=> %s::vector) as similarity,
-            document_id,
-            metadata
-        FROM documentchunks
-        WHERE user_id = %s
+            "documentId",
+            "metadata"
+        FROM "documentChunks"
+        WHERE "userId" = %s
+        AND embedding IS NOT NULL
         AND 1 - (embedding <=> %s::vector) >= %s
         ORDER BY embedding <=> %s::vector
         LIMIT %s
@@ -175,7 +176,7 @@ async def vector_search(request: SimilarityRequest):
                 chunk_id=row['id'],
                 content=row['content'],
                 similarity=float(row['similarity']),
-                document_id=row['document_id'],
+                document_id=row['documentId'],
                 metadata=row['metadata'] if row['metadata'] else None
             ))
 

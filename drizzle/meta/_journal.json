@@ -148,6 +148,13 @@
       "when": 1756403674094,
       "tag": "0020_certain_photon",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1756447096636,
+      "tag": "0021_living_slyde",
+      "breakpoints": true
     }
   ]
 }

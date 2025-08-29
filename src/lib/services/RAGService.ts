@@ -148,11 +148,11 @@ export class RAGService {
 	}
 
 	/**
-	 * Fallback mock embedding generation (same as before)
+	 * Fallback mock embedding generation (768 dimensions for Gemini compatibility)
 	 */
 	private generateMockEmbedding(text: string): number[] {
 		const words = text.toLowerCase().split(/\s+/);
-		const embedding = new Array(1536).fill(0);
+		const embedding = new Array(768).fill(0); // Changed from 1536 to 768 for Gemini compatibility
 
 		// Create a simple hash-based embedding
 		for (let i = 0; i < words.length; i++) {
@@ -165,7 +165,7 @@ export class RAGService {
 
 			// Distribute hash across embedding dimensions
 			for (let dim = 0; dim < 10; dim++) {
-				const index = Math.abs((hash + dim * 12345) % 1536);
+				const index = Math.abs((hash + dim * 12345) % 768); // Changed from 1536 to 768
 				embedding[index] += (hash % 100) / 100 - 0.5; // Normalize to [-0.5, 0.5]
 			}
 		}
@@ -176,7 +176,7 @@ export class RAGService {
 	}
 
 	/**
-	 * Find similar chunks using pgvector similarity search
+	 * Find similar chunks using pgvector similarity search with optimized SQL
 	 */
 	private async findSimilarChunks(
 		queryEmbedding: number[],
@@ -224,7 +224,93 @@ export class RAGService {
 
 		} catch (error) {
 			console.error('Vector search error:', error);
-			// Fallback to mock similarity search
+			// Fallback to direct SQL vector search
+			console.warn('Falling back to direct SQL vector search');
+			return this.directVectorSearch(queryEmbedding, documentIds, limit);
+		}
+	}
+
+	/**
+	 * Direct SQL vector search using pgvector operators (fallback method)
+	 */
+	private async directVectorSearch(
+		queryEmbedding: number[],
+		documentIds: string[],
+		limit: number
+	): Promise<Array<{ chunk: DocumentChunk; similarity: number }>> {
+		try {
+			// Convert embedding to PostgreSQL vector format
+			const embeddingStr = `[${queryEmbedding.join(',')}]`;
+
+			// Build SQL query with different vector operators for comparison
+			const query = `
+				SELECT
+					dc.id,
+					dc.content,
+					dc."chunkIndex",
+					dc."totalChunks",
+					dc."documentId",
+					dc."userId",
+					dc.metadata,
+					dc."createdAt",
+					-- Cosine similarity: 1 - (cosine distance)
+					1 - (dc.embedding <=> $1::vector) as cosine_similarity,
+					-- Euclidean distance (L2)
+					(dc.embedding <-> $1::vector) as euclidean_distance,
+					-- Inner product (negative for similarity)
+					-(dc.embedding <#> $1::vector) as inner_product_similarity
+				FROM "documentChunks" dc
+				WHERE dc."userId" = $2
+				AND dc.embedding IS NOT NULL
+				AND dc."documentId" = ANY($3)
+				-- Filter by cosine similarity threshold
+				AND 1 - (dc.embedding <=> $1::vector) >= 0.3
+				ORDER BY dc.embedding <=> $1::vector
+				LIMIT $4
+			`;
+
+			const userId = await this.getUserIdFromDocument(documentIds[0]);
+
+			const result = await db.execute(sql`
+				SELECT
+					dc.id,
+					dc.content,
+					dc."chunkIndex",
+					dc."totalChunks",
+					dc."documentId",
+					dc."userId",
+					dc.metadata,
+					dc."createdAt",
+					1 - (dc.embedding <=> ${embeddingStr}::vector) as cosine_similarity,
+					(dc.embedding <-> ${embeddingStr}::vector) as euclidean_distance,
+					-(dc.embedding <#> ${embeddingStr}::vector) as inner_product_similarity
+				FROM ${documentChunks} dc
+				WHERE dc."userId" = ${userId}::uuid
+				AND dc.embedding IS NOT NULL
+				AND dc."documentId" = ANY(ARRAY[${documentIds.map(id => `'${id}'`).join(',')}]::uuid[])
+				AND 1 - (dc.embedding <=> ${embeddingStr}::vector) >= 0.3
+				ORDER BY dc.embedding <=> ${embeddingStr}::vector
+				LIMIT ${limit}
+			`);
+
+			return result.map(row => ({
+				chunk: {
+					id: row.id as string,
+					documentId: row.documentId as string,
+					userId: row.userId as string,
+					content: row.content as string,
+					chunkIndex: row.chunkIndex as number,
+					totalChunks: row.totalChunks as number,
+					embedding: [], // We'll load this if needed
+					metadata: row.metadata as any,
+					createdAt: row.createdAt as Date
+				} as DocumentChunk,
+				similarity: parseFloat(row.cosine_similarity as string)
+			}));
+
+		} catch (error) {
+			console.error('Direct vector search error:', error);
+			// Final fallback to mock similarity search
 			console.warn('Falling back to mock vector search');
 			return this.fallbackSimilaritySearch(queryEmbedding, documentIds, limit);
 		}

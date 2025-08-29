@@ -159,11 +159,11 @@ In a real implementation, you would use mammoth or similar library to extract te
 	}
 
 	/**
-	 * Generate mock embedding for a single text (same as RAGService)
+	 * Generate mock embedding for a single text (768 dimensions for Gemini compatibility)
 	 */
 	private generateMockEmbedding(text: string): number[] {
 		const words = text.toLowerCase().split(/\s+/);
-		const embedding = new Array(1536).fill(0);
+		const embedding = new Array(768).fill(0); // Changed from 1536 to 768 for Gemini compatibility
 
 		// Create a simple hash-based embedding
 		for (let i = 0; i < words.length; i++) {
@@ -176,7 +176,7 @@ In a real implementation, you would use mammoth or similar library to extract te
 
 			// Distribute hash across embedding dimensions
 			for (let dim = 0; dim < 10; dim++) {
-				const index = Math.abs((hash + dim * 12345) % 1536);
+				const index = Math.abs((hash + dim * 12345) % 768); // Changed from 1536 to 768
 				embedding[index] += (hash % 100) / 100 - 0.5; // Normalize to [-0.5, 0.5]
 			}
 		}

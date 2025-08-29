@@ -2,7 +2,7 @@ import { json, type RequestHandler } from '@sveltejs/kit';
 import { db } from '$lib/db';
 import { citations, chatMessages } from '$lib/db/schema';
 import { AuthError, ValidationError } from '$lib/errors';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	try {
@@ -27,6 +27,18 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			),
 			columns: { id: true, role: true, conversationId: true }
 		});
+
+		console.log('Citation API called for messageId:', messageId, 'userId:', session.user.id);
+		console.log('Looking for message with ID:', messageId);
+
+		// First, let's see all messages for this user to debug
+		const allUserMessages = await db.query.chatMessages.findMany({
+			where: eq(chatMessages.userId, session.user.id),
+			columns: { id: true, role: true, createdAt: true },
+			orderBy: desc(chatMessages.createdAt),
+			limit: 5
+		});
+		console.log('Recent messages for user:', allUserMessages.map(m => ({ id: m.id, role: m.role })));
 
 		console.log('Found chat message:', chatMessage ? `role: ${chatMessage.role}, conversationId: ${chatMessage.conversationId}` : 'NOT FOUND');
 

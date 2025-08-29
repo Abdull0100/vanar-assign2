@@ -1,17 +1,19 @@
 import { pgTable, text, timestamp, uuid, integer, primaryKey, boolean, jsonb, customType } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
-// Custom vector type - using JSONB for now until pgvector is properly configured
+// Custom vector type for pgvector
 const vector = customType<{
     data: number[];
     driverData: string;
 }>({
-    dataType() {
-        return `jsonb`; // Use JSONB to store vectors as arrays
+    dataType(config: unknown) {
+        const configObj = config as { dimensions?: number } | undefined;
+        if (!configObj) return 'vector(768)'; // Default for Gemini embeddings
+        return `vector(${configObj.dimensions || 768})`;
     },
     toDriver(value: number[]): string {
-        // Store as JSON array
-        return JSON.stringify(value);
+        // Convert to PostgreSQL vector format: [1.0,2.0,3.0]
+        return `[${value.join(',')}]`;
     },
     fromDriver(value: string | number[]): number[] {
         try {
@@ -20,12 +22,18 @@ const vector = customType<{
                 return value;
             }
 
-            // Parse JSON string
-            const parsed = JSON.parse(value as string);
+            // Parse vector string format [1.0,2.0,3.0]
+            const vectorStr = value as string;
+            if (vectorStr.startsWith('[') && vectorStr.endsWith(']')) {
+                const values = vectorStr.slice(1, -1).split(',');
+                return values.map(v => parseFloat(v.trim()));
+            }
+
+            // Fallback: try parsing as JSON
+            const parsed = JSON.parse(vectorStr);
             return Array.isArray(parsed) ? parsed : [];
         } catch (error) {
-            console.error('Error parsing vector JSON:', error, 'Value:', value);
-            // Return empty array as fallback
+            console.error('Error parsing vector:', error, 'Value:', value);
             return [];
         }
     },
