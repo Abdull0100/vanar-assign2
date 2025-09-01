@@ -15,12 +15,7 @@ const client = postgres(connectionString, {
 		undefined: null
 	},
 	// Add connection timeout for faster failure detection
-	connect_timeout: 5,
-	// Enable connection pooling optimization
-	pool: {
-		min: 2,
-		max: 10
-	}
+	connect_timeout: 5
 });
 
 export const db = drizzle(client, { schema });

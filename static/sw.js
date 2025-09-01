@@ -1,4 +1,4 @@
-// Service Worker for caching static assets
+    // Service Worker for caching static assets
 const CACHE_NAME = 'vanar-app-v1';
 const STATIC_ASSETS = [
   '/',
