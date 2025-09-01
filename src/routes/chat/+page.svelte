@@ -6,12 +6,9 @@
 	import Navigation from '$lib/components/Navigation.svelte';
 	import ChatHeader from '$lib/components/chat/ChatHeader.svelte';
 	import ChatInput from '$lib/components/chat/ChatInput.svelte';
-	import ChatSidebar from '$lib/components/chat/ChatSidebar.svelte';
-	import ChatMessages from '$lib/components/chat/ChatMessages.svelte';
 	import ChatErrorBanner from '$lib/components/chat/ChatErrorBanner.svelte';
 	import ChatModals from '$lib/components/chat/ChatModals.svelte';
 	import ToastNotification from '$lib/components/chat/ToastNotification.svelte';
-	import DocumentSidebar from '$lib/components/chat/DocumentSidebar.svelte';
 	import { createChatStore } from '$lib/stores/chat';
 
 	$: user = data.session?.user;
@@ -61,7 +58,24 @@
 	let showDocumentSidebar = false;
 	let documentRefreshTrigger = 0;
 
-	onMount(() => {
+	// Lazy load heavy components
+	let ChatSidebar: any;
+	let ChatMessages: any;
+	let DocumentSidebar: any;
+
+	onMount(async () => {
+		// Load components after initial render
+		const [sidebar, messages, docSidebar] = await Promise.all([
+			import('$lib/components/chat/ChatSidebar.svelte'),
+			import('$lib/components/chat/ChatMessages.svelte'),
+			import('$lib/components/chat/DocumentSidebar.svelte')
+		]);
+
+		ChatSidebar = sidebar.default;
+		ChatMessages = messages.default;
+		DocumentSidebar = docSidebar.default;
+
+		// Then load chat data
 		loadConversationsFromStorage();
 		loadChatHistory().finally(() => {
 			initializing = false;
@@ -107,17 +121,20 @@
 	<Navigation user={user ?? null} currentPage="chat" />
 	<div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
 		<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6 h-[calc(100vh-8rem)] min-h-[600px]">
-			<ChatSidebar
-				memoizedConversations={$conversations}
-				currentConversationId={$currentConversationId}
-				onSelectConversation={selectConversation}
-				onNewConversation={newConversation}
-				onDeleteConversation={(id) => openDeleteModal(id, ($conversations.find((c: any) => c.id === id)?.roomName) || 'this conversation')}
-				onClearAll={openDeleteAllModal}
-				error={$error}
-				getTimeUntilRetry={getTimeUntilRetry}
-				{initializing}
-			/>
+			<!-- Use dynamic components -->
+			{#if ChatSidebar}
+				<ChatSidebar
+					memoizedConversations={$conversations}
+					currentConversationId={$currentConversationId}
+					onSelectConversation={selectConversation}
+					onNewConversation={newConversation}
+					onDeleteConversation={(id: string) => openDeleteModal(id, ($conversations.find((c: any) => c.id === id)?.roomName) || 'this conversation')}
+					onClearAll={openDeleteAllModal}
+					error={$error}
+					getTimeUntilRetry={getTimeUntilRetry}
+					{initializing}
+				/>
+			{/if}
 
 			<div class="lg:col-span-3 order-1 lg:order-2 min-h-0 h-full flex flex-col">
 				<div class="rounded-xl bg-card shadow-lg overflow-hidden h-full min-h-0 flex flex-col border">
@@ -127,7 +144,7 @@
 						{getTimeUntilRetry}
 						on:toggleDocuments={toggleDocumentSidebar}
 					/>
-					
+
 					<!-- Document Indicator -->
 					{#if $activeDocument}
 						<div class="px-4 py-2 bg-background border-b border-border">
@@ -136,16 +153,18 @@
 							</p>
 						</div>
 					{/if}
-					
-					<ChatMessages
-						bind:this={chatMessagesRef}
-						messages={$messages}
-						{initializing}
-						onForkMessage={forkMessage}
-						onRegenerateMessage={regenerateMessage}
-						onSwitchBranch={switchBranch}
-						branchNavigation={$branchNavigation}
-					/>
+
+					{#if ChatMessages}
+						<ChatMessages
+							bind:this={chatMessagesRef}
+							messages={$messages}
+							{initializing}
+							onForkMessage={forkMessage}
+							onRegenerateMessage={regenerateMessage}
+							onSwitchBranch={switchBranch}
+							branchNavigation={$branchNavigation}
+						/>
+					{/if}
 					{#if $error}
 						<ChatErrorBanner
 							error={$error}
@@ -175,12 +194,14 @@
 	<ToastNotification show={false} message={''} type={'info'} />
 
 	<!-- Document Sidebar -->
-	<DocumentSidebar
-		isOpen={showDocumentSidebar}
-		refreshTrigger={documentRefreshTrigger}
-		conversationId={$currentConversationId}
-		on:close={() => showDocumentSidebar = false}
-		on:documentUploaded={handleDocumentUploaded}
-		on:documentDeleted={handleDocumentDeleted}
-	/>
+	{#if DocumentSidebar}
+		<DocumentSidebar
+			isOpen={showDocumentSidebar}
+			refreshTrigger={documentRefreshTrigger}
+			conversationId={$currentConversationId}
+			on:close={() => showDocumentSidebar = false}
+			on:documentUploaded={handleDocumentUploaded}
+			on:documentDeleted={handleDocumentDeleted}
+		/>
+	{/if}
 </div>

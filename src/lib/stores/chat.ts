@@ -115,7 +115,8 @@ export function createChatStore(userId: string | null) {
 
 	async function loadChatHistory() {
 		try {
-			const response = await fetch('/api/chat');
+			// Load only recent conversations first
+			const response = await fetch('/api/chat?limit=10&offset=0');
 			if (!response.ok) return;
 			const data = await response.json();
 			if (!data.conversations || !Array.isArray(data.conversations)) return;
@@ -151,6 +152,15 @@ export function createChatStore(userId: string | null) {
 			}
 
 			debouncedSaveToStorage();
+		} catch {}
+	}
+
+	async function loadMoreConversations() {
+		try {
+			const response = await fetch('/api/chat?limit=50&offset=10');
+			if (!response.ok) return;
+			const data = await response.json();
+			// Process additional conversations
 		} catch {}
 	}
 

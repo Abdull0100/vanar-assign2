@@ -7,6 +7,10 @@ const protectedRoutes = ['/dashboard', '/admin', '/profile', '/chat'];
 // Admin-only routes
 const adminRoutes = ['/admin'];
 
+// Cache session validation results (in-memory cache)
+const sessionCache = new Map<string, { session: any; expires: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 export const handle: Handle = async ({ event, resolve }) => {
 	// Skip Auth.js for __data.json requests to prevent routing conflicts
 	if (event.url.pathname.includes('__data.json')) {
@@ -26,40 +30,53 @@ export const handle: Handle = async ({ event, resolve }) => {
 	let session = null;
 
 	if (sessionCookie) {
-		// Validate session against database
-		try {
-			const { db } = await import('./lib/db');
-			const { sessions, users } = await import('./lib/db/schema');
-			const { eq } = await import('drizzle-orm');
+		// Check cache first
+		const cached = sessionCache.get(sessionCookie);
+		if (cached && cached.expires > Date.now()) {
+			session = cached.session;
+		} else {
+			// Validate session against database with optimized query
+			try {
+				const { db } = await import('./lib/db');
+				const { sessions, users } = await import('./lib/db/schema');
+				const { eq } = await import('drizzle-orm');
 
-			const sessionData = await db
-				.select({
-					userId: sessions.userId,
-					expires: sessions.expires,
-					user: {
-						id: users.id,
-						email: users.email,
-						name: users.name,
-						role: users.role,
-						image: users.image,
-						emailVerified: users.emailVerified,
-						password: users.password
-					}
-				})
-				.from(sessions)
-				.leftJoin(users, eq(sessions.userId, users.id))
-				.where(eq(sessions.sessionToken, sessionCookie))
-				.limit(1);
+				// Optimized query - only select needed fields
+				const sessionData = await db
+					.select({
+						userId: sessions.userId,
+						expires: sessions.expires,
+						user: {
+							id: users.id,
+							email: users.email,
+							name: users.name,
+							role: users.role,
+							image: users.image,
+							emailVerified: users.emailVerified
+							// Remove password from session data
+						}
+					})
+					.from(sessions)
+					.leftJoin(users, eq(sessions.userId, users.id))
+					.where(eq(sessions.sessionToken, sessionCookie))
+					.limit(1);
 
-			if (sessionData.length > 0 && sessionData[0].expires > new Date()) {
-				session = {
-					user: sessionData[0].user,
-					expires: sessionData[0].expires.toISOString()
-				};
+				if (sessionData.length > 0 && sessionData[0].expires > new Date()) {
+					session = {
+						user: sessionData[0].user,
+						expires: sessionData[0].expires.toISOString()
+					};
+					
+					// Cache the session
+					sessionCache.set(sessionCookie, {
+						session,
+						expires: Date.now() + CACHE_TTL
+					});
+				}
+			} catch (error) {
+				console.error('Session validation error:', error);
+				session = null;
 			}
-		} catch (error) {
-			console.error('Session validation error:', error);
-			session = null;
 		}
 	}
 

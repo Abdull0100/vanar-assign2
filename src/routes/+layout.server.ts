@@ -2,7 +2,15 @@ import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async ({ locals, url }) => {
 	try {
-		const session = await locals.getSession?.();
+		// Only get session for protected routes to improve performance
+		const isProtectedRoute = ['/dashboard', '/admin', '/profile', '/chat'].some(route => 
+			url.pathname.startsWith(route)
+		);
+		
+		let session = null;
+		if (isProtectedRoute) {
+			session = await locals.getSession?.();
+		}
 
 		return {
 			session,

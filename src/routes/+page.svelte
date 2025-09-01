@@ -8,6 +8,14 @@
 	export let data: any;
 
 	let session = data.session;
+	let isLoaded = false;
+
+	onMount(() => {
+		// Simulate loading time for better UX
+		setTimeout(() => {
+			isLoaded = true;
+		}, 100);
+	});
 
 	// Removed forced redirect to dashboard to allow home access while logged in
 </script>
@@ -19,11 +27,24 @@
 <div class="min-h-screen bg-gray-50">
 	<Navigation user={session?.user ?? null} currentPage="home" />
 
-	<Hero isAuthenticated={!!session?.user} />
+	{#if isLoaded}
+		<Hero isAuthenticated={!!session?.user} />
 
-	<!-- Features Section -->
-	<Features />
+		<!-- Features Section -->
+		<Features />
 
-	<!-- Tech Stack Section -->
-	<TechStack />
+		<!-- Tech Stack Section -->
+		<TechStack />
+	{:else}
+		<!-- Loading skeleton -->
+		<div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+			<div class="loading-skeleton h-96 rounded-lg mb-8"></div>
+			<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+				<div class="loading-skeleton h-48 rounded-lg"></div>
+				<div class="loading-skeleton h-48 rounded-lg"></div>
+				<div class="loading-skeleton h-48 rounded-lg"></div>
+			</div>
+			<div class="loading-skeleton h-64 rounded-lg"></div>
+		</div>
+	{/if}
 </div>
