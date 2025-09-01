@@ -21,7 +21,8 @@
 					A verification email has been sent to your email address.
 				</p>
 				<p class="mt-4 text-center text-sm text-gray-500">
-					Click the verification link in the email to complete your account setup. If you don't see it, check your spam folder.
+					Click the verification link in the email to complete your account setup. If you don't see
+					it, check your spam folder.
 				</p>
 				<div class="mt-6 space-y-3">
 					<a

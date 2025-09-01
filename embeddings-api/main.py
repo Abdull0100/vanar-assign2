@@ -153,7 +153,7 @@ async def vector_search(request: SimilarityRequest):
                 1 - (embedding <=> %s::vector) as similarity,
                 "documentId",
                 "metadata"
-            FROM "documentChunks"
+            FROM "documentchunks"
             WHERE "userId" = %s
             AND "conversationId" = %s
             AND embedding IS NOT NULL
@@ -179,7 +179,7 @@ async def vector_search(request: SimilarityRequest):
                 1 - (embedding <=> %s::vector) as similarity,
                 "documentId",
                 "metadata"
-            FROM "documentChunks"
+            FROM "documentchunks"
             WHERE "userId" = %s
             AND embedding IS NOT NULL
             AND 1 - (embedding <=> %s::vector) >= %s

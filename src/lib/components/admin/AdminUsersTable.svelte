@@ -26,7 +26,7 @@
 	let selectedUser: any = null;
 
 	function handleDetails(userId: string) {
-		const user = users.find(u => u.id === userId);
+		const user = users.find((u) => u.id === userId);
 		if (user) {
 			// Normalize `active` for modal
 			selectedUser = {
@@ -84,7 +84,9 @@
 									<div class="h-10 w-10 flex-shrink-0">
 										<div class="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
 											<span class="text-sm font-medium">
-												{userItem.name ? userItem.name.charAt(0).toUpperCase() : userItem.email.charAt(0).toUpperCase()}
+												{userItem.name
+													? userItem.name.charAt(0).toUpperCase()
+													: userItem.email.charAt(0).toUpperCase()}
 											</span>
 										</div>
 									</div>
@@ -169,7 +171,10 @@
 	<AdminUserModal
 		{selectedUser}
 		open={modalOpen}
-		onClose={() => { modalOpen = false; selectedUser = null; }}
+		onClose={() => {
+			modalOpen = false;
+			selectedUser = null;
+		}}
 	/>
 
 	<!-- Delete Modal -->

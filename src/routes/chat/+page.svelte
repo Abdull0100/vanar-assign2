@@ -106,37 +106,43 @@
 <div class="min-h-screen bg-background">
 	<Navigation user={user ?? null} currentPage="chat" />
 	<div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-		<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6 h-[calc(100vh-8rem)] min-h-[600px]">
+		<div class="grid h-[calc(100vh-8rem)] min-h-[600px] grid-cols-1 gap-4 lg:grid-cols-4 lg:gap-6">
 			<ChatSidebar
 				memoizedConversations={$conversations}
 				currentConversationId={$currentConversationId}
 				onSelectConversation={selectConversation}
 				onNewConversation={newConversation}
-				onDeleteConversation={(id) => openDeleteModal(id, ($conversations.find((c: any) => c.id === id)?.roomName) || 'this conversation')}
+				onDeleteConversation={(id) =>
+					openDeleteModal(
+						id,
+						$conversations.find((c: any) => c.id === id)?.roomName || 'this conversation'
+					)}
 				onClearAll={openDeleteAllModal}
 				error={$error}
-				getTimeUntilRetry={getTimeUntilRetry}
+				{getTimeUntilRetry}
 				{initializing}
 			/>
 
-			<div class="lg:col-span-3 order-1 lg:order-2 min-h-0 h-full flex flex-col">
-				<div class="rounded-xl bg-card shadow-lg overflow-hidden h-full min-h-0 flex flex-col border">
+			<div class="order-1 flex h-full min-h-0 flex-col lg:order-2 lg:col-span-3">
+				<div
+					class="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border bg-card shadow-lg"
+				>
 					<ChatHeader
 						error={$error}
 						retryCountdown={0}
 						{getTimeUntilRetry}
 						on:toggleDocuments={toggleDocumentSidebar}
 					/>
-					
+
 					<!-- Document Indicator -->
 					{#if $activeDocument}
-						<div class="px-4 py-2 bg-blue-50 border-b border-blue-200">
+						<div class="border-b border-blue-200 bg-blue-50 px-4 py-2">
 							<p class="text-sm text-blue-600">
 								Using document: <span class="font-medium">{$activeDocument.originalName}</span>
 							</p>
 						</div>
 					{/if}
-					
+
 					<ChatMessages
 						bind:this={chatMessagesRef}
 						messages={$messages}
@@ -151,11 +157,19 @@
 							error={$error}
 							{canRetryNow}
 							{getTimeUntilRetry}
-							clearErrorState={clearErrorState}
-							onRetry={() => { clearErrorState(); handleSend(); }}
+							{clearErrorState}
+							onRetry={() => {
+								clearErrorState();
+								handleSend();
+							}}
 						/>
 					{/if}
-					<ChatInput value={messageText} loading={$loading} onSend={handleSend} onInput={(v) => messageText = v} />
+					<ChatInput
+						value={messageText}
+						loading={$loading}
+						onSend={handleSend}
+						onInput={(v) => (messageText = v)}
+					/>
 				</div>
 			</div>
 		</div>
@@ -179,7 +193,7 @@
 		isOpen={showDocumentSidebar}
 		refreshTrigger={documentRefreshTrigger}
 		conversationId={$currentConversationId}
-		on:close={() => showDocumentSidebar = false}
+		on:close={() => (showDocumentSidebar = false)}
 		on:documentUploaded={handleDocumentUploaded}
 		on:documentDeleted={handleDocumentDeleted}
 	/>

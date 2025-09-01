@@ -35,10 +35,15 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		// For user messages, verify direct ownership
 		if (chatMessage.role === 'user' && chatMessage.userId !== session.user.id) {
-			console.log('User message access denied - userId mismatch:', chatMessage.userId, 'vs', session.user.id);
+			console.log(
+				'User message access denied - userId mismatch:',
+				chatMessage.userId,
+				'vs',
+				session.user.id
+			);
 			throw new ValidationError('Chat message not found or access denied');
 		}
-		
+
 		// For assistant messages, verify the conversation belongs to the user
 		if (chatMessage.role === 'assistant') {
 			const conversation = await db.query.conversations.findFirst({
@@ -48,9 +53,9 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				),
 				columns: { id: true }
 			});
-			
+
 			console.log('Assistant message conversation check:', conversation);
-			
+
 			if (!conversation) {
 				console.log('Assistant message access denied - conversation not owned by user');
 				throw new ValidationError('Chat message not found or access denied');
@@ -74,7 +79,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		return json({
 			success: true,
-			citations: messageCitations.map(citation => ({
+			citations: messageCitations.map((citation) => ({
 				id: citation.id,
 				documentId: citation.documentId,
 				documentName: citation.document.originalName,
@@ -87,20 +92,13 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				createdAt: citation.createdAt
 			}))
 		});
-
 	} catch (error: any) {
 		console.error('Citations fetch error:', error);
 
 		if (error instanceof AuthError || error instanceof ValidationError) {
-			return json(
-				{ success: false, error: error.message },
-				{ status: 400 }
-			);
+			return json({ success: false, error: error.message }, { status: 400 });
 		}
 
-		return json(
-			{ success: false, error: 'Failed to fetch citations' },
-			{ status: 500 }
-		);
+		return json({ success: false, error: 'Failed to fetch citations' }, { status: 500 });
 	}
 };

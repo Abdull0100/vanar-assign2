@@ -36,7 +36,7 @@ export function createChatStore(userId: string | null) {
 	const deleteTarget = writable<{ id: string; title: string } | null>(null);
 	const showDeleteAllModal = writable(false);
 	const deleteAllTarget = writable<{ title: string } | null>(null);
-	
+
 	// Active document state
 	const activeDocument = writable<{ id: string; originalName: string } | null>(null);
 
@@ -131,7 +131,10 @@ export function createChatStore(userId: string | null) {
 
 			const nonEmptyDbConversations = dbConversations.filter((c) => (c.messageCount || 0) > 0);
 			const tempConversations = getValue(conversations).filter((c) => c.id.startsWith('temp-'));
-			const preservedTempConversations = tempConversations.map((t) => ({ ...t, messages: t.messages || [] }));
+			const preservedTempConversations = tempConversations.map((t) => ({
+				...t,
+				messages: t.messages || []
+			}));
 			const finalMergedConversations = [...preservedTempConversations, ...nonEmptyDbConversations];
 			conversations.set(finalMergedConversations);
 
@@ -184,7 +187,11 @@ export function createChatStore(userId: string | null) {
 			// Update tree-related data
 			updateTreeData(data);
 
-			conversations.update((convs) => convs.map((c) => (c.id === id ? { ...c, messages: transformed, messageCount: transformed.length } : c)));
+			conversations.update((convs) =>
+				convs.map((c) =>
+					c.id === id ? { ...c, messages: transformed, messageCount: transformed.length } : c
+				)
+			);
 		} catch {
 			messages.set([]);
 			branchNavigation.set([]);
@@ -218,7 +225,9 @@ export function createChatStore(userId: string | null) {
 	function updateConversationRoomName(roomName: string) {
 		const id = getValue(currentConversationId);
 		if (!id) return;
-		conversations.update((convs) => convs.map((c) => (c.id === id ? { ...c, roomName, updatedAt: new Date().toISOString() } : c)));
+		conversations.update((convs) =>
+			convs.map((c) => (c.id === id ? { ...c, roomName, updatedAt: new Date().toISOString() } : c))
+		);
 		debouncedSaveToStorage();
 	}
 
@@ -230,7 +239,16 @@ export function createChatStore(userId: string | null) {
 			const msgs = getValue(messages);
 			if (!id || !msgs) return;
 			conversations.update((convs) =>
-				convs.map((c) => (c.id === id ? { ...c, messages: [...msgs], updatedAt: new Date().toISOString(), messageCount: msgs.length } : c))
+				convs.map((c) =>
+					c.id === id
+						? {
+								...c,
+								messages: [...msgs],
+								updatedAt: new Date().toISOString(),
+								messageCount: msgs.length
+							}
+						: c
+				)
 			);
 		}, 300);
 	}
@@ -288,7 +306,9 @@ export function createChatStore(userId: string | null) {
 		messages.update((msgs) => [...msgs, chatMessage]);
 
 		if (getValue(messages).length === 1) {
-			updateConversationRoomName(messageContent.length > 40 ? messageContent.slice(0, 40) + 'â€¦' : messageContent);
+			updateConversationRoomName(
+				messageContent.length > 40 ? messageContent.slice(0, 40) + 'â€¦' : messageContent
+			);
 		}
 
 		try {
@@ -301,7 +321,11 @@ export function createChatStore(userId: string | null) {
 			const response = await fetch('/api/chat', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ message: messageContent, history, conversationId: apiConversationId })
+				body: JSON.stringify({
+					message: messageContent,
+					history,
+					conversationId: apiConversationId
+				})
 			});
 
 			if (response.ok && response.headers.get('content-type')?.includes('text/event-stream')) {
@@ -320,7 +344,12 @@ export function createChatStore(userId: string | null) {
 								const data = JSON.parse(line.slice(6));
 								if (data.error) {
 									error.set(data.error);
-									if (data.error.includes('rate limit') || data.error.includes('quota') || data.error.includes('high demand')) startRetryCountdown(60);
+									if (
+										data.error.includes('rate limit') ||
+										data.error.includes('quota') ||
+										data.error.includes('high demand')
+									)
+										startRetryCountdown(60);
 									messages.update((msgs) => msgs.filter((m) => m.id !== chatMessage.id));
 									break;
 								}
@@ -331,27 +360,41 @@ export function createChatStore(userId: string | null) {
 										const lastMsg = msgs[msgs.length - 1];
 										if (lastMsg && lastMsg.role === 'assistant' && lastMsg.isStreaming) {
 											// Update existing assistant message
-											return msgs.map((m, i) => 
+											return msgs.map((m, i) =>
 												i === msgs.length - 1 ? { ...m, content: streamedResponse } : m
 											);
 										} else {
 											// Add new assistant message
-											return [...msgs, {
-												id: generateId(),
-												role: 'assistant',
-												content: streamedResponse,
-												createdAt: new Date().toISOString(),
-												isStreaming: true
-											}];
+											return [
+												...msgs,
+												{
+													id: generateId(),
+													role: 'assistant',
+													content: streamedResponse,
+													createdAt: new Date().toISOString(),
+													isStreaming: true
+												}
+											];
 										}
 									});
 								}
 								if (data.done) {
-									messages.update((msgs) => msgs.map((m) => (m.isStreaming ? { ...m, isStreaming: false } : m)));
-									if (data.conversationId && getValue(currentConversationId) !== data.conversationId) {
+									messages.update((msgs) =>
+										msgs.map((m) => (m.isStreaming ? { ...m, isStreaming: false } : m))
+									);
+									if (
+										data.conversationId &&
+										getValue(currentConversationId) !== data.conversationId
+									) {
 										const cid = getValue(currentConversationId);
 										if (cid) {
-											conversations.update((convs) => convs.map((c) => (c.id === cid ? { ...c, id: data.conversationId, messages: getValue(messages) } : c)));
+											conversations.update((convs) =>
+												convs.map((c) =>
+													c.id === cid
+														? { ...c, id: data.conversationId, messages: getValue(messages) }
+														: c
+												)
+											);
 										}
 										currentConversationId.set(data.conversationId);
 										setTimeout(() => loadChatHistory(), 100);
@@ -371,18 +414,23 @@ export function createChatStore(userId: string | null) {
 			} else {
 				const data = await response.json();
 				if (response.ok) {
-					messages.update((msgs) => [...msgs, {
-						id: generateId(),
-						role: 'assistant',
-						content: data.response,
-						createdAt: new Date().toISOString(),
-						isStreaming: false
-					}]);
+					messages.update((msgs) => [
+						...msgs,
+						{
+							id: generateId(),
+							role: 'assistant',
+							content: data.response,
+							createdAt: new Date().toISOString(),
+							isStreaming: false
+						}
+					]);
 					if (data.conversationId && getValue(currentConversationId) !== data.conversationId) {
 						const cid = getValue(currentConversationId);
 						if (cid) {
 							conversations.update((conversations) =>
-								conversations.map((c) => (c.id === cid ? { ...c, id: data.conversationId, messages: getValue(messages) } : c))
+								conversations.map((c) =>
+									c.id === cid ? { ...c, id: data.conversationId, messages: getValue(messages) } : c
+								)
 							);
 						}
 						currentConversationId.set(data.conversationId);
@@ -439,11 +487,11 @@ export function createChatStore(userId: string | null) {
 					convs.map((c) =>
 						c.id === conversationId
 							? {
-								...c,
-								messages: transformed,
-								updatedAt: new Date().toISOString(),
-								messageCount: transformed.length
-							}
+									...c,
+									messages: transformed,
+									updatedAt: new Date().toISOString(),
+									messageCount: transformed.length
+								}
 							: c
 					)
 				);
@@ -472,7 +520,11 @@ export function createChatStore(userId: string | null) {
 		if (!conv) return;
 		if (!id.startsWith('temp-') && (conv.messageCount || 0) > 0) {
 			try {
-				await fetch('/api/chat', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ conversationIds: [id] }) });
+				await fetch('/api/chat', {
+					method: 'DELETE',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ conversationIds: [id] })
+				});
 			} catch {}
 		}
 		conversations.update((convs) => convs.filter((c) => c.id !== id));
@@ -503,7 +555,11 @@ export function createChatStore(userId: string | null) {
 		if (!target) return;
 		closeDeleteAllModal();
 		try {
-			await fetch('/api/chat', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+			await fetch('/api/chat', {
+				method: 'DELETE',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({})
+			});
 		} catch {}
 		conversations.set([]);
 		messages.set([]);
@@ -520,7 +576,12 @@ export function createChatStore(userId: string | null) {
 		const conversationId = getValue(currentConversationId);
 		if (!conversationId) return;
 
-		console.log('Attempting to fork/edit message:', messageId, 'with content length:', newContent.length);
+		console.log(
+			'Attempting to fork/edit message:',
+			messageId,
+			'with content length:',
+			newContent.length
+		);
 		loading.set(true);
 		error.set('');
 
@@ -599,7 +660,7 @@ export function createChatStore(userId: string | null) {
 			if (response.ok) {
 				const data = await response.json();
 				console.log('Switch branch response:', data);
-				
+
 				// IMMEDIATELY update UI with response data - no delay
 				if (data.activeConversation && Array.isArray(data.activeConversation)) {
 					messages.set(data.activeConversation);
@@ -613,19 +674,19 @@ export function createChatStore(userId: string | null) {
 				if (data.treeStructure) {
 					treeStructure.set(data.treeStructure);
 				}
-				
+
 				// Update the conversation in the store
 				const id = getValue(currentConversationId);
 				if (id && data.activeConversation) {
 					conversations.update((convs) =>
-						convs.map((c) => 
-							c.id === id 
-								? { 
-									...c, 
-									messages: data.activeConversation, 
-									updatedAt: new Date().toISOString(),
-									messageCount: data.activeConversation.length
-								} 
+						convs.map((c) =>
+							c.id === id
+								? {
+										...c,
+										messages: data.activeConversation,
+										updatedAt: new Date().toISOString(),
+										messageCount: data.activeConversation.length
+									}
 								: c
 						)
 					);
@@ -641,7 +702,7 @@ export function createChatStore(userId: string | null) {
 	}
 
 	async function regenerateMessage(messageId: string) {
-		const message = getValue(messages).find(m => m.id === messageId);
+		const message = getValue(messages).find((m) => m.id === messageId);
 		if (!message || message.role !== 'assistant') return;
 
 		// Use editMessage (which creates a branch) with the same content

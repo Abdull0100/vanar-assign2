@@ -1,5 +1,10 @@
 import { json } from '@sveltejs/kit';
-import { GOOGLE_CLIENT_ID, GOOGLE_REDIRECT_URI, GITHUB_CLIENT_ID, GITHUB_REDIRECT_URI } from '$env/static/private';
+import {
+	GOOGLE_CLIENT_ID,
+	GOOGLE_REDIRECT_URI,
+	GITHUB_CLIENT_ID,
+	GITHUB_REDIRECT_URI
+} from '$env/static/private';
 
 export async function GET() {
 	return json({

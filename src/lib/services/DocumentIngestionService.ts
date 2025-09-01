@@ -47,7 +47,8 @@ export class DocumentIngestionService {
 
 			// Step 1: Use existing document record or create new one
 			onProgress?.({ ...progress, currentStep: 'Preparing document record...' });
-			const finalDocumentId = documentId || await this.createDocumentRecord(file, userId, conversationId);
+			const finalDocumentId =
+				documentId || (await this.createDocumentRecord(file, userId, conversationId));
 			console.log(`✅ Using document record: ${finalDocumentId}`);
 
 			// Step 2: Extract text from file
@@ -89,7 +90,9 @@ export class DocumentIngestionService {
 			});
 			console.log(`🧠 Generating embeddings for ${chunks.length} chunks`);
 			const embeddings = await this.documentProcessor.generateEmbeddingsForChunks(chunks);
-			console.log(`✅ Embeddings generated: ${embeddings.length} embeddings, first embedding has ${embeddings[0]?.length || 0} dimensions`);
+			console.log(
+				`✅ Embeddings generated: ${embeddings.length} embeddings, first embedding has ${embeddings[0]?.length || 0} dimensions`
+			);
 
 			// Step 6: Store chunks and embeddings in database
 			onProgress?.({
@@ -106,7 +109,9 @@ export class DocumentIngestionService {
 				metadata,
 				conversationId
 			);
-			console.log(`✅ Chunks stored successfully: ${chunks.length} chunks, ${totalTokens} estimated tokens`);
+			console.log(
+				`✅ Chunks stored successfully: ${chunks.length} chunks, ${totalTokens} estimated tokens`
+			);
 
 			// Step 7: Update document status to completed
 			onProgress?.({
@@ -130,7 +135,6 @@ export class DocumentIngestionService {
 				totalTokens,
 				processingTime
 			};
-
 		} catch (error: any) {
 			console.error('Document ingestion error:', error);
 
@@ -153,7 +157,11 @@ export class DocumentIngestionService {
 	/**
 	 * Create initial document record in database
 	 */
-	private async createDocumentRecord(file: File, userId: string, conversationId?: string): Promise<string> {
+	private async createDocumentRecord(
+		file: File,
+		userId: string,
+		conversationId?: string
+	): Promise<string> {
 		try {
 			// Convert file to base64 for storage
 			const fileBuffer = await file.arrayBuffer();
@@ -225,7 +233,6 @@ export class DocumentIngestionService {
 
 			console.log(`Stored ${chunks.length} chunks with embeddings for document ${documentId}`);
 			return totalTokens;
-
 		} catch (error: any) {
 			console.error('Error storing chunks and embeddings:', error);
 			throw new Error(`Failed to store chunks and embeddings: ${error.message}`);
@@ -262,15 +269,20 @@ export class DocumentIngestionService {
 
 		// Check by MIME type first
 		if (file.type === 'application/pdf') return 'pdf';
-		if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return 'docx';
+		if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+			return 'docx';
 		if (file.type === 'text/plain') return 'txt';
 
 		// Fallback to extension
 		switch (extension) {
-			case 'pdf': return 'pdf';
-			case 'docx': return 'docx';
-			case 'txt': return 'txt';
-			default: throw new Error(`Unsupported file type: ${extension}`);
+			case 'pdf':
+				return 'pdf';
+			case 'docx':
+				return 'docx';
+			case 'txt':
+				return 'txt';
+			default:
+				throw new Error(`Unsupported file type: ${extension}`);
 		}
 	}
 
@@ -317,7 +329,6 @@ export class DocumentIngestionService {
 				currentStep,
 				errorMessage: document.errorMessage || undefined
 			};
-
 		} catch (error: any) {
 			console.error('Error getting ingestion status:', error);
 			throw new Error(`Failed to get ingestion status: ${error.message}`);

@@ -11,7 +11,11 @@
 	let isValidToken = false;
 
 	onMount(async () => {
-		token = (typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams()).get('token') || '';
+		token =
+			(typeof window !== 'undefined'
+				? new URLSearchParams(window.location.search)
+				: new URLSearchParams()
+			).get('token') || '';
 
 		if (!token) {
 			message = 'Invalid reset link';

@@ -92,7 +92,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 export const handleError: HandleServerError = async ({ error, event }) => {
 	// Log the error for debugging
 	console.error('Server error:', error);
-	
+
 	// Don't expose sensitive error details in production
 	if (import.meta.env.PROD) {
 		return {
@@ -100,7 +100,7 @@ export const handleError: HandleServerError = async ({ error, event }) => {
 			code: 'INTERNAL_ERROR'
 		};
 	}
-	
+
 	// In development, show more details
 	return {
 		message: (error as Error)?.message || 'An unexpected error occurred',

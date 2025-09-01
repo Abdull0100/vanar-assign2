@@ -1,8 +1,17 @@
-# 🚀 Assignment 2: Full Auth.js Implementation + AI Chat Interface
+# 🚀 Assignment 3: RAG Backend with pgvector + Production UI
 
-A comprehensive authentication application built with **SvelteKit 5.0**, **Auth.js**, **PostgreSQL**, **Drizzle ORM**, and **Google Gemini AI**. This project implements all required features for Assignment 2 with production-ready code quality and comprehensive testing.
+A comprehensive AI-powered chat application with **Retrieval-Augmented Generation (RAG)** built with **SvelteKit 5.0**, **Auth.js**, **pgvector-enabled PostgreSQL**, **Python embedding service**, and **Google Gemini AI**. This project implements all required features for Assignment 3 with production-ready code quality, polished UI, and advanced AI capabilities.
 
 ## ✨ Features Implemented
+
+### 🧠 RAG Backend with pgvector
+
+- **pgvector-Enabled PostgreSQL**: Docker container with vector similarity search
+- **Document Ingestion**: Support for text files and PDFs with intelligent chunking
+- **Vector Embeddings**: Python microservice for generating high-quality embeddings
+- **Semantic Retrieval**: Context-aware document retrieval using cosine similarity
+- **Citation System**: Source attribution for AI responses with document references
+- **Metadata Management**: Document metadata storage with file type, size, and processing status
 
 ### 🔐 Authentication & Authorization
 
@@ -16,13 +25,45 @@ A comprehensive authentication application built with **SvelteKit 5.0**, **Auth.
 - **Password Reset** via secure email links
 - **Admin Promotion** with congratulatory emails
 
-### 🗄️ Database & ORM
+### 🤖 Advanced AI Chat Interface
 
-- **PostgreSQL** database with Docker containerization
-- **Drizzle ORM** for type-safe database operations
-- **Proper Schema Management** with migrations
-- **Drizzle Studio** integration for database management
-- **Chat Schema Restructuring** with room-based architecture
+- **Vercel AI SDK** integration with streaming responses
+- **Google Gemini API** for intelligent AI responses
+- **Context-Aware Chat**: RAG-powered responses with retrieved document context
+- **Tree-Structured History**: Branching conversation threads with parent/child relationships
+- **Message Forking**: Edit previous messages to create new conversation branches
+- **Regeneration Support**: Regenerate AI responses while preserving conversation history
+- **Markdown Rendering**: Rich text support with code syntax highlighting
+- **Real-time Streaming**: Live AI response generation with typing indicators
+- **Citation Display**: Visual indicators showing which documents informed responses
+
+### 🐍 Python Embedding Service
+
+- **FastAPI Microservice**: Dedicated containerized embedding generation service
+- **OpenAI Integration**: text-embedding-3-small for high-quality embeddings (1536 dimensions)
+- **Batch Processing**: Efficient bulk embedding generation for document chunks
+- **Health Monitoring**: Service health checks and status endpoints
+- **Error Handling**: Graceful fallbacks and comprehensive logging
+- **Environment Configuration**: Clean integration via environment variables
+
+### 🗄️ Advanced Database Schema
+
+- **pgvector Integration**: Vector columns for efficient similarity search
+- **Document Management**: Tables for documents, chunks, and embeddings
+- **Tree Structure**: Parent/child relationships for conversation branching
+- **Metadata Storage**: JSONB fields for flexible document metadata
+- **Indexing Strategy**: Optimized HNSW indexes for vector search performance
+- **Migration System**: Drizzle ORM with proper schema versioning
+
+### 🎨 Polished UI/UX
+
+- **Clean Design**: TailwindCSS 4.0 with consistent spacing and excellent contrast
+- **Chat Interface**: Message bubbles, timestamps, streaming cursors, and interaction controls
+- **Tree History Panel**: Visual representation of conversation branches and forks
+- **Document Management**: Upload interface with progress indicators and file previews
+- **Responsive Design**: Mobile-first approach with adaptive layouts
+- **Accessibility**: WCAG compliant with keyboard navigation and screen reader support
+- **Dark/Light Mode**: Theme switching with persistent user preferences
 
 ### 🔗 OAuth & Email Flows
 
@@ -35,19 +76,7 @@ A comprehensive authentication application built with **SvelteKit 5.0**, **Auth.
 - **Custom Email Templates** with HTML formatting
 - **Secure Token Generation** with crypto module
 
-### 🤖 AI Chat Interface
-
-- **Vercel AI SDK** integration
-- **Google Gemini API** for AI responses
-- **Real-time Chat UI** with SvelteKit + TailwindCSS
-- **Message History** with loading states and error handling
-- **Responsive Design** for all devices
-- **Streaming AI Responses** for real-time interaction
-- **Vanar Chain Branding** with company-specific AI personality
-- **Custom System Instructions** for specialized responses
-- **Room-based Chat Architecture** with conversation management
-
-### 🚨 Error Handling System
+### 🚨 Production-Ready Error Handling
 
 - **Beautiful Custom Error Pages** for all HTTP errors (404, 403, 500, etc.)
 - **Graceful Error Handling** with user-friendly messages
@@ -55,16 +84,17 @@ A comprehensive authentication application built with **SvelteKit 5.0**, **Auth.
 - **Secure Error Reporting** (no sensitive data exposure in production)
 - **Custom Error Classes** for different error types
 - **Comprehensive Error Logging** and tracking
-- **Custom Error Page** with user-friendly messaging
 - **Production Error Masking** for security
 
 ## 🛠️ Tech Stack
 
 - **Frontend**: SvelteKit 5.0 + TailwindCSS 4.0
-- **Backend**: SvelteKit API routes
+- **Backend**: SvelteKit API routes + Python FastAPI microservice
 - **Authentication**: Auth.js (@auth/sveltekit)
-- **Database**: PostgreSQL + Drizzle ORM
-- **AI**: Google Gemini API + Vercel AI SDK
+- **Database**: PostgreSQL with pgvector extension + Drizzle ORM
+- **AI**: Google Gemini API + Vercel AI SDK + OpenAI Embeddings
+- **Vector Search**: pgvector for efficient similarity search
+- **Document Processing**: PDF parsing + text chunking + embedding generation
 - **Email**: Nodemailer with SMTP
 - **Styling**: TailwindCSS with responsive design
 - **Testing**: Vitest + Playwright
@@ -74,12 +104,14 @@ A comprehensive authentication application built with **SvelteKit 5.0**, **Auth.
 ## 📋 Prerequisites
 
 - **Node.js** 18+ and **pnpm** 8+
+- **Python** 3.8+ and **pip** (for embedding service)
 - **Docker** and **Docker Compose**
-- **PostgreSQL** (via Docker)
+- **pgvector-enabled PostgreSQL** (via Docker)
 - **Google Cloud Console** account (for OAuth)
 - **GitHub Developer Settings** (for OAuth)
 - **Gmail App Password** or SMTP service
 - **Google Gemini API Key**
+- **OpenAI API Key** (for embeddings)
 
 ## 🚀 Quick Start
 
@@ -87,7 +119,7 @@ A comprehensive authentication application built with **SvelteKit 5.0**, **Auth.
 
 ```bash
 git clone <your-repo-url>
-cd 18-08
+cd assignment-3-rag
 pnpm install
 ```
 
@@ -98,25 +130,42 @@ cp .env.example .env
 # Fill in your environment variables (see Configuration section)
 ```
 
-### 3. Start Database
+### 3. Start Services
 
 ```bash
-pnpm run db:start
-# Wait 10-15 seconds for PostgreSQL to initialize
-```
+# Start all services (pgvector DB + Python embedding API)
+pnpm run services:start
 
-### 4. Setup Database
-
-```bash
-pnpm run db:push      # Push schema to database
-pnpm run db:seed      # Seed with test users
-```
-
-### 5. Start Development Server
-
-```bash
+# In another terminal, start the SvelteKit app
 pnpm run dev
-pnpm run dev --open
+```
+
+### 4. Alternative Manual Setup
+
+If you prefer to run services individually:
+
+```bash
+# Terminal 1: Start pgvector-enabled database
+pnpm run db:start
+
+# Terminal 2: Install and start Python embedding service
+cd embeddings-api
+pip install -r requirements.txt
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+# Terminal 3: Start SvelteKit app
+pnpm run dev
+```
+
+### 5. Database Setup
+
+```bash
+# Generate and apply migrations (includes pgvector setup)
+pnpm run db:generate
+pnpm run db:migrate
+
+# Optional: Seed with test data
+pnpm run db:seed
 ```
 
 Visit **http://localhost:5173** to see your application!
@@ -153,6 +202,7 @@ GEMINI_API_KEY=your-gemini-api-key
 ### OAuth Setup
 
 #### Google OAuth
+
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create a new project or select existing one
 3. Enable Google+ API
@@ -162,6 +212,7 @@ GEMINI_API_KEY=your-gemini-api-key
    - `http://localhost:5173/api/auth/callback/google/`
 
 #### GitHub OAuth
+
 1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
 2. Create new OAuth App
 3. Set callback URL: `http://localhost:5173/api/auth/callback/github`
@@ -491,6 +542,7 @@ If you encounter issues:
 ## 🆕 Recent Updates & Improvements
 
 ### Latest Fixes (Latest Session)
+
 - ✅ **Accessibility Compliance**: Full ARIA support and keyboard navigation
 - ✅ **Profile Page**: Fixed modal interactions and form handling
 - ✅ **Email System**: Streamlined Gmail configuration
@@ -501,6 +553,7 @@ If you encounter issues:
 - ✅ **Empty Room Filtering**: Automatic removal of conversations with no messages
 
 ### Key Improvements Made
+
 - **Accessibility**: WCAG compliant with proper ARIA roles and keyboard support
 - **Email Functionality**: Robust verification and password reset system
 - **Error Handling**: Beautiful custom error pages with production security
@@ -513,6 +566,7 @@ If you encounter issues:
 ## 🎯 Assignment 2 Requirements Met
 
 ### ✅ Core Features
+
 - [x] **Auth.js Integration** - Complete authentication system
 - [x] **Database Sessions** - PostgreSQL-based sessions (no JWT)
 - [x] **Protected Routes** - Role-based access control
@@ -523,6 +577,7 @@ If you encounter issues:
 - [x] **OAuth Integration** - Google and GitHub support
 
 ### ✅ Technical Requirements
+
 - [x] **SvelteKit 5.0** - Modern framework implementation
 - [x] **PostgreSQL** - Production-ready database
 - [x] **Drizzle ORM** - Type-safe database operations
@@ -532,6 +587,7 @@ If you encounter issues:
 - [x] **Documentation** - Complete setup and usage guides
 
 ### ✅ Bonus Features
+
 - [x] **AI Chat Interface** - Google Gemini integration
 - [x] **Streaming Responses** - Real-time AI interaction
 - [x] **Responsive Design** - Mobile-first approach
@@ -545,24 +601,142 @@ If you encounter issues:
 
 1. **Clone Repository**: Fresh clone should work without issues
 2. **Environment Setup**: Copy `.env.example` and configure variables
-3. **Database Start**: `pnpm run db:start` (wait 10-15 seconds)
-4. **Schema Setup**: `pnpm run db:push && pnpm run db:seed`
+3. **Services Start**: `pnpm run services:start` (pgvector DB + embedding API)
+4. **Database Setup**: `pnpm run db:migrate` (includes pgvector setup)
 5. **Start Application**: `pnpm run dev`
 6. **Test Accounts**: Use provided test credentials
 
 ### Key Test Scenarios
 
-1. **Authentication Flow**: Signup → Verification → Login
-2. **OAuth Integration**: Google and GitHub sign-in
-3. **Admin Access**: Login as admin and manage users
-4. **AI Chat**: Send messages and receive streaming responses
-5. **Error Handling**: Test various error scenarios
-6. **Accessibility**: Keyboard navigation and screen reader support
+1. **RAG Functionality**: Upload document → Ask questions → See citations
+2. **Tree Chat History**: Send messages → Edit previous → See branches
+3. **Authentication Flow**: Signup → Email verification → Login
+4. **OAuth Integration**: Google and GitHub sign-in
+5. **Admin Access**: Login as admin and manage users
+6. **Document Processing**: Upload PDF/TXT → View processing status
+7. **Streaming Chat**: Send message → See real-time AI response
+8. **Embedding Service**: Test `/health` endpoint and embedding generation
+
+## 📖 Technical Documentation
+
+### pgvector Implementation Details
+
+#### Vector Similarity Operators
+
+pgvector provides several operators for different similarity calculations:
+
+| Operator | Description             | Use Case                          | Formula                  |
+| -------- | ----------------------- | --------------------------------- | ------------------------ |
+| `<->`    | Euclidean (L2) distance | General similarity                | `sqrt(Σ(v1_i - v2_i)²)`  |
+| `<=>`    | Cosine distance         | **Text embeddings** (recommended) | `1 - (v1·v2)/(‖v1‖‖v2‖)` |
+| `<#>`    | Inner product           | Some ML models                    | `Σ(v1_i × v2_i)`         |
+| `<+>`    | L1 (Manhattan) distance | Robust to outliers                | `Σ\|v1_i - v2_i\|`       |
+
+#### Index Types and Performance
+
+**HNSW (Hierarchical Navigable Small World)**
+
+- **Best for**: High-dimensional vectors, approximate nearest neighbor search
+- **Parameters**: `m` (connections per node), `ef_construction` (build quality)
+- **Use when**: Dimensionality > 100, need high recall, real-time search
+
+**IVFFlat (Inverted File Flat)**
+
+- **Best for**: Smaller datasets, exact search requirements
+- **Parameters**: `lists` (inverted lists, ~sqrt(rows))
+- **Use when**: < 1M vectors, need exact results
+
+#### Query Optimization Examples
+
+```sql
+-- Basic similarity search with cosine similarity
+SELECT
+    id,
+    content,
+    1 - (embedding <=> $1) as similarity
+FROM documentChunks
+WHERE userId = $2
+ORDER BY embedding <=> $1
+LIMIT 10;
+
+-- Filtered search (user + document type)
+SELECT dc.*, d.fileName
+FROM documentChunks dc
+JOIN documents d ON dc.documentId = d.id
+WHERE dc.userId = $1
+  AND d.fileType = $2
+  AND 1 - (dc.embedding <=> $3) >= 0.7
+ORDER BY dc.embedding <=> $3;
+```
+
+### Python Embedding Service
+
+#### FastAPI Endpoints
+
+**POST `/embed`**
+
+- Generate embedding for single text
+- Request: `{"text": "content", "user_id": "user123"}`
+- Response: `{"embedding": [0.1, 0.2, ...], "dimensions": 1536}`
+
+**POST `/embed/batch`**
+
+- Generate embeddings for multiple texts
+- Request: `{"texts": ["text1", "text2"], "user_id": "user123"}`
+- Response: `{"embeddings": [[...], [...] ], "dimensions": 1536}`
+
+**POST `/search`**
+
+- Vector similarity search with filtering
+- Request: `{"query_embedding": [...], "user_id": "user123", "limit": 10, "threshold": 0.7}`
+- Response: `{"results": [...], "total_found": 1}`
+
+**GET `/health`**
+
+- Service health check
+- Response: `{"status": "healthy", "database": "connected", "openai": "initialized"}`
+
+#### Service Features
+
+- OpenAI text-embedding-3-small integration (1536 dimensions)
+- Batch processing with error handling
+- Health monitoring and comprehensive logging
+- CORS support for frontend integration
+- Environment-based configuration
+
+### Document Processing Pipeline
+
+1. **File Upload**: Accept PDF/TXT files via `/api/documents/upload`
+2. **Text Extraction**: Parse documents using appropriate libraries
+3. **Chunking**: Split text into manageable chunks (configurable size)
+4. **Embedding Generation**: Send chunks to Python service for vectorization
+5. **Storage**: Save chunks with embeddings to pgvector-enabled database
+6. **Indexing**: Automatic HNSW index creation for efficient search
+
+### RAG Query Flow
+
+1. **User Query**: User sends message to chat API
+2. **Embedding Generation**: Query converted to vector using Python service
+3. **Vector Search**: pgvector similarity search against document chunks
+4. **Context Retrieval**: Top-k similar chunks retrieved with metadata
+5. **Prompt Construction**: Context + user query formatted for AI
+6. **AI Response**: Gemini generates response with retrieved context
+7. **Citation Tracking**: Source documents cited in response
 
 ---
 
 ## 🎉 Project Status: COMPLETE ✅
 
-**Assignment 2 is fully implemented with all required features working correctly. The application is production-ready with comprehensive testing, documentation, and professional code quality.**
+**Assignment 3 is fully implemented with all required features working correctly. The application delivers a production-ready RAG system with pgvector, Python embeddings, tree-structured chat, and polished UI.**
+
+### Key Achievements
+
+- ✅ **pgvector Integration**: Efficient vector similarity search with optimized indexing
+- ✅ **Python Embedding Service**: Containerized FastAPI microservice with OpenAI integration
+- ✅ **RAG Implementation**: Context-aware AI responses with document citations
+- ✅ **Tree Chat History**: Branching conversation threads with parent/child relationships
+- ✅ **Document Processing**: PDF and text file ingestion with intelligent chunking
+- ✅ **Polished UI**: Clean, accessible, and responsive design with dark mode
+- ✅ **Production Ready**: Comprehensive error handling, logging, and monitoring
 
 **Happy Coding! 🚀**

@@ -2,7 +2,12 @@
 	import { Button } from '$lib/components/ui/button';
 	import DarkModeToggle from '$lib/components/DarkModeToggle.svelte';
 	import { goto } from '$app/navigation';
-	export let user: { id: string; role: string; name?: string | null; email?: string | null } | null = null;
+	export let user: {
+		id: string;
+		role: string;
+		name?: string | null;
+		email?: string | null;
+	} | null = null;
 	export let currentPage: string = '';
 
 	async function handleSignOut() {
@@ -26,20 +31,38 @@
 	}
 </script>
 
-<nav class="bg-background border-b border-border font-sans">
+<nav class="border-b border-border bg-background font-sans">
 	<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 		<div class="flex h-16 justify-between">
 			<div class="flex">
 				<div class="flex flex-shrink-0 items-center">
-					<a href="/" class="text-xl font-bold text-foreground hover:text-muted-foreground">Auth App</a>
+					<a href="/" class="text-xl font-bold text-foreground hover:text-muted-foreground"
+						>Auth App</a
+					>
 				</div>
 				{#if user}
 					<div class="hidden sm:ml-6 sm:flex sm:space-x-8">
-						<a href="/dashboard" class={getNavClass('dashboard')} aria-current={isCurrentPage('dashboard') ? 'page' : undefined}>Dashboard</a>
-						<a href="/chat" class={getNavClass('chat')} aria-current={isCurrentPage('chat') ? 'page' : undefined}>AI Chat</a>
-						<a href="/profile" class={getNavClass('profile')} aria-current={isCurrentPage('profile') ? 'page' : undefined}>Profile</a>
+						<a
+							href="/dashboard"
+							class={getNavClass('dashboard')}
+							aria-current={isCurrentPage('dashboard') ? 'page' : undefined}>Dashboard</a
+						>
+						<a
+							href="/chat"
+							class={getNavClass('chat')}
+							aria-current={isCurrentPage('chat') ? 'page' : undefined}>AI Chat</a
+						>
+						<a
+							href="/profile"
+							class={getNavClass('profile')}
+							aria-current={isCurrentPage('profile') ? 'page' : undefined}>Profile</a
+						>
 						{#if user?.role === 'admin'}
-							<a href="/admin" class={getNavClass('admin')} aria-current={isCurrentPage('admin') ? 'page' : undefined}>Admin Panel</a>
+							<a
+								href="/admin"
+								class={getNavClass('admin')}
+								aria-current={isCurrentPage('admin') ? 'page' : undefined}>Admin Panel</a
+							>
 						{/if}
 					</div>
 				{/if}
@@ -53,11 +76,7 @@
 								<span class="text-sm text-muted-foreground">
 									{user?.role === 'admin' ? 'Admin: ' : 'Welcome, '}{user?.name || user?.email}
 								</span>
-								<Button
-									variant="destructive"
-									type="button"
-									onclick={handleSignOut}
-								>
+								<Button variant="destructive" type="button" onclick={handleSignOut}>
 									Sign Out
 								</Button>
 							</div>

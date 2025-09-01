@@ -2,7 +2,7 @@
 	export let label: string = 'Loading data...';
 </script>
 
-<div class="text-center py-8 font-sans">
+<div class="py-8 text-center font-sans">
 	<!-- Spinner -->
 	<div
 		class="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"

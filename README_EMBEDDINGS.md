@@ -31,12 +31,14 @@ This enhanced chat system now includes document upload, processing, and Retrieva
 Create environment files:
 
 **Main application:**
+
 ```bash
 # .env (create this file)
 OPENAI_API_KEY=your_openai_api_key_here
 ```
 
 **Embeddings API:**
+
 ```bash
 # embeddings-api/.env (create this file)
 OPENAI_API_KEY=your_openai_api_key_here

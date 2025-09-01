@@ -22,7 +22,11 @@ export const GET: RequestHandler = async ({ locals }) => {
 		// Get user stats for each user
 		const usersWithStats = await Promise.all(
 			allUsers.map(async (user) => {
-				const stats = await db.select().from(userStats).where(eq(userStats.userId, user.id)).limit(1);
+				const stats = await db
+					.select()
+					.from(userStats)
+					.where(eq(userStats.userId, user.id))
+					.limit(1);
 				return {
 					id: user.id,
 					name: user.name,

@@ -30,7 +30,10 @@ export const PATCH: RequestHandler = async ({ request, params, locals }) => {
 		}
 
 		// Fetch the user before update to get their details
-		const [userBefore] = await db.select().from(users).where(eq(users.id, userId as string));
+		const [userBefore] = await db
+			.select()
+			.from(users)
+			.where(eq(users.id, userId as string));
 
 		if (!userBefore) {
 			return json({ error: 'User not found' }, { status: 404 });
@@ -46,7 +49,10 @@ export const PATCH: RequestHandler = async ({ request, params, locals }) => {
 		// In a real app, you might want to add an 'active' field to the users table
 		const updateData = active ? { emailVerified: new Date() } : { emailVerified: null };
 
-		await db.update(users).set(updateData).where(eq(users.id, userId as string));
+		await db
+			.update(users)
+			.set(updateData)
+			.where(eq(users.id, userId as string));
 
 		// Track the admin action
 		await trackUserStatusChange(
@@ -54,7 +60,9 @@ export const PATCH: RequestHandler = async ({ request, params, locals }) => {
 			userId as string,
 			active ? 'enable' : 'disable',
 			userBefore.email,
-			locals.request?.headers.get('x-forwarded-for') || locals.request?.headers.get('x-real-ip') || undefined,
+			locals.request?.headers.get('x-forwarded-for') ||
+				locals.request?.headers.get('x-real-ip') ||
+				undefined,
 			locals.request?.headers.get('user-agent') || undefined
 		);
 

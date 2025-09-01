@@ -13,9 +13,11 @@
 	let resendSuccess = '';
 
 	onMount(async () => {
-		//fix later TODO
 		// Get the token from the current URL if it exists
-		const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+		const params =
+			typeof window !== 'undefined'
+				? new URLSearchParams(window.location.search)
+				: new URLSearchParams();
 		const token = params.get('token') || '';
 
 		if (!token) {
@@ -87,7 +89,7 @@
 	function startResendCooldown() {
 		resendDisabled = true;
 		resendCountdown = 60;
-		
+
 		const interval = setInterval(() => {
 			resendCountdown--;
 			if (resendCountdown <= 0) {
@@ -142,7 +144,12 @@
 					<div
 						class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-yellow-100"
 					>
-						<svg class="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<svg
+							class="h-6 w-6 text-yellow-600"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
 							<path
 								stroke-linecap="round"
 								stroke-linejoin="round"
@@ -153,7 +160,8 @@
 					</div>
 					<p class="font-medium text-yellow-600">{message}</p>
 					<p class="mt-2 text-sm text-gray-600">
-						Please check your email for the verification link, or use the form below to request a new one.
+						Please check your email for the verification link, or use the form below to request a
+						new one.
 					</p>
 				</div>
 			{:else}
@@ -179,21 +187,28 @@
 
 			{#if status !== 'success'}
 				<div class="mt-6 border-t border-gray-200 pt-6">
-					<h3 class="text-lg font-medium text-gray-900 mb-4">Need a new verification email?</h3>
-					
+					<h3 class="mb-4 text-lg font-medium text-gray-900">Need a new verification email?</h3>
+
 					{#if !email}
-						<div class="mb-4 rounded border border-yellow-200 bg-yellow-50 px-4 py-3 text-yellow-700 text-sm">
-							Unable to determine your email address. Please try signing up again or contact support.
+						<div
+							class="mb-4 rounded border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-700"
+						>
+							Unable to determine your email address. Please try signing up again or contact
+							support.
 						</div>
 					{:else}
 						{#if resendError}
-							<div class="mb-4 rounded border border-red-200 bg-red-50 px-4 py-3 text-red-700 text-sm">
+							<div
+								class="mb-4 rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+							>
 								{resendError}
 							</div>
 						{/if}
 
 						{#if resendSuccess}
-							<div class="mb-4 rounded border border-green-200 bg-green-50 px-4 py-3 text-green-700 text-sm">
+							<div
+								class="mb-4 rounded border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700"
+							>
 								{resendSuccess}
 							</div>
 						{/if}
@@ -202,7 +217,7 @@
 							<button
 								type="submit"
 								disabled={resendDisabled || resendLoading}
-								class="flex w-full justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+								class="flex w-full justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 							>
 								{#if resendLoading}
 									Sending...

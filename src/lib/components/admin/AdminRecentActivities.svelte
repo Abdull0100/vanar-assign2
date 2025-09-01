@@ -10,7 +10,7 @@
 	// Format detailed tooltip content for activities
 	function getActivityTooltip(activity: any): string {
 		const details = [];
-		
+
 		// Activity ID and type
 		if (activity.id) details.push(`ID: ${activity.id}`);
 		if (activity.type) details.push(`Type: ${activity.type}`);
@@ -20,7 +20,7 @@
 		if (activity.actionType && activity.actionType !== activity.activityType) {
 			details.push(`Action Type: ${activity.actionType}`);
 		}
-		
+
 		// User details
 		if (activity.user) {
 			details.push(`User: ${activity.user.name || activity.user.email || 'Unknown'}`);
@@ -33,16 +33,17 @@
 		if (activity.targetUser) {
 			details.push(`Target: ${activity.targetUser.name || activity.targetUser.email || 'Unknown'}`);
 		}
-		
+
 		// Technical details
 		if (activity.ipAddress) details.push(`IP: ${activity.ipAddress}`);
 		if (activity.userAgent) details.push(`User Agent: ${activity.userAgent}`);
 		if (activity.sessionId) details.push(`Session: ${activity.sessionId.substring(0, 12)}...`);
-		
+
 		// Metadata
 		if (activity.metadata) {
 			try {
-				const meta = typeof activity.metadata === 'string' ? JSON.parse(activity.metadata) : activity.metadata;
+				const meta =
+					typeof activity.metadata === 'string' ? JSON.parse(activity.metadata) : activity.metadata;
 				Object.entries(meta).forEach(([key, value]) => {
 					details.push(`${key}: ${JSON.stringify(value)}`);
 				});
@@ -50,13 +51,13 @@
 				details.push(`Metadata: ${activity.metadata}`);
 			}
 		}
-		
+
 		// Timestamps
 		if (activity.createdAt) details.push(`Created: ${formatDate(activity.createdAt)}`);
 		if (activity.updatedAt && activity.updatedAt !== activity.createdAt) {
 			details.push(`Updated: ${formatDate(activity.updatedAt)}`);
 		}
-		
+
 		return details.join('\n');
 	}
 </script>
@@ -84,13 +85,23 @@
 								<Tooltip.Root>
 									<Tooltip.Trigger>
 										{#snippet child({ props })}
-											<Table.Row class="cursor-pointer hover:bg-muted/50 transition-colors" {...props}>
+											<Table.Row
+												class="cursor-pointer transition-colors hover:bg-muted/50"
+												{...props}
+											>
 												<Table.Cell>
 													<div class="flex items-center gap-2">
-														<Badge variant={activity.type === 'user_activity' ? 'default' : 'secondary'}>
+														<Badge
+															variant={activity.type === 'user_activity' ? 'default' : 'secondary'}
+														>
 															{activity.type === 'user_activity' ? 'User' : 'Admin'}
 														</Badge>
-														<span class="text-sm">{activity.description || activity.activityType || activity.actionType || 'Unknown activity'}</span>
+														<span class="text-sm"
+															>{activity.description ||
+																activity.activityType ||
+																activity.actionType ||
+																'Unknown activity'}</span
+														>
 													</div>
 												</Table.Cell>
 												<Table.Cell>
@@ -100,13 +111,17 @@
 														{:else}
 															{activity.admin?.name || activity.admin?.email || 'Unknown Admin'}
 															{#if activity.targetUser}
-																<div class="text-xs text-muted-foreground">Target: {activity.targetUser?.name || activity.targetUser?.email || 'Unknown User'}</div>
+																<div class="text-xs text-muted-foreground">
+																	Target: {activity.targetUser?.name ||
+																		activity.targetUser?.email ||
+																		'Unknown User'}
+																</div>
 															{/if}
 														{/if}
 													</div>
 												</Table.Cell>
 												<Table.Cell>
-													<span class="text-sm font-mono">{activity.ipAddress || '-'}</span>
+													<span class="font-mono text-sm">{activity.ipAddress || '-'}</span>
 												</Table.Cell>
 												<Table.Cell>
 													<span class="text-sm">{formatDate(activity.createdAt)}</span>
@@ -117,7 +132,7 @@
 									<Tooltip.Content side="right" class="max-w-sm text-xs">
 										<div class="space-y-1">
 											<div class="font-medium text-primary-foreground">Activity Details</div>
-											<div class="text-primary-foreground/90 whitespace-pre-line">
+											<div class="whitespace-pre-line text-primary-foreground/90">
 												{getActivityTooltip(activity)}
 											</div>
 										</div>
@@ -127,7 +142,7 @@
 						</Table.Body>
 					</Table.Root>
 				{:else}
-					<p class="text-muted-foreground text-center py-8">No activities found.</p>
+					<p class="py-8 text-center text-muted-foreground">No activities found.</p>
 				{/if}
 			</Card.Content>
 		</Card.Root>

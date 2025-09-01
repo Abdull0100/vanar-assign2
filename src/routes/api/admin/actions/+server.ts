@@ -24,32 +24,38 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
 		// Apply filters if provided
 		if (actionType) {
-			actions = actions.filter(action => action.actionType === actionType);
+			actions = actions.filter((action) => action.actionType === actionType);
 		}
 		if (adminId) {
-			actions = actions.filter(action => action.adminId === adminId);
+			actions = actions.filter((action) => action.adminId === adminId);
 		}
 		if (targetUserId) {
-			actions = actions.filter(action => action.targetUserId === targetUserId);
+			actions = actions.filter((action) => action.targetUserId === targetUserId);
 		}
 
 		// Group actions by type for summary
-		const actionSummary = actions.reduce((acc, action) => {
-			acc[action.actionType] = (acc[action.actionType] || 0) + 1;
-			return acc;
-		}, {} as Record<string, number>);
+		const actionSummary = actions.reduce(
+			(acc, action) => {
+				acc[action.actionType] = (acc[action.actionType] || 0) + 1;
+				return acc;
+			},
+			{} as Record<string, number>
+		);
 
 		// Get recent actions by different admins
 		const recentByAdmin = actions
-			.filter(action => action.adminId)
-			.reduce((acc, action) => {
-				const adminName = action.adminId || 'Unknown';
-				if (!acc[adminName]) {
-					acc[adminName] = [];
-				}
-				acc[adminName].push(action);
-				return acc;
-			}, {} as Record<string, any[]>);
+			.filter((action) => action.adminId)
+			.reduce(
+				(acc, action) => {
+					const adminName = action.adminId || 'Unknown';
+					if (!acc[adminName]) {
+						acc[adminName] = [];
+					}
+					acc[adminName].push(action);
+					return acc;
+				},
+				{} as Record<string, any[]>
+			);
 
 		return json({
 			actions,

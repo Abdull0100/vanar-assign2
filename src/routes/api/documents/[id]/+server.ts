@@ -37,7 +37,8 @@ export const DELETE: RequestHandler = async ({ params, locals, request }) => {
 
 		// Track document deletion activity
 		try {
-			const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined;
+			const ip =
+				request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined;
 			const ua = request.headers.get('user-agent') || undefined;
 			await ActivityTracker.trackUserActivity(
 				session.user.id,
@@ -55,20 +56,13 @@ export const DELETE: RequestHandler = async ({ params, locals, request }) => {
 			success: true,
 			message: 'Document deleted successfully'
 		});
-
 	} catch (error: any) {
 		console.error('Document deletion error:', error);
 
 		if (error instanceof AuthError || error instanceof ValidationError) {
-			return json(
-				{ success: false, error: error.message },
-				{ status: 400 }
-			);
+			return json({ success: false, error: error.message }, { status: 400 });
 		}
 
-		return json(
-			{ success: false, error: 'Failed to delete document' },
-			{ status: 500 }
-		);
+		return json({ success: false, error: 'Failed to delete document' }, { status: 500 });
 	}
 };

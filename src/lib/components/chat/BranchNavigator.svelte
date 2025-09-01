@@ -19,10 +19,10 @@
 </script>
 
 {#if branchNav && branchNav.totalBranches > 1}
-	<div class="flex items-center text-xs text-muted-foreground gap-1">
+	<div class="flex items-center gap-1 text-xs text-muted-foreground">
 		<button
 			on:click={() => handleSwitch('prev')}
-			class="p-1 rounded hover:bg-muted disabled:opacity-50"
+			class="rounded p-1 hover:bg-muted disabled:opacity-50"
 			disabled={branchNav.currentIndex === 0}
 			aria-label="Previous version"
 		>
@@ -31,7 +31,7 @@
 		<span class="px-1">{branchNav.currentIndex + 1} / {branchNav.totalBranches}</span>
 		<button
 			on:click={() => handleSwitch('next')}
-			class="p-1 rounded hover:bg-muted disabled:opacity-50"
+			class="rounded p-1 hover:bg-muted disabled:opacity-50"
 			disabled={branchNav.currentIndex === branchNav.totalBranches - 1}
 			aria-label="Next version"
 		>

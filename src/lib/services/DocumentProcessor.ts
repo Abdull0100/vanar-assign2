@@ -48,10 +48,16 @@ export class DocumentProcessor {
 
 					if (!item) {
 						// End of parsing
-						console.log(`PDF extraction completed: ${pageCount} pages, ${extractedText.length} characters extracted`);
+						console.log(
+							`PDF extraction completed: ${pageCount} pages, ${extractedText.length} characters extracted`
+						);
 
 						if (!extractedText || extractedText.trim().length === 0) {
-							reject(new Error('No text could be extracted from the PDF. The PDF might be image-based or contain no selectable text.'));
+							reject(
+								new Error(
+									'No text could be extracted from the PDF. The PDF might be image-based or contain no selectable text.'
+								)
+							);
 							return;
 						}
 
@@ -93,7 +99,9 @@ export class DocumentProcessor {
 			console.log(`DOCX extraction completed: ${result.value.length} characters extracted`);
 
 			if (!result.value || result.value.trim().length === 0) {
-				throw new Error('No text could be extracted from the DOCX file. The file might be corrupted or empty.');
+				throw new Error(
+					'No text could be extracted from the DOCX file. The file might be corrupted or empty.'
+				);
 			}
 
 			// Log any warnings from mammoth
@@ -171,12 +179,12 @@ export class DocumentProcessor {
 			const response = await fetch('http://localhost:8000/embed/batch', {
 				method: 'POST',
 				headers: {
-					'Content-Type': 'application/json',
+					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
 					texts: chunks,
 					user_id: 'system'
-				}),
+				})
 			});
 
 			if (!response.ok) {
@@ -197,7 +205,7 @@ export class DocumentProcessor {
 	 * Fallback mock embeddings for chunks
 	 */
 	private generateMockEmbeddings(chunks: string[]): number[][] {
-		return chunks.map(chunk => this.generateMockEmbedding(chunk));
+		return chunks.map((chunk) => this.generateMockEmbedding(chunk));
 	}
 
 	/**
@@ -212,7 +220,7 @@ export class DocumentProcessor {
 			const word = words[i];
 			let hash = 0;
 			for (let j = 0; j < word.length; j++) {
-				hash = ((hash << 5) - hash) + word.charCodeAt(j);
+				hash = (hash << 5) - hash + word.charCodeAt(j);
 				hash = hash & hash; // Convert to 32-bit integer
 			}
 
@@ -225,31 +233,33 @@ export class DocumentProcessor {
 
 		// Normalize the embedding
 		const magnitude = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
-		return embedding.map(val => val / magnitude);
+		return embedding.map((val) => val / magnitude);
 	}
 
 	/**
 	 * Clean and normalize extracted text
 	 */
 	cleanText(text: string): string {
-		return text
-			// Remove excessive whitespace
-			.replace(/\s+/g, ' ')
-			// Remove control characters
-			.replace(/[\x00-\x1F\x7F-\x9F]/g, '')
-			// Normalize line endings
-			.replace(/\r\n/g, '\n')
-			.replace(/\r/g, '\n')
-			// Remove excessive newlines
-			.replace(/\n{3,}/g, '\n\n')
-			.trim();
+		return (
+			text
+				// Remove excessive whitespace
+				.replace(/\s+/g, ' ')
+				// Remove control characters
+				.replace(/[\x00-\x1F\x7F-\x9F]/g, '')
+				// Normalize line endings
+				.replace(/\r\n/g, '\n')
+				.replace(/\r/g, '\n')
+				// Remove excessive newlines
+				.replace(/\n{3,}/g, '\n\n')
+				.trim()
+		);
 	}
 
 	/**
 	 * Get document metadata
 	 */
 	getMetadata(text: string): Record<string, any> {
-		const lines = text.split('\n').filter(line => line.trim());
+		const lines = text.split('\n').filter((line) => line.trim());
 		const wordCount = text.split(/\s+/).length;
 		const charCount = text.length;
 

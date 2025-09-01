@@ -28,4 +28,4 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
 		console.error('Update profile error:', error);
 		return json({ error: 'Internal server error' }, { status: 500 });
 	}
-}
+};

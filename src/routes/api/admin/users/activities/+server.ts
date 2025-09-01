@@ -20,7 +20,11 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		const limit = parseInt(url.searchParams.get('limit') || '100');
 
 		// Get all user activities
-		const activities = await db.select().from(userActivities).orderBy(userActivities.createdAt).limit(limit);
+		const activities = await db
+			.select()
+			.from(userActivities)
+			.orderBy(userActivities.createdAt)
+			.limit(limit);
 
 		// Get user information for each activity
 		const activitiesWithUsers = await Promise.all(
@@ -28,11 +32,13 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 				const user = await db.select().from(users).where(eq(users.id, activity.userId)).limit(1);
 				return {
 					...activity,
-					user: user[0] ? {
-						id: user[0].id,
-						name: user[0].name,
-						email: user[0].email
-					} : null
+					user: user[0]
+						? {
+								id: user[0].id,
+								name: user[0].name,
+								email: user[0].email
+							}
+						: null
 				};
 			})
 		);

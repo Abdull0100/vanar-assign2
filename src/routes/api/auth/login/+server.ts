@@ -24,7 +24,13 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
 		// Check if email is verified
 		if (!user.emailVerified) {
-			return json({ error: 'Please verify your email before signing in. Check your inbox for a verification link.' }, { status: 401 });
+			return json(
+				{
+					error:
+						'Please verify your email before signing in. Check your inbox for a verification link.'
+				},
+				{ status: 401 }
+			);
 		}
 
 		// Verify password
@@ -52,8 +58,8 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			path: '/'
 		});
 
-		return json({ 
-			success: true, 
+		return json({
+			success: true,
 			user: {
 				id: user.id,
 				email: user.email,
@@ -61,7 +67,6 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 				role: user.role
 			}
 		});
-
 	} catch (error) {
 		console.error('Login error:', error);
 		return json({ error: 'Internal server error' }, { status: 500 });

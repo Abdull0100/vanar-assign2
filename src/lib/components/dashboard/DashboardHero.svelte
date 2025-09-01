@@ -4,20 +4,24 @@
 	import { Crown, User as UserIcon } from '@lucide/svelte';
 
 	export let user:
-		| ({ id: string; role: string; emailVerified?: Date | null; password?: string | null } &
-				DefaultSession['user'])
+		| ({
+				id: string;
+				role: string;
+				emailVerified?: Date | null;
+				password?: string | null;
+		  } & DefaultSession['user'])
 		| undefined;
 </script>
 
-<Card.Root class="rounded-2xl bg-card text-card-foreground border">
+<Card.Root class="rounded-2xl border bg-card text-card-foreground">
 	<div class="px-8 py-8">
 		<div class="flex items-center justify-between">
 			<div>
-				<h1 class="text-3xl font-bold mb-2">Welcome back, {user?.name || 'User'}!</h1>
+				<h1 class="mb-2 text-3xl font-bold">Welcome back, {user?.name || 'User'}!</h1>
 				<p class="text-base text-muted-foreground">You're signed in as {user?.email}</p>
 				<div class="mt-4 inline-flex items-center rounded-full bg-muted/30 px-4 py-2">
-					<div class="h-2 w-2 rounded-full bg-primary mr-2"></div>
-					<span class="text-sm font-medium flex items-center gap-2">
+					<div class="mr-2 h-2 w-2 rounded-full bg-primary"></div>
+					<span class="flex items-center gap-2 text-sm font-medium">
 						{#if user?.role === 'admin'}
 							<Crown class="h-4 w-4" /> Administrator
 						{:else}
@@ -29,5 +33,3 @@
 		</div>
 	</div>
 </Card.Root>
-
-

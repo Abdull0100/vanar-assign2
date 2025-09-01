@@ -14,28 +14,35 @@ export const POST: RequestHandler = async ({ request }) => {
 		console.log('Verification attempt with token:', token);
 
 		// Find the verification token
-		const verificationTokenResult = await db.select().from(verificationTokens).where(
-			and(eq(verificationTokens.token, token), gt(verificationTokens.expires, new Date()))
-		).limit(1);
+		const verificationTokenResult = await db
+			.select()
+			.from(verificationTokens)
+			.where(and(eq(verificationTokens.token, token), gt(verificationTokens.expires, new Date())))
+			.limit(1);
 
 		const verificationToken = verificationTokenResult[0];
 		console.log('Found verification token:', verificationToken);
 
 		if (!verificationToken) {
 			// Check if token exists but is expired
-			const expiredTokenResult = await db.select().from(verificationTokens).where(
-				eq(verificationTokens.token, token)
-			).limit(1);
-			
+			const expiredTokenResult = await db
+				.select()
+				.from(verificationTokens)
+				.where(eq(verificationTokens.token, token))
+				.limit(1);
+
 			const expiredToken = expiredTokenResult[0];
 			if (expiredToken) {
 				console.log('Token found but expired:', expiredToken);
-				return json({ 
-					error: 'Token has expired. Please request a new verification email.',
-					email: expiredToken.identifier
-				}, { status: 400 });
+				return json(
+					{
+						error: 'Token has expired. Please request a new verification email.',
+						email: expiredToken.identifier
+					},
+					{ status: 400 }
+				);
 			}
-			
+
 			console.log('No token found in database');
 			return json({ error: 'Invalid token' }, { status: 400 });
 		}
@@ -49,8 +56,8 @@ export const POST: RequestHandler = async ({ request }) => {
 		// Delete the used token
 		await db.delete(verificationTokens).where(eq(verificationTokens.token, token));
 
-		return json({ 
-			success: true, 
+		return json({
+			success: true,
 			message: 'Email verified successfully',
 			email: verificationToken.identifier
 		});
@@ -58,4 +65,4 @@ export const POST: RequestHandler = async ({ request }) => {
 		console.error('Email verification error:', error);
 		return json({ error: 'Internal server error' }, { status: 500 });
 	}
-}
+};

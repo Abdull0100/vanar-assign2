@@ -43,4 +43,4 @@ export const POST: RequestHandler = async ({ request }) => {
 		console.error('Password reset error:', error);
 		return json({ error: 'Internal server error' }, { status: 500 });
 	}
-}
+};

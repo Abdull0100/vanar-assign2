@@ -48,7 +48,8 @@ export class ChatTreeManager {
 	 * Add a message to the tree (append to current active path)
 	 */
 	addMessage(message: Omit<TreeNode, 'parentId' | 'childrenIds'>): TreeNode {
-		const parentId = this.activePath.length > 0 ? this.activePath[this.activePath.length - 1] : null;
+		const parentId =
+			this.activePath.length > 0 ? this.activePath[this.activePath.length - 1] : null;
 
 		const treeNode: TreeNode = {
 			...message,
@@ -78,7 +79,10 @@ export class ChatTreeManager {
 	/**
 	 * Add a message as a child of a specific message (for continuing a specific branch)
 	 */
-	addMessageToBranch(message: Omit<TreeNode, 'parentId' | 'childrenIds'>, parentMessageId: string): TreeNode {
+	addMessageToBranch(
+		message: Omit<TreeNode, 'parentId' | 'childrenIds'>,
+		parentMessageId: string
+	): TreeNode {
 		const treeNode: TreeNode = {
 			...message,
 			parentId: parentMessageId,
@@ -147,7 +151,9 @@ export class ChatTreeManager {
 				console.log('Updated parent childrenIds:', parent.childrenIds);
 			}
 		} else {
-			console.log('Original message has no parent (root message), forked message will also be root');
+			console.log(
+				'Original message has no parent (root message), forked message will also be root'
+			);
 		}
 
 		// Update active path to follow the new fork
@@ -164,7 +170,9 @@ export class ChatTreeManager {
 	 * Ensure virtual root is properly maintained
 	 */
 	private ensureVirtualRoot(): void {
-		const virtualRoots = Array.from(this.messages.values()).filter(msg => msg.id.startsWith('virtual-root-'));
+		const virtualRoots = Array.from(this.messages.values()).filter((msg) =>
+			msg.id.startsWith('virtual-root-')
+		);
 		if (virtualRoots.length === 0) return;
 
 		const virtualRoot = virtualRoots[0];
@@ -172,7 +180,7 @@ export class ChatTreeManager {
 		// Get all messages that are either:
 		// 1. True root messages (no parentId)
 		// 2. Messages whose parentId points to the virtual root
-		const actualRootMessages = Array.from(this.messages.values()).filter(msg => {
+		const actualRootMessages = Array.from(this.messages.values()).filter((msg) => {
 			if (msg.id.startsWith('virtual-root-')) return false;
 			if (!msg.parentId) return true; // True root messages
 			return msg.parentId === virtualRoot.id; // Messages parented to virtual root
@@ -180,21 +188,22 @@ export class ChatTreeManager {
 
 		// Update virtual root's childrenIds if needed
 		const currentChildren = new Set(virtualRoot.childrenIds);
-		const actualRoots = new Set(actualRootMessages.map(msg => msg.id));
+		const actualRoots = new Set(actualRootMessages.map((msg) => msg.id));
 
 		// Check if we need to update childrenIds
-		const needsUpdate = currentChildren.size !== actualRoots.size ||
-			[...currentChildren].some(id => !actualRoots.has(id)) ||
-			[...actualRoots].some(id => !currentChildren.has(id));
+		const needsUpdate =
+			currentChildren.size !== actualRoots.size ||
+			[...currentChildren].some((id) => !actualRoots.has(id)) ||
+			[...actualRoots].some((id) => !currentChildren.has(id));
 
 		if (needsUpdate) {
-			virtualRoot.childrenIds = actualRootMessages.map(msg => msg.id);
+			virtualRoot.childrenIds = actualRootMessages.map((msg) => msg.id);
 			this.messages.set(virtualRoot.id, virtualRoot);
 			console.log('Updated virtual root childrenIds:', virtualRoot.childrenIds);
 		}
 
 		// Ensure all root messages point to virtual root
-		actualRootMessages.forEach(rootMsg => {
+		actualRootMessages.forEach((rootMsg) => {
 			if (rootMsg.parentId !== virtualRoot.id) {
 				rootMsg.parentId = virtualRoot.id;
 				this.messages.set(rootMsg.id, rootMsg);
@@ -247,15 +256,13 @@ export class ChatTreeManager {
 	 */
 	getActiveConversation(includeVirtualRoots = false): TreeNode[] {
 		if (includeVirtualRoots) {
-			return this.activePath
-				.map(id => this.messages.get(id))
-				.filter(Boolean) as TreeNode[];
+			return this.activePath.map((id) => this.messages.get(id)).filter(Boolean) as TreeNode[];
 		}
 
 		return this.activePath
-			.map(id => this.messages.get(id))
+			.map((id) => this.messages.get(id))
 			.filter(Boolean)
-			.filter(msg => !msg!.id.startsWith('virtual-root-')) as TreeNode[]; // Exclude virtual root messages
+			.filter((msg) => !msg!.id.startsWith('virtual-root-')) as TreeNode[]; // Exclude virtual root messages
 	}
 
 	/**
@@ -285,16 +292,18 @@ export class ChatTreeManager {
 	getChildren(messageId: string): TreeNode[] {
 		const message = this.messages.get(messageId);
 		if (!message) return [];
-		
-		return message.childrenIds
-			.map(id => this.messages.get(id))
-			.filter(Boolean) as TreeNode[];
+
+		return message.childrenIds.map((id) => this.messages.get(id)).filter(Boolean) as TreeNode[];
 	}
 
 	/**
 	 * Get sibling index and total siblings for branch navigation
 	 */
-	getSiblingInfo(messageId: string): { currentIndex: number; totalSiblings: number; parentId: string | null } {
+	getSiblingInfo(messageId: string): {
+		currentIndex: number;
+		totalSiblings: number;
+		parentId: string | null;
+	} {
 		const message = this.messages.get(messageId);
 		if (!message || !message.parentId) {
 			return { currentIndex: 0, totalSiblings: 1, parentId: null };
@@ -354,15 +363,21 @@ export class ChatTreeManager {
 		}
 
 		// Find the root message (no parent)
-		const rootMessages = Array.from(this.messages.values()).filter(msg => !msg.parentId);
-		console.log('Found root messages:', rootMessages.length, rootMessages.map(m => ({ id: m.id, content: m.content.substring(0, 30) })));
+		const rootMessages = Array.from(this.messages.values()).filter((msg) => !msg.parentId);
+		console.log(
+			'Found root messages:',
+			rootMessages.length,
+			rootMessages.map((m) => ({ id: m.id, content: m.content.substring(0, 30) }))
+		);
 
 		if (rootMessages.length > 1) {
 			// Multiple root messages - create a virtual root to handle branching
 			console.log('Multiple root messages detected - creating virtual root for branch navigation');
 
 			// Check if virtual root already exists
-			const existingVirtualRoots = Array.from(this.messages.values()).filter(msg => msg.id.startsWith('virtual-root-'));
+			const existingVirtualRoots = Array.from(this.messages.values()).filter((msg) =>
+				msg.id.startsWith('virtual-root-')
+			);
 			let virtualRootId: string;
 
 			if (existingVirtualRoots.length > 0) {
@@ -379,7 +394,7 @@ export class ChatTreeManager {
 					role: 'system',
 					content: 'Conversation Root',
 					parentId: null,
-					childrenIds: rootMessages.map(msg => msg.id),
+					childrenIds: rootMessages.map((msg) => msg.id),
 					createdAt: new Date().toISOString(),
 					updatedAt: new Date().toISOString(),
 					conversationId: rootMessages[0].conversationId,
@@ -388,21 +403,32 @@ export class ChatTreeManager {
 
 				// Add virtual root to messages
 				this.messages.set(virtualRootId, virtualRoot);
-				console.log('Virtual root created:', virtualRootId, 'with children:', virtualRoot.childrenIds);
+				console.log(
+					'Virtual root created:',
+					virtualRootId,
+					'with children:',
+					virtualRoot.childrenIds
+				);
 			}
 
 			// Update all root messages to point to virtual root
-			rootMessages.forEach(rootMsg => {
+			rootMessages.forEach((rootMsg) => {
 				rootMsg.parentId = virtualRootId;
 				this.messages.set(rootMsg.id, rootMsg);
 			});
 
 			// Use most recent root message as active branch, or first one if tie
-			const mostRecentRoot = rootMessages.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
+			const mostRecentRoot = rootMessages.sort(
+				(a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+			)[0];
 			const pathToRecentRoot = this.getPathToMessage(mostRecentRoot.id);
 			this.activePath = this.buildFullPathFrom(pathToRecentRoot);
-			console.log('Setting active path to most recent root branch:', mostRecentRoot.id, 'path:', this.activePath);
-
+			console.log(
+				'Setting active path to most recent root branch:',
+				mostRecentRoot.id,
+				'path:',
+				this.activePath
+			);
 		} else if (rootMessages.length === 1) {
 			// Single root message - standard behavior
 			console.log('Single root message - using standard path building');
@@ -411,9 +437,10 @@ export class ChatTreeManager {
 		} else {
 			// No root messages - fallback to linear
 			console.log('No root messages found - using linear fallback');
-			const sortedMessages = Array.from(this.messages.values())
-				.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-			this.activePath = sortedMessages.map(msg => msg.id);
+			const sortedMessages = Array.from(this.messages.values()).sort(
+				(a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+			);
+			this.activePath = sortedMessages.map((msg) => msg.id);
 		}
 
 		// Ensure virtual root is properly maintained
@@ -426,20 +453,20 @@ export class ChatTreeManager {
 	 * Get the tree structure for visualization
 	 */
 	getTreeStructure(): any {
-		const roots = Array.from(this.messages.values()).filter(msg => !msg.parentId);
-		
+		const roots = Array.from(this.messages.values()).filter((msg) => !msg.parentId);
+
 		const buildNode = (message: TreeNode): any => {
 			const children = this.getChildren(message.id);
 			return {
 				id: message.id,
 				role: message.role,
 				content: message.content.substring(0, 50) + (message.content.length > 50 ? '...' : ''),
-				children: children.map(child => buildNode(child)),
+				children: children.map((child) => buildNode(child)),
 				isActive: this.activePath.includes(message.id)
 			};
 		};
 
-		return roots.map(root => buildNode(root));
+		return roots.map((root) => buildNode(root));
 	}
 
 	/**
@@ -471,9 +498,10 @@ export class ChatTreeManager {
 		// If the path is too short (only 1 message), it might be a legacy conversation
 		// In that case, build a linear path from all messages
 		if (path.length === 1) {
-			const sortedMessages = Array.from(this.messages.values())
-				.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-			this.activePath = sortedMessages.map(msg => msg.id);
+			const sortedMessages = Array.from(this.messages.values()).sort(
+				(a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+			);
+			this.activePath = sortedMessages.map((msg) => msg.id);
 		} else {
 			this.activePath = path;
 		}
@@ -544,10 +572,10 @@ export class ChatTreeManager {
 	 */
 	private updateStores(): void {
 		this.activePathStore.set([...this.activePath]);
-		
+
 		// Update branch navigation info
 		const branchNavigation: BranchNavigation[] = [];
-		
+
 		for (const messageId of this.activePath) {
 			const message = this.messages.get(messageId);
 			if (message && message.childrenIds.length > 1) {
@@ -560,7 +588,7 @@ export class ChatTreeManager {
 				});
 			}
 		}
-		
+
 		this.branchNavigationStore.set(branchNavigation);
 	}
 
@@ -590,6 +618,6 @@ export class ChatTreeManager {
 	 * Get all fork points (messages with multiple children)
 	 */
 	getForkPoints(): TreeNode[] {
-		return Array.from(this.messages.values()).filter(msg => msg.childrenIds.length > 1);
+		return Array.from(this.messages.values()).filter((msg) => msg.childrenIds.length > 1);
 	}
 }

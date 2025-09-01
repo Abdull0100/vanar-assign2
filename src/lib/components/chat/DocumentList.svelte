@@ -56,7 +56,7 @@
 			const result = await response.json();
 
 			if (result.success) {
-				documents = documents.filter(doc => doc.id !== docId);
+				documents = documents.filter((doc) => doc.id !== docId);
 				dispatch('documentDeleted', { documentId: docId });
 			} else {
 				throw new Error(result.error || 'Failed to delete document');
@@ -72,7 +72,7 @@
 	async function downloadDocument(doc: Document) {
 		try {
 			const response = await fetch(`/api/documents/${doc.id}/download`);
-			
+
 			if (!response.ok) {
 				throw new Error('Failed to download document');
 			}
@@ -80,7 +80,7 @@
 			// Get the filename from the response headers or use the original name
 			const contentDisposition = response.headers.get('content-disposition');
 			let filename = doc.originalName;
-			
+
 			if (contentDisposition) {
 				const filenameMatch = contentDisposition.match(/filename="(.+)"/);
 				if (filenameMatch) {
@@ -230,8 +230,8 @@
 						<p class="upload-date">Uploaded {formatDate(doc.createdAt)}</p>
 						<div class="actions">
 							{#if doc.status === 'completed'}
-								<button 
-									class="action-btn download-btn" 
+								<button
+									class="action-btn download-btn"
 									title="Download"
 									onclick={() => downloadDocument(doc)}
 								>
@@ -300,8 +300,12 @@
 	}
 
 	@keyframes spin {
-		from { transform: rotate(0deg); }
-		to { transform: rotate(360deg); }
+		from {
+			transform: rotate(0deg);
+		}
+		to {
+			transform: rotate(360deg);
+		}
 	}
 
 	.loading-state,
@@ -327,8 +331,6 @@
 		font-size: 0.875rem;
 		color: #9ca3af;
 	}
-
-
 
 	.retry-btn {
 		padding: 0.5rem 1rem;

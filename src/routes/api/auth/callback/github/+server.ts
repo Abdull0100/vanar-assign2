@@ -44,20 +44,20 @@ export async function GET({ url, cookies }) {
 		const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
 			method: 'POST',
 			headers: {
-				'Accept': 'application/json',
-				'Content-Type': 'application/json',
+				Accept: 'application/json',
+				'Content-Type': 'application/json'
 			},
 			body: JSON.stringify({
 				client_id: env.GITHUB_CLIENT_ID,
 				client_secret: env.GITHUB_CLIENT_SECRET,
 				code: code,
-				redirect_uri: env.GITHUB_REDIRECT_URI,
-			}),
+				redirect_uri: env.GITHUB_REDIRECT_URI
+			})
 		});
 
 		const tokenData = await tokenResponse.json();
 		console.log('🔑 Token response:', tokenData);
-		
+
 		if (tokenData.error) {
 			console.error('❌ Token exchange failed:', tokenData.error);
 			throw redirect(302, `/auth/signin?error=${tokenData.error}`);
@@ -67,14 +67,14 @@ export async function GET({ url, cookies }) {
 		console.log('🔄 Fetching user profile...');
 		const userResponse = await fetch('https://api.github.com/user', {
 			headers: {
-				'Authorization': `Bearer ${tokenData.access_token}`,
-				'Accept': 'application/vnd.github.v3+json',
-			},
+				Authorization: `Bearer ${tokenData.access_token}`,
+				Accept: 'application/vnd.github.v3+json'
+			}
 		});
 
 		const userData = await userResponse.json();
 		console.log('👤 GitHub user info:', userData);
-		
+
 		if (!userResponse.ok || !userData.login) {
 			console.error('❌ Failed to fetch user info:', userData);
 			throw redirect(302, '/auth/signin?error=user_info_failed');
@@ -84,9 +84,9 @@ export async function GET({ url, cookies }) {
 		console.log('🔄 Fetching user emails...');
 		const emailResponse = await fetch('https://api.github.com/user/emails', {
 			headers: {
-				'Authorization': `Bearer ${tokenData.access_token}`,
-				'Accept': 'application/vnd.github.v3+json',
-			},
+				Authorization: `Bearer ${tokenData.access_token}`,
+				Accept: 'application/vnd.github.v3+json'
+			}
 		});
 
 		const emails = await emailResponse.json();
@@ -99,24 +99,28 @@ export async function GET({ url, cookies }) {
 
 		// Find or create user
 		let user = await db.query.users.findFirst({
-			where: eq(users.email, primaryEmail),
+			where: eq(users.email, primaryEmail)
 		});
 
 		if (!user) {
-			[user] = await db.insert(users).values({
-				id: randomUUID(),
-				email: primaryEmail,
-				name: userData.name || userData.login,
-				image: userData.avatar_url,
-				emailVerified: new Date(),
-				role: 'user', // Set default role
-				password: null // No password for OAuth users
-			}).returning();
+			[user] = await db
+				.insert(users)
+				.values({
+					id: randomUUID(),
+					email: primaryEmail,
+					name: userData.name || userData.login,
+					image: userData.avatar_url,
+					emailVerified: new Date(),
+					role: 'user', // Set default role
+					password: null // No password for OAuth users
+				})
+				.returning();
 
 			console.log('✅ New user created:', user.email);
 		} else {
 			// Update existing user info and ensure role is set
-			await db.update(users)
+			await db
+				.update(users)
 				.set({
 					name: userData.name || userData.login || user.name,
 					image: userData.avatar_url || user.image,
@@ -130,11 +134,14 @@ export async function GET({ url, cookies }) {
 		// Create session
 		const expiresAt = sessionExpiry();
 		const sessionToken = randomUUID();
-		const [session] = await db.insert(sessions).values({
-			sessionToken,
-			userId: user.id,
-			expires: expiresAt,
-		}).returning();
+		const [session] = await db
+			.insert(sessions)
+			.values({
+				sessionToken,
+				userId: user.id,
+				expires: expiresAt
+			})
+			.returning();
 
 		cookies.set('next-auth.session-token', sessionToken, {
 			path: '/',
@@ -146,15 +153,14 @@ export async function GET({ url, cookies }) {
 
 		console.log('🎉 GitHub login successful, session created:', sessionToken);
 		throw redirect(302, '/dashboard');
-		
 	} catch (err) {
 		// If it's a redirect, just rethrow it (not an error)
 		if (err instanceof Response && err.status === 302) {
 			throw err;
 		}
-		
+
 		console.error('❌ GitHub OAuth error:', err);
-		
+
 		// Type-safe error handling
 		const error = err as Error;
 		console.error('❌ Error details:', {
@@ -163,7 +169,7 @@ export async function GET({ url, cookies }) {
 			cause: error.cause,
 			stack: error.stack
 		});
-		
+
 		throw redirect(302, '/auth/signin?error=oauth_callback_failed');
 	}
 }

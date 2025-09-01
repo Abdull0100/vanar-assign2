@@ -5,7 +5,10 @@
 	let errorDescription = '';
 
 	$: {
-		const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+		const searchParams =
+			typeof window !== 'undefined'
+				? new URLSearchParams(window.location.search)
+				: new URLSearchParams();
 		error = searchParams.get('error') || 'Unknown error';
 
 		// Map common error codes to user-friendly messages

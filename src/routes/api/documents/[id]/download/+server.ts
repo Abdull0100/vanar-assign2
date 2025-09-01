@@ -19,10 +19,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		// Find the document and verify ownership
 		const document = await db.query.documents.findFirst({
-			where: and(
-				eq(documents.id, documentId),
-				eq(documents.userId, session.user.id)
-			),
+			where: and(eq(documents.id, documentId), eq(documents.userId, session.user.id)),
 			columns: {
 				id: true,
 				fileName: true,
@@ -61,20 +58,13 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			}
 		});
 		return response;
-
 	} catch (error: any) {
 		console.error('Document download error:', error);
 
 		if (error instanceof AuthError || error instanceof ValidationError) {
-			return json(
-				{ success: false, error: error.message },
-				{ status: 400 }
-			);
+			return json({ success: false, error: error.message }, { status: 400 });
 		}
 
-		return json(
-			{ success: false, error: 'Failed to download document' },
-			{ status: 500 }
-		);
+		return json({ success: false, error: 'Failed to download document' }, { status: 500 });
 	}
 };
