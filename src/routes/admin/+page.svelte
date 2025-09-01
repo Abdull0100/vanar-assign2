@@ -26,8 +26,6 @@
 	export let data: any;
 	let user = data.session?.user;
 
-
-
 	onMount(() => {
 		if (user) {
 			loadData();
@@ -55,31 +53,23 @@
 	<!-- Main Content -->
 	<div class="mx-auto max-w-7xl py-6 sm:px-6 lg:px-8">
 		<div class="px-4 py-6 sm:px-0">
-			<AdminHeaderTabs 
-				activeTab={$adminStore.activeTab} 
-				setActiveTab={setActiveTab} 
-			/>
-			
-
-
-
+			<AdminHeaderTabs activeTab={$adminStore.activeTab} {setActiveTab} />
 
 			{#if $adminStore.error}
-	<div
-		class="mb-6 rounded-md border bg-[var(--destructive)]/15 px-4 py-3 text-[var(--destructive-foreground)] border-[var(--destructive)]/30"
-	>
-		{$adminStore.error}
-	</div>
-{/if}
+				<div
+					class="mb-6 rounded-md border border-[var(--destructive)]/30 bg-[var(--destructive)]/15 px-4 py-3 text-[var(--destructive-foreground)]"
+				>
+					{$adminStore.error}
+				</div>
+			{/if}
 
-{#if $adminStore.success}
-	<div
-		class="mb-6 rounded-md border bg-[var(--accent)]/15 px-4 py-3 text-[var(--accent-foreground)] border-[var(--accent)]/30"
-	>
-		{$adminStore.success}
-	</div>
-{/if}
-
+			{#if $adminStore.success}
+				<div
+					class="mb-6 rounded-md border border-[var(--accent)]/30 bg-[var(--accent)]/15 px-4 py-3 text-[var(--accent-foreground)]"
+				>
+					{$adminStore.success}
+				</div>
+			{/if}
 
 			{#if $adminStore.loading}
 				<LoadingSpinner label="Loading data..." />
@@ -87,10 +77,10 @@
 				<!-- Overview Tab -->
 				{#if $adminStore.activeTab === 'overview'}
 					<div class="space-y-6">
-						<AdminStatsCards 
-							users={$adminStore.users} 
-							userStats={$adminStore.userStats} 
-							mostActiveUsers={$adminStore.mostActiveUsers} 
+						<AdminStatsCards
+							users={$adminStore.users}
+							userStats={$adminStore.userStats}
+							mostActiveUsers={$adminStore.mostActiveUsers}
 						/>
 						<AdminCharts />
 					</div>
@@ -110,9 +100,9 @@
 
 				<!-- Recent Activities Tab -->
 				{#if $adminStore.activeTab === 'activities'}
-					<AdminRecentActivities 
-						allRecentActivities={$adminStore.allRecentActivities} 
-						{formatDate} 
+					<AdminRecentActivities
+						allRecentActivities={$adminStore.allRecentActivities}
+						{formatDate}
 					/>
 				{/if}
 			{/if}

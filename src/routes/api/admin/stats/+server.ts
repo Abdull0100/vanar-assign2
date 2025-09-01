@@ -21,7 +21,10 @@ export const GET: RequestHandler = async ({ locals }) => {
 		const totalUsers = totalUsersResult[0]?.count || 0;
 
 		// Get admin count
-		const adminUsersResult = await db.select({ count: count() }).from(users).where(eq(users.role, 'admin'));
+		const adminUsersResult = await db
+			.select({ count: count() })
+			.from(users)
+			.where(eq(users.role, 'admin'));
 		const adminUsers = adminUsersResult[0]?.count || 0;
 
 		// Get total chat messages count
@@ -40,7 +43,6 @@ export const GET: RequestHandler = async ({ locals }) => {
 			recentUsers,
 			systemStatus: 'online'
 		});
-
 	} catch (error) {
 		console.error('Stats API error:', error);
 		return json({ error: 'Internal server error' }, { status: 500 });

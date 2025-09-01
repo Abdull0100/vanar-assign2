@@ -353,7 +353,7 @@ export class ChatTreeManager {
 			}
 		}
 
-		// Find the root message (no parent)
+		// Find the root messages (no parent)
 		const rootMessages = Array.from(this.messages.values()).filter(msg => !msg.parentId);
 		console.log('Found root messages:', rootMessages.length, rootMessages.map(m => ({ id: m.id, content: m.content.substring(0, 30) })));
 
@@ -397,11 +397,19 @@ export class ChatTreeManager {
 				this.messages.set(rootMsg.id, rootMsg);
 			});
 
-			// Use most recent root message as active branch, or first one if tie
-			const mostRecentRoot = rootMessages.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
-			const pathToRecentRoot = this.getPathToMessage(mostRecentRoot.id);
-			this.activePath = this.buildFullPathFrom(pathToRecentRoot);
-			console.log('Setting active path to most recent root branch:', mostRecentRoot.id, 'path:', this.activePath);
+			// Use the most recent message overall to determine the active branch
+			// Build path from root to the most recent message
+			if (mostRecentMessage) {
+				const pathToMostRecent = this.getPathToMessage(mostRecentMessage.id);
+				this.activePath = this.buildFullPathFrom(pathToMostRecent);
+				console.log('Setting active path to most recent message branch:', mostRecentMessage.id, 'path:', this.activePath);
+			} else {
+				// Fallback to most recent root message if no most recent message found
+				const mostRecentRoot = rootMessages.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
+				const pathToRecentRoot = this.getPathToMessage(mostRecentRoot.id);
+				this.activePath = this.buildFullPathFrom(pathToRecentRoot);
+				console.log('Fallback: Setting active path to most recent root branch:', mostRecentRoot.id, 'path:', this.activePath);
+			}
 
 		} else if (rootMessages.length === 1) {
 			// Single root message - standard behavior
@@ -492,13 +500,18 @@ export class ChatTreeManager {
 				break;
 			}
 
-			// Find which child is currently in the active path (if any)
+			// Find the most recent child to continue the path
 			let nextChild: string | null = null;
+			let mostRecentTime = 0;
+
 			for (const childId of message.childrenIds) {
 				const childMessage = this.messages.get(childId);
 				if (childMessage && !fullPath.includes(childId)) {
-					nextChild = childId;
-					break;
+					const childTime = new Date(childMessage.updatedAt).getTime();
+					if (childTime > mostRecentTime) {
+						mostRecentTime = childTime;
+						nextChild = childId;
+					}
 				}
 			}
 

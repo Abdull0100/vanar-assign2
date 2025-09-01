@@ -24,7 +24,6 @@ export interface PromptContext {
  * RAG Prompt Templates for different use cases
  */
 export class RAGPromptTemplates {
-
 	/**
 	 * Standard RAG prompt template with citations
 	 */
@@ -196,10 +195,10 @@ Answer:`;
 	 */
 	private static buildContextString(retrievedChunks: RetrievedChunk[]): string {
 		if (retrievedChunks.length === 0) {
-			return "No relevant documents found.";
+			return 'No relevant documents found.';
 		}
 
-		let context = "";
+		let context = '';
 		for (let i = 0; i < retrievedChunks.length; i++) {
 			const chunk = retrievedChunks[i];
 			context += `[${i + 1}] From "${chunk.documentName}" (Similarity: ${(chunk.similarity * 100).toFixed(1)}%):\n`;
@@ -214,10 +213,10 @@ Answer:`;
 	 */
 	private static formatCitations(retrievedChunks: RetrievedChunk[]): string {
 		if (retrievedChunks.length === 0) {
-			return "No citations available.";
+			return 'No citations available.';
 		}
 
-		let citations = "";
+		let citations = '';
 		for (let i = 0; i < retrievedChunks.length; i++) {
 			const chunk = retrievedChunks[i];
 			const metadata = chunk.chunk.metadata as any;
@@ -244,14 +243,15 @@ Answer:`;
 	 * Format conversation history
 	 */
 	private static formatConversationHistory(
-		conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string; }>
+		conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>
 	): string {
 		if (!conversationHistory || conversationHistory.length === 0) {
-			return "";
+			return '';
 		}
 
-		let history = "PREVIOUS CONVERSATION:\n";
-		for (const message of conversationHistory.slice(-5)) { // Last 5 messages for context
+		let history = 'PREVIOUS CONVERSATION:\n';
+		for (const message of conversationHistory.slice(-5)) {
+			// Last 5 messages for context
 			history += `${message.role.toUpperCase()}: ${message.content}\n`;
 		}
 
@@ -277,7 +277,6 @@ CORE PRINCIPLES:
  * Citation formatting utilities
  */
 export class CitationFormatter {
-
 	/**
 	 * Format citations in different styles
 	 */
@@ -287,9 +286,8 @@ export class CitationFormatter {
 	}
 
 	static formatCitationMLA(citation: CitationInfo): string {
-		const excerpt = citation.excerpt.length > 100 ?
-			citation.excerpt.substring(0, 100) + '...' :
-			citation.excerpt;
+		const excerpt =
+			citation.excerpt.length > 100 ? citation.excerpt.substring(0, 100) + '...' : citation.excerpt;
 
 		return `"${excerpt}" ${citation.documentName}. Relevance: ${(citation.relevanceScore * 100).toFixed(1)}%`;
 	}
@@ -358,32 +356,44 @@ export class CitationFormatter {
  * Template selection helper
  */
 export class PromptTemplateSelector {
-
 	/**
 	 * Select appropriate template based on query type
 	 */
-	static selectTemplate(
-		userQuery: string,
-		context: Omit<PromptContext, 'userQuery'>
-	): string {
+	static selectTemplate(userQuery: string, context: Omit<PromptContext, 'userQuery'>): string {
 		const query = userQuery.toLowerCase();
 
 		// Analytical queries
-		if (query.includes('analyze') || query.includes('compare') || query.includes('evaluate') ||
-			query.includes('assessment') || query.includes('review')) {
+		if (
+			query.includes('analyze') ||
+			query.includes('compare') ||
+			query.includes('evaluate') ||
+			query.includes('assessment') ||
+			query.includes('review')
+		) {
 			return RAGPromptTemplates.analyticalRAGTemplate({ ...context, userQuery });
 		}
 
 		// Summary queries
-		if (query.includes('summarize') || query.includes('summary') || query.includes('overview') ||
-			query.includes('key points') || query.includes('main ideas')) {
+		if (
+			query.includes('summarize') ||
+			query.includes('summary') ||
+			query.includes('overview') ||
+			query.includes('key points') ||
+			query.includes('main ideas')
+		) {
 			return RAGPromptTemplates.summaryRAGTemplate({ ...context, userQuery });
 		}
 
 		// Question answering
-		if (query.startsWith('what') || query.startsWith('how') || query.startsWith('why') ||
-			query.startsWith('when') || query.startsWith('where') || query.startsWith('who') ||
-			query.includes('?')) {
+		if (
+			query.startsWith('what') ||
+			query.startsWith('how') ||
+			query.startsWith('why') ||
+			query.startsWith('when') ||
+			query.startsWith('where') ||
+			query.startsWith('who') ||
+			query.includes('?')
+		) {
 			return RAGPromptTemplates.questionAnsweringTemplate({ ...context, userQuery });
 		}
 

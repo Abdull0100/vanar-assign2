@@ -1,4 +1,3 @@
-
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
@@ -6,7 +5,7 @@
 	import Hero from '$lib/components/home/Hero.svelte';
 	import Features from '$lib/components/home/Features.svelte';
 	import TechStack from '$lib/components/home/TechStack.svelte';
-    export let data: any;
+	export let data: any;
 
 	let session = data.session;
 
@@ -16,7 +15,6 @@
 <svelte:head>
 	<title>Auth App - Full Authentication & AI Chat</title>
 </svelte:head>
-
 
 <div class="min-h-screen bg-gray-50">
 	<Navigation user={session?.user ?? null} currentPage="home" />

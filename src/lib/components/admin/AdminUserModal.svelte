@@ -1,28 +1,37 @@
 <script lang="ts">
-	import * as Dialog from "$lib/components/ui/dialog";
-	import { Tabs, TabsList, TabsTrigger, TabsContent } from "$lib/components/ui/tabs";
-	import { Badge } from "$lib/components/ui/badge";
-	import { Separator } from "$lib/components/ui/separator";
-	import { Card, CardContent } from "$lib/components/ui/card";
-	import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "$lib/components/ui/table";
+	import * as Dialog from '$lib/components/ui/dialog';
+	import { Tabs, TabsList, TabsTrigger, TabsContent } from '$lib/components/ui/tabs';
+	import { Badge } from '$lib/components/ui/badge';
+	import { Separator } from '$lib/components/ui/separator';
+	import { Card, CardContent } from '$lib/components/ui/card';
+	import {
+		Table,
+		TableBody,
+		TableCell,
+		TableHead,
+		TableHeader,
+		TableRow
+	} from '$lib/components/ui/table';
 
 	export let selectedUser: any = null;
 	export let open: boolean;
 	export let onClose: () => void;
 
-	let tabValue: string = "overview";
+	let tabValue: string = 'overview';
 </script>
 
-
-
-
 {#if selectedUser}
-	<Dialog.Root bind:open onOpenChange={(val) => { if (!val) onClose(); }}>
+	<Dialog.Root
+		bind:open
+		onOpenChange={(val) => {
+			if (!val) onClose();
+		}}
+	>
 		<Dialog.Content
-			class="bg-card font-sans text-card-foreground max-h-[90vh] w-[90vw] max-w-5xl flex flex-col rounded-2xl shadow-xl"
+			class="flex max-h-[90vh] w-[90vw] max-w-5xl flex-col rounded-2xl bg-card font-sans text-card-foreground shadow-xl"
 		>
 			<!-- Header -->
-			<div class="px-6 py-4 border-b border-border flex items-center justify-between">
+			<div class="flex items-center justify-between border-b border-border px-6 py-4">
 				<Dialog.Title class="text-lg font-medium">
 					User Details: {selectedUser.name || selectedUser.email}
 				</Dialog.Title>
@@ -30,15 +39,15 @@
 			</div>
 
 			<!-- Scrollable body -->
-			<div class="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+			<div class="flex-1 space-y-6 overflow-y-auto px-6 py-4">
 				<!-- User Info -->
 				<div class="flex flex-col md:flex-row md:items-center md:justify-between">
 					<div>
-						<h3 class="text-xl font-semibold font-sans">{selectedUser.name}</h3>
+						<h3 class="font-sans text-xl font-semibold">{selectedUser.name}</h3>
 						<p class="text-muted-foreground">{selectedUser.email}</p>
 					</div>
-					<Badge variant={selectedUser.active ? "default" : "secondary"}>
-						{selectedUser.active ? "Active" : "Inactive"}
+					<Badge variant={selectedUser.active ? 'default' : 'secondary'}>
+						{selectedUser.active ? 'Active' : 'Inactive'}
 					</Badge>
 				</div>
 
@@ -52,14 +61,23 @@
 						<TabsTrigger value="activity">Activity</TabsTrigger>
 					</TabsList>
 
-					<div class="min-h-[400px] max-h-[60vh] overflow-y-auto mt-4">
+					<div class="mt-4 max-h-[60vh] min-h-[400px] overflow-y-auto">
 						<!-- Overview Tab -->
 						<TabsContent value="overview">
 							<Card>
-								<CardContent class="p-4 space-y-2">
-									<p><span class="font-semibold text-card-foreground">ID:</span> {selectedUser.id}</p>
-									<p><span class="font-semibold text-card-foreground">Role:</span> {selectedUser.role}</p>
-									<p><span class="font-semibold text-card-foreground">Joined:</span> {selectedUser.createdAt}</p>
+								<CardContent class="space-y-2 p-4">
+									<p>
+										<span class="font-semibold text-card-foreground">ID:</span>
+										{selectedUser.id}
+									</p>
+									<p>
+										<span class="font-semibold text-card-foreground">Role:</span>
+										{selectedUser.role}
+									</p>
+									<p>
+										<span class="font-semibold text-card-foreground">Joined:</span>
+										{selectedUser.createdAt}
+									</p>
 								</CardContent>
 							</Card>
 						</TabsContent>

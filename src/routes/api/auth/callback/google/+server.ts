@@ -37,7 +37,7 @@ export async function GET({ url, cookies }) {
 		});
 		throw redirect(302, '/auth/signin?error=oauth_config_error');
 	}
-	
+
 	console.log('✅ OAuth config loaded:', {
 		clientId: env.GOOGLE_CLIENT_ID?.substring(0, 20) + '...',
 		redirectUri: env.GOOGLE_REDIRECT_URI
@@ -51,10 +51,10 @@ export async function GET({ url, cookies }) {
 			code: code.substring(0, 20) + '...',
 			redirect_uri: env.GOOGLE_REDIRECT_URI
 		});
-		
+
 		const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
 			method: 'POST',
-			headers: { 
+			headers: {
 				'Content-Type': 'application/x-www-form-urlencoded'
 			},
 			body: new URLSearchParams({
@@ -68,7 +68,7 @@ export async function GET({ url, cookies }) {
 
 		console.log('🔑 Token response status:', tokenResponse.status);
 		console.log('🔑 Token response headers:', Object.fromEntries(tokenResponse.headers.entries()));
-		
+
 		const tokenData = await tokenResponse.json();
 		console.log('🔑 Token response data:', tokenData);
 
@@ -80,7 +80,7 @@ export async function GET({ url, cookies }) {
 		// 2. Fetch user profile
 		console.log('🔄 Fetching user profile...');
 		const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-			headers: { 
+			headers: {
 				Authorization: `Bearer ${tokenData.access_token}`
 			}
 		});
@@ -95,24 +95,28 @@ export async function GET({ url, cookies }) {
 
 		// 3. Find or create user
 		let user = await db.query.users.findFirst({
-			where: eq(users.email, userData.email),
+			where: eq(users.email, userData.email)
 		});
 
 		if (!user) {
-			[user] = await db.insert(users).values({
-				id: randomUUID(),
-				email: userData.email,
-				name: userData.name ?? '',
-				image: userData.picture,
-				emailVerified: new Date(),
-				role: 'user', // Set default role
-				password: null // No password for OAuth users
-			}).returning();
+			[user] = await db
+				.insert(users)
+				.values({
+					id: randomUUID(),
+					email: userData.email,
+					name: userData.name ?? '',
+					image: userData.picture,
+					emailVerified: new Date(),
+					role: 'user', // Set default role
+					password: null // No password for OAuth users
+				})
+				.returning();
 
 			console.log('✅ New user created:', user.email);
 		} else {
 			// Update existing user info and ensure role is set
-			await db.update(users)
+			await db
+				.update(users)
 				.set({
 					name: userData.name || user.name,
 					image: userData.picture || user.image,
@@ -126,11 +130,14 @@ export async function GET({ url, cookies }) {
 		// 4. Create session
 		const expiresAt = sessionExpiry();
 		const sessionToken = randomUUID();
-		const [session] = await db.insert(sessions).values({
-			sessionToken,
-			userId: user.id,
-			expires: expiresAt,
-		}).returning();
+		const [session] = await db
+			.insert(sessions)
+			.values({
+				sessionToken,
+				userId: user.id,
+				expires: expiresAt
+			})
+			.returning();
 
 		cookies.set('next-auth.session-token', sessionToken, {
 			path: '/',
@@ -142,15 +149,14 @@ export async function GET({ url, cookies }) {
 
 		console.log('🎉 Google login successful, session created:', sessionToken);
 		throw redirect(302, '/dashboard');
-
 	} catch (err) {
 		// If it's a redirect, just rethrow it (not an error)
 		if (err instanceof Response && err.status === 302) {
 			throw err;
 		}
-		
+
 		console.error('❌ Google OAuth error:', err);
-		
+
 		// Type-safe error handling
 		const error = err as Error;
 		console.error('❌ Error details:', {
@@ -159,12 +165,12 @@ export async function GET({ url, cookies }) {
 			cause: error.cause,
 			stack: error.stack
 		});
-		
+
 		// Check if it's a network timeout
 		if ((error.cause as any)?.code === 'ETIMEDOUT' || error.message?.includes('timeout')) {
 			throw redirect(302, '/auth/signin?error=network_timeout');
 		}
-		
+
 		throw redirect(302, '/auth/signin?error=oauth_callback_failed');
 	}
 }

@@ -55,7 +55,7 @@ export interface AdminState {
 	selectedSpecificActivity: string;
 	analyticsData: AnalyticsData;
 	autoRefresh: boolean;
-  sseConnected?: boolean;
+	sseConnected?: boolean;
 }
 
 // Initial state
@@ -101,55 +101,55 @@ export const deleteTarget = writable<{ id: string; name: string } | null>(null);
 
 // State management functions
 export function setLoading(loading: boolean) {
-	adminStore.update(state => ({ ...state, loading }));
+	adminStore.update((state) => ({ ...state, loading }));
 }
 
 export function setError(error: string) {
-	adminStore.update(state => ({ ...state, error }));
+	adminStore.update((state) => ({ ...state, error }));
 }
 
 export function setSuccess(success: string) {
-	adminStore.update(state => ({ ...state, success }));
+	adminStore.update((state) => ({ ...state, success }));
 }
 
 export function clearMessages() {
-	adminStore.update(state => ({ ...state, error: '', success: '' }));
+	adminStore.update((state) => ({ ...state, error: '', success: '' }));
 }
 
 export function setActiveTab(tab: 'overview' | 'users' | 'activities') {
-	adminStore.update(state => ({ ...state, activeTab: tab }));
+	adminStore.update((state) => ({ ...state, activeTab: tab }));
 }
 
 export function setModalActiveTab(tab: 'sessions' | 'activities' | 'stats') {
-	adminStore.update(state => ({ ...state, modalActiveTab: tab }));
+	adminStore.update((state) => ({ ...state, modalActiveTab: tab }));
 }
 
 export function setActivitiesPage(page: number) {
-	adminStore.update(state => ({ ...state, activitiesPage: page }));
+	adminStore.update((state) => ({ ...state, activitiesPage: page }));
 }
 
 export function setSearchQuery(query: string) {
-	adminStore.update(state => ({ ...state, searchQuery: query }));
+	adminStore.update((state) => ({ ...state, searchQuery: query }));
 }
 
 export function setSelectedActivityType(type: string) {
-	adminStore.update(state => ({ ...state, selectedActivityType: type }));
+	adminStore.update((state) => ({ ...state, selectedActivityType: type }));
 }
 
 export function setSelectedDateRange(range: string) {
-	adminStore.update(state => ({ ...state, selectedDateRange: range }));
+	adminStore.update((state) => ({ ...state, selectedDateRange: range }));
 }
 
 export function setSelectedUserRole(role: string) {
-	adminStore.update(state => ({ ...state, selectedUserRole: role }));
+	adminStore.update((state) => ({ ...state, selectedUserRole: role }));
 }
 
 export function setSelectedSpecificActivity(activity: string) {
-	adminStore.update(state => ({ ...state, selectedSpecificActivity: activity }));
+	adminStore.update((state) => ({ ...state, selectedSpecificActivity: activity }));
 }
 
 export function setAutoRefresh(enabled: boolean) {
-	adminStore.update(state => ({ ...state, autoRefresh: enabled }));
+	adminStore.update((state) => ({ ...state, autoRefresh: enabled }));
 }
 
 // Data loading functions
@@ -172,7 +172,7 @@ export async function loadData() {
 export async function loadUsers() {
 	try {
 		const data = await fetchUsers();
-		adminStore.update(state => ({ ...state, users: data.users }));
+		adminStore.update((state) => ({ ...state, users: data.users }));
 	} catch (err) {
 		setError('An error occurred while loading users');
 	}
@@ -181,7 +181,7 @@ export async function loadUsers() {
 export async function loadUserStats() {
 	try {
 		const data = await fetchUsersStats();
-		adminStore.update(state => ({
+		adminStore.update((state) => ({
 			...state,
 			userStats: data.overview,
 			mostActiveUsers: data.mostActiveUsers
@@ -194,7 +194,7 @@ export async function loadUserStats() {
 export async function loadRecentActivity() {
 	try {
 		const data = await fetchAdminActions(20);
-		adminStore.update(state => ({ ...state, adminActions: data.actions }));
+		adminStore.update((state) => ({ ...state, adminActions: data.actions }));
 	} catch (err) {
 		console.error('Failed to load recent activity:', err);
 	}
@@ -220,7 +220,7 @@ export async function loadAllRecentActivities() {
 			}))
 		].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-		adminStore.update(state => ({
+		adminStore.update((state) => ({
 			...state,
 			userActivities,
 			adminActions,
@@ -235,77 +235,67 @@ export async function loadAllRecentActivities() {
 let eventSource: EventSource | null = null;
 
 export function connectAdminEvents() {
-  if (eventSource) return;
-  try {
-    eventSource = new EventSource('/api/admin/events');
-    adminStore.update((s) => ({ ...s, sseConnected: true }));
+	if (eventSource) return;
+	try {
+		eventSource = new EventSource('/api/admin/events');
+		adminStore.update((s) => ({ ...s, sseConnected: true }));
 
-    eventSource.onmessage = (ev) => {
-      try {
-        const data = JSON.parse(ev.data || '{}');
-        const type = data.type as string;
+		eventSource.onmessage = (ev) => {
+			try {
+				const data = JSON.parse(ev.data || '{}');
+				const type = data.type as string;
 
-        if (type === 'heartbeat' || type === 'connected') return;
+				if (type === 'heartbeat' || type === 'connected') return;
 
-        // Selective refresh for better performance and correctness
-        switch (type) {
-          case 'users_changed':
-            // user list changed; also impacts overview stats
-            Promise.allSettled([
-              loadUsers(),
-              loadUserStats()
-            ]);
-            break;
-          case 'stats_updated':
-            loadUserStats();
-            break;
-          case 'admin_action':
-          case 'user_activity':
-          case 'user_login':
-          case 'user_logout':
-            // activity feeds and possibly stats
-            Promise.allSettled([
-              loadAllRecentActivities(),
-              loadUserStats()
-            ]);
-            break;
-          default:
-            // Fallback: conservative refresh
-            Promise.allSettled([
-              loadUsers(),
-              loadUserStats(),
-              loadAllRecentActivities()
-            ]);
-        }
-      } catch {}
-    };
+				// Selective refresh for better performance and correctness
+				switch (type) {
+					case 'users_changed':
+						// user list changed; also impacts overview stats
+						Promise.allSettled([loadUsers(), loadUserStats()]);
+						break;
+					case 'stats_updated':
+						loadUserStats();
+						break;
+					case 'admin_action':
+					case 'user_activity':
+					case 'user_login':
+					case 'user_logout':
+						// activity feeds and possibly stats
+						Promise.allSettled([loadAllRecentActivities(), loadUserStats()]);
+						break;
+					default:
+						// Fallback: conservative refresh
+						Promise.allSettled([loadUsers(), loadUserStats(), loadAllRecentActivities()]);
+				}
+			} catch {}
+		};
 
-    eventSource.onerror = () => {
-      disconnectAdminEvents();
-      // Backoff reconnect
-      setTimeout(() => connectAdminEvents(), 3000);
-    };
-  } catch {
-    // ignore
-  }
+		eventSource.onerror = () => {
+			disconnectAdminEvents();
+			// Backoff reconnect
+			setTimeout(() => connectAdminEvents(), 3000);
+		};
+	} catch {
+		// ignore
+	}
 }
 
 export function disconnectAdminEvents() {
-  if (eventSource) {
-    eventSource.close();
-    eventSource = null;
-    adminStore.update((s) => ({ ...s, sseConnected: false }));
-  }
+	if (eventSource) {
+		eventSource.close();
+		eventSource = null;
+		adminStore.update((s) => ({ ...s, sseConnected: false }));
+	}
 }
 
 export async function loadUserDetails(userId: string) {
 	try {
-		adminStore.update(state => ({ ...state, userStats: null }));
-		
+		adminStore.update((state) => ({ ...state, userStats: null }));
+
 		const data = await apiFetchUserDetails(userId);
 		const stats = await apiFetchUserStats(userId);
-		
-		adminStore.update(state => ({
+
+		adminStore.update((state) => ({
 			...state,
 			selectedUser: data.user,
 			userActivities: data.activities,
@@ -322,18 +312,15 @@ export async function updateUserRole(userId: string, newRole: string) {
 	try {
 		clearMessages();
 		await apiUpdateUserRole(userId, newRole);
-		
-		adminStore.update(state => ({
+
+		adminStore.update((state) => ({
 			...state,
 			users: state.users.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
 		}));
-		
+
 		setSuccess('User role updated successfully!');
 		clearSuccessMessage();
-		await Promise.allSettled([
-			loadRecentActivity(),
-			loadUserStats()
-		]);
+		await Promise.allSettled([loadRecentActivity(), loadUserStats()]);
 	} catch (err) {
 		setError('An error occurred while updating user role');
 	}
@@ -343,10 +330,7 @@ export async function toggleUserStatus(userId: string, currentStatus: boolean) {
 	try {
 		clearMessages();
 		await apiToggleUserStatus(userId, !currentStatus);
-		await Promise.allSettled([
-			loadUsers(),
-			loadUserStats()
-		]);
+		await Promise.allSettled([loadUsers(), loadUserStats()]);
 		setSuccess('User status updated successfully!');
 		clearSuccessMessage();
 		await loadRecentActivity();
@@ -359,18 +343,15 @@ export async function deleteUserAction(userId: string) {
 	try {
 		clearMessages();
 		await apiDeleteUser(userId);
-		
-		adminStore.update(state => ({
+
+		adminStore.update((state) => ({
 			...state,
-			users: state.users.filter(u => u.id !== userId)
+			users: state.users.filter((u) => u.id !== userId)
 		}));
-		
+
 		setSuccess('User deleted successfully!');
 		clearSuccessMessage();
-		await Promise.allSettled([
-			loadRecentActivity(),
-			loadUserStats()
-		]);
+		await Promise.allSettled([loadRecentActivity(), loadUserStats()]);
 	} catch (err) {
 		console.error('Delete user error:', err);
 		setError('An error occurred while deleting user. Please check your connection and try again.');
@@ -397,7 +378,7 @@ export async function confirmDeleteUser() {
 }
 
 export function closeUserModal() {
-	adminStore.update(state => ({
+	adminStore.update((state) => ({
 		...state,
 		selectedUser: null,
 		userStats: null,
@@ -409,7 +390,7 @@ export function closeUserModal() {
 // Utility functions
 export function clearSuccessMessage() {
 	setTimeout(() => {
-		adminStore.update(state => ({ ...state, success: '' }));
+		adminStore.update((state) => ({ ...state, success: '' }));
 	}, 3000);
 }
 
@@ -441,17 +422,17 @@ export function formatSessionToken(token: string) {
 
 export function formatMetadata(metadata: any) {
 	if (!metadata) return 'No metadata';
-	
+
 	try {
 		if (typeof metadata === 'string') {
 			const parsed = JSON.parse(metadata);
-			return Object.entries(parsed).map(([key, value]) => 
-				`<strong>${key}:</strong> ${JSON.stringify(value)}`
-			).join('<br>');
+			return Object.entries(parsed)
+				.map(([key, value]) => `<strong>${key}:</strong> ${JSON.stringify(value)}`)
+				.join('<br>');
 		} else if (typeof metadata === 'object') {
-			return Object.entries(metadata).map(([key, value]) => 
-				`<strong>${key}:</strong> ${JSON.stringify(value)}`
-			).join('<br>');
+			return Object.entries(metadata)
+				.map(([key, value]) => `<strong>${key}:</strong> ${JSON.stringify(value)}`)
+				.join('<br>');
 		}
 		return JSON.stringify(metadata, null, 2);
 	} catch {
@@ -462,8 +443,8 @@ export function formatMetadata(metadata: any) {
 // Pagination functions
 export function getPaginatedActivities() {
 	let state: AdminState = initialState;
-	adminStore.subscribe(s => state = s)();
-	
+	adminStore.subscribe((s) => (state = s))();
+
 	const start = (state.activitiesPage - 1) * state.activitiesPerPage;
 	const end = start + state.activitiesPerPage;
 	return state.userActivities.slice(start, end);
@@ -471,14 +452,14 @@ export function getPaginatedActivities() {
 
 export function getTotalPages() {
 	let state: AdminState = initialState;
-	adminStore.subscribe(s => state = s)();
+	adminStore.subscribe((s) => (state = s))();
 	return Math.ceil(state.userActivities.length / state.activitiesPerPage);
 }
 
 export function nextActivitiesPage() {
 	let state: AdminState = initialState;
-	adminStore.subscribe(s => state = s)();
-	
+	adminStore.subscribe((s) => (state = s))();
+
 	if (state.activitiesPage < getTotalPages()) {
 		setActivitiesPage(state.activitiesPage + 1);
 	}
@@ -486,8 +467,8 @@ export function nextActivitiesPage() {
 
 export function prevActivitiesPage() {
 	let state: AdminState = initialState;
-	adminStore.subscribe(s => state = s)();
-	
+	adminStore.subscribe((s) => (state = s))();
+
 	if (state.activitiesPage > 1) {
 		setActivitiesPage(state.activitiesPage - 1);
 	}
@@ -497,15 +478,15 @@ export function prevActivitiesPage() {
 export function setupKeyboardHandlers() {
 	const handleKeydown = (event: KeyboardEvent) => {
 		let state: AdminState = initialState;
-		adminStore.subscribe(s => state = s)();
-		
+		adminStore.subscribe((s) => (state = s))();
+
 		if (event.key === 'Escape' && state.selectedUser) {
 			closeUserModal();
 		}
 	};
 
 	document.addEventListener('keydown', handleKeydown);
-	
+
 	return () => {
 		document.removeEventListener('keydown', handleKeydown);
 	};

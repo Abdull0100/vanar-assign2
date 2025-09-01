@@ -132,11 +132,11 @@ export class ActivityTracker {
 				where: eq(userStats.userId, userId)
 			});
 
-					const now = new Date();
-		const updateData: any = {
-			lastActivity: now,
-			updatedAt: now
-		};
+			const now = new Date();
+			const updateData: any = {
+				lastActivity: now,
+				updatedAt: now
+			};
 
 			// Update specific counters based on activity type
 			switch (activityType) {
@@ -159,10 +159,7 @@ export class ActivityTracker {
 
 			if (existingStats) {
 				// Update existing stats
-				await db
-					.update(userStats)
-					.set(updateData)
-					.where(eq(userStats.userId, userId));
+				await db.update(userStats).set(updateData).where(eq(userStats.userId, userId));
 			} else {
 				// Create new stats
 				await db.insert(userStats).values({
@@ -200,7 +197,12 @@ export class ActivityTracker {
 	 */
 	static async getUserActivities(userId: string, limit = 50) {
 		try {
-			return await db.select().from(userActivities).where(eq(userActivities.userId, userId)).orderBy(userActivities.createdAt).limit(limit);
+			return await db
+				.select()
+				.from(userActivities)
+				.where(eq(userActivities.userId, userId))
+				.orderBy(userActivities.createdAt)
+				.limit(limit);
 		} catch (error) {
 			console.error('Failed to get user activities:', error);
 			return [];
@@ -224,7 +226,12 @@ export class ActivityTracker {
 	 */
 	static async getUserSessions(userId: string, limit = 50) {
 		try {
-			return await db.select().from(userSessions).where(eq(userSessions.userId, userId)).orderBy(userSessions.loginTime).limit(limit);
+			return await db
+				.select()
+				.from(userSessions)
+				.where(eq(userSessions.userId, userId))
+				.orderBy(userSessions.loginTime)
+				.limit(limit);
 		} catch (error) {
 			console.error('Failed to get user sessions:', error);
 			return [];
@@ -245,7 +252,12 @@ export class ActivityTracker {
 }
 
 // Convenience functions for common activities
-export const trackChatMessage = (userId: string, messageCount: number, ipAddress?: string, userAgent?: string) =>
+export const trackChatMessage = (
+	userId: string,
+	messageCount: number,
+	ipAddress?: string,
+	userAgent?: string
+) =>
 	ActivityTracker.trackUserActivity(
 		userId,
 		'chat_message',
@@ -255,7 +267,12 @@ export const trackChatMessage = (userId: string, messageCount: number, ipAddress
 		userAgent
 	);
 
-export const trackProfileUpdate = (userId: string, changes: Record<string, any>, ipAddress?: string, userAgent?: string) =>
+export const trackProfileUpdate = (
+	userId: string,
+	changes: Record<string, any>,
+	ipAddress?: string,
+	userAgent?: string
+) =>
 	ActivityTracker.trackUserActivity(
 		userId,
 		'profile_update',
@@ -275,7 +292,13 @@ export const trackPasswordChange = (userId: string, ipAddress?: string, userAgen
 		userAgent
 	);
 
-export const trackUserDelete = (adminId: string, targetUserId: string, targetUserEmail: string, ipAddress?: string, userAgent?: string) =>
+export const trackUserDelete = (
+	adminId: string,
+	targetUserId: string,
+	targetUserEmail: string,
+	ipAddress?: string,
+	userAgent?: string
+) =>
 	ActivityTracker.trackAdminAction(
 		adminId,
 		'user_delete',
@@ -286,7 +309,15 @@ export const trackUserDelete = (adminId: string, targetUserId: string, targetUse
 		userAgent
 	);
 
-export const trackRoleChange = (adminId: string, targetUserId: string, oldRole: string, newRole: string, targetUserEmail: string, ipAddress?: string, userAgent?: string) =>
+export const trackRoleChange = (
+	adminId: string,
+	targetUserId: string,
+	oldRole: string,
+	newRole: string,
+	targetUserEmail: string,
+	ipAddress?: string,
+	userAgent?: string
+) =>
 	ActivityTracker.trackAdminAction(
 		adminId,
 		'role_change',
@@ -297,7 +328,14 @@ export const trackRoleChange = (adminId: string, targetUserId: string, oldRole: 
 		userAgent
 	);
 
-export const trackUserStatusChange = (adminId: string, targetUserId: string, action: 'enable' | 'disable', targetUserEmail: string, ipAddress?: string, userAgent?: string) =>
+export const trackUserStatusChange = (
+	adminId: string,
+	targetUserId: string,
+	action: 'enable' | 'disable',
+	targetUserEmail: string,
+	ipAddress?: string,
+	userAgent?: string
+) =>
 	ActivityTracker.trackAdminAction(
 		adminId,
 		`user_${action}`,

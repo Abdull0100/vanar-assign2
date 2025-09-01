@@ -26,4 +26,4 @@ export const POST: RequestHandler = async ({ request }) => {
 		console.error('Token validation error:', error);
 		return json({ error: 'Internal server error' }, { status: 500 });
 	}
-}
+};

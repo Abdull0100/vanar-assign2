@@ -45,7 +45,6 @@ async function testDatabaseInsertion() {
 		// Clean up test data
 		await db.delete(documentChunks).where(eq(documentChunks.id, result[0].id));
 		console.log('✅ Test cleanup completed');
-
 	} catch (error) {
 		console.error('❌ Database test failed:', error);
 		console.error('Error details:', error);

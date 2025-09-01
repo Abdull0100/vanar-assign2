@@ -41,7 +41,14 @@
 					const data = JSON.parse(ev.data || '{}');
 					const type = data.type as string;
 					if (type === 'heartbeat' || type === 'connected') return;
-					if (type === 'stats_updated' || type === 'users_changed' || type === 'admin_action' || type === 'user_activity' || type === 'user_login' || type === 'user_logout') {
+					if (
+						type === 'stats_updated' ||
+						type === 'users_changed' ||
+						type === 'admin_action' ||
+						type === 'user_activity' ||
+						type === 'user_login' ||
+						type === 'user_logout'
+					) {
 						loadStats();
 						activityPulse = true;
 						setTimeout(() => (activityPulse = false), 1500);
@@ -63,7 +70,7 @@
 
 	async function loadStats() {
 		if (user?.role !== 'admin') return;
-		
+
 		try {
 			const response = await fetch('/api/admin/stats');
 			if (response.ok) {
@@ -96,21 +103,20 @@
 	<title>Dashboard - Auth App</title>
 </svelte:head>
 {#if user}
-<div class="min-h-screen">
-
+	<div class="min-h-screen">
 		<Navigation user={user ?? null} currentPage="dashboard" />
 
 		<!-- Main Content -->
 		<div class="mx-auto max-w-7xl py-6 sm:px-6 lg:px-8">
 			<!-- Hero Section -->
-			<DashboardHero user={user} />
+			<DashboardHero {user} />
 
 			<!-- Quick Actions -->
 			<DashboardQuickActions isAdmin={user?.role === 'admin'} />
 
 			<!-- Quick Stats (if admin) -->
 			{#if user?.role === 'admin'}
-				<AdminStats stats={stats} loading={loadingStats} useStream={false} />
+				<AdminStats {stats} loading={loadingStats} useStream={false} />
 			{/if}
 		</div>
 	</div>

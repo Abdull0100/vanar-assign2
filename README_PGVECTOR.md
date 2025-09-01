@@ -19,12 +19,12 @@ pgvector provides several operators for different types of vector similarity cal
 
 ### Distance Operators
 
-| Operator | Description | Use Case | Formula |
-|----------|-------------|----------|---------|
-| `<->` | Euclidean (L2) distance | General similarity, good balance | `sqrt(Σ(v1_i - v2_i)²)` |
-| `<=>` | Cosine distance | Text embeddings, normalized vectors | `1 - (v1·v2)/(‖v1‖‖v2‖)` |
-| `<#>` | Inner product | Some ML models | `Σ(v1_i × v2_i)` |
-| `<+>` | L1 (Manhattan) distance | Robust to outliers | `Σ|v1_i - v2_i|` |
+| Operator | Description             | Use Case                            | Formula                  |
+| -------- | ----------------------- | ----------------------------------- | ------------------------ | ----------- | --- |
+| `<->`    | Euclidean (L2) distance | General similarity, good balance    | `sqrt(Σ(v1_i - v2_i)²)`  |
+| `<=>`    | Cosine distance         | Text embeddings, normalized vectors | `1 - (v1·v2)/(‖v1‖‖v2‖)` |
+| `<#>`    | Inner product           | Some ML models                      | `Σ(v1_i × v2_i)`         |
+| `<+>`    | L1 (Manhattan) distance | Robust to outliers                  | `Σ                       | v1_i - v2_i | `   |
 
 ### Key Notes:
 
@@ -72,10 +72,12 @@ SELECT * FROM documentChunks ORDER BY embedding <=> query_embedding LIMIT 10;
 ```
 
 **Parameters**:
+
 - `m`: Number of connections per node (default: 16, range: 2-100)
 - `ef_construction`: Size of dynamic candidate list (default: 64, higher = better recall, slower build)
 
 **When to use**:
+
 - Dimensionality > 100
 - Need approximate results with high recall
 - Real-time search requirements
@@ -94,21 +96,23 @@ SELECT * FROM documentChunks ORDER BY embedding <=> query_embedding LIMIT 10;
 ```
 
 **Parameters**:
+
 - `lists`: Number of inverted lists (rule of thumb: `sqrt(rows)`)
 
 **When to use**:
+
 - Dataset size < 1M vectors
 - Need exact nearest neighbors
 - Can tolerate slower queries for perfect accuracy
 
 ### Index Selection Guide
 
-| Dataset Size | Dimensionality | Recommended Index | Notes |
-|--------------|----------------|-------------------|-------|
-| < 10K | Any | No index | Sequential scan faster |
-| 10K - 1M | < 100 | IVFFlat | Exact search, moderate performance |
-| 10K - 1M | 100-1000 | HNSW | Approximate search, good performance |
-| > 1M | Any | HNSW | Best for large-scale search |
+| Dataset Size | Dimensionality | Recommended Index | Notes                                |
+| ------------ | -------------- | ----------------- | ------------------------------------ |
+| < 10K        | Any            | No index          | Sequential scan faster               |
+| 10K - 1M     | < 100          | IVFFlat           | Exact search, moderate performance   |
+| 10K - 1M     | 100-1000       | HNSW              | Approximate search, good performance |
+| > 1M         | Any            | HNSW              | Best for large-scale search          |
 
 ### Composite Indexes
 
@@ -127,6 +131,7 @@ WHERE embedding IS NOT NULL;
 ### Query Optimization
 
 1. **Use appropriate similarity thresholds**:
+
 ```sql
 -- Add threshold filter for better performance
 SELECT * FROM documentChunks
@@ -136,6 +141,7 @@ LIMIT 10;
 ```
 
 2. **Pre-filter by metadata**:
+
 ```sql
 -- Filter by user and document type before vector search
 SELECT * FROM documentChunks dc
@@ -148,6 +154,7 @@ LIMIT 10;
 ```
 
 3. **Batch processing**:
+
 ```sql
 -- Use UNNEST for multiple queries
 SELECT *
@@ -160,6 +167,7 @@ LIMIT 10;
 ### Index Maintenance
 
 1. **Monitor index performance**:
+
 ```sql
 -- Check index usage
 SELECT
@@ -174,12 +182,14 @@ WHERE tablename = 'documentChunks';
 ```
 
 2. **Rebuild indexes periodically**:
+
 ```sql
 -- Rebuild HNSW index (can be done online)
 REINDEX INDEX CONCURRENTLY documentChunks_embedding_idx;
 ```
 
 3. **Vacuum and analyze**:
+
 ```sql
 -- Maintain table statistics
 VACUUM ANALYZE documentChunks;
@@ -203,6 +213,7 @@ SET maintenance_work_mem = '256MB';
 ### Schema Design
 
 1. **Use appropriate vector dimensions**:
+
 ```sql
 -- For Gemini embeddings (768 dimensions)
 ALTER TABLE documentChunks
@@ -211,6 +222,7 @@ CHECK (vector_dims(embedding) = 768);
 ```
 
 2. **Store metadata separately**:
+
 ```sql
 -- Use JSONB for flexible metadata
 ALTER TABLE documentChunks ADD COLUMN metadata jsonb;
@@ -221,6 +233,7 @@ CREATE INDEX ON documentChunks ((metadata->>'section'));
 ```
 
 3. **Partition large tables**:
+
 ```sql
 -- Partition by user for better performance
 CREATE TABLE documentChunks_y2024m01 PARTITION OF documentChunks
@@ -230,6 +243,7 @@ FOR VALUES FROM ('2024-01-01') TO ('2024-02-01');
 ### Data Management
 
 1. **Normalize embeddings when using cosine similarity**:
+
 ```sql
 -- Ensure embeddings are normalized
 UPDATE documentChunks
@@ -238,6 +252,7 @@ WHERE vector_norm(embedding) > 0;
 ```
 
 2. **Handle null embeddings**:
+
 ```sql
 -- Create partial indexes
 CREATE INDEX ON documentChunks USING hnsw (embedding vector_cosine_ops)
@@ -245,6 +260,7 @@ WHERE embedding IS NOT NULL;
 ```
 
 3. **Implement data validation**:
+
 ```sql
 -- Validate embedding dimensions on insert
 CREATE OR REPLACE FUNCTION validate_embedding()
@@ -265,33 +281,36 @@ FOR EACH ROW EXECUTE FUNCTION validate_embedding();
 ### Application Integration
 
 1. **Connection pooling**:
+
 ```typescript
 // Use connection pooling for better performance
 import { Pool } from 'pg';
 
 const pool = new Pool({
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+	max: 20,
+	idleTimeoutMillis: 30000,
+	connectionTimeoutMillis: 2000
 });
 ```
 
 2. **Prepared statements**:
+
 ```typescript
 // Use prepared statements for repeated queries
 const query = {
-  text: 'SELECT * FROM documentChunks WHERE userId = $1 ORDER BY embedding <=> $2 LIMIT $3',
-  values: [userId, queryEmbedding, limit],
+	text: 'SELECT * FROM documentChunks WHERE userId = $1 ORDER BY embedding <=> $2 LIMIT $3',
+	values: [userId, queryEmbedding, limit]
 };
 ```
 
 3. **Caching strategies**:
+
 ```typescript
 // Cache frequently accessed embeddings
 const embeddingCache = new Map<string, number[]>();
 
 // Cache user document counts
-const userStatsCache = new Map<string, { count: number, lastUpdated: Date }>();
+const userStatsCache = new Map<string, { count: number; lastUpdated: Date }>();
 ```
 
 ## Troubleshooting

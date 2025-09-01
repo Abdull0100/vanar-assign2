@@ -21,8 +21,8 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		if (!user) {
 			// Don't reveal if user exists or not for security
-			return json({ 
-				message: 'If an account with that email exists, a password reset link has been sent.' 
+			return json({
+				message: 'If an account with that email exists, a password reset link has been sent.'
 			});
 		}
 
@@ -42,18 +42,20 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		// Send password reset email
 		const emailSent = await sendPasswordResetEmail(email, token);
-		
+
 		if (!emailSent) {
 			console.error('Failed to send password reset email to:', email);
-			return json({ 
-				error: 'Failed to send password reset email. Please try again later.' 
-			}, { status: 500 });
+			return json(
+				{
+					error: 'Failed to send password reset email. Please try again later.'
+				},
+				{ status: 500 }
+			);
 		}
 
-		return json({ 
-			message: 'If an account with that email exists, a password reset link has been sent.' 
+		return json({
+			message: 'If an account with that email exists, a password reset link has been sent.'
 		});
-
 	} catch (error) {
 		handleApiError(error);
 	}

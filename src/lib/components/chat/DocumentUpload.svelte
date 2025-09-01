@@ -17,9 +17,9 @@
 	// File validation
 	const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 	const ALLOWED_TYPES = {
-		'pdf': ['application/pdf'],
-		'docx': ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
-		'txt': ['text/plain', 'text/markdown']
+		pdf: ['application/pdf'],
+		docx: ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+		txt: ['text/plain', 'text/markdown']
 	};
 
 	function getFileType(mimeType: string): string | null {
@@ -33,12 +33,18 @@
 
 	function validateFile(file: File): { valid: boolean; error?: string } {
 		if (file.size > MAX_FILE_SIZE) {
-			return { valid: false, error: `File size exceeds maximum limit of ${MAX_FILE_SIZE / (1024 * 1024)}MB` };
+			return {
+				valid: false,
+				error: `File size exceeds maximum limit of ${MAX_FILE_SIZE / (1024 * 1024)}MB`
+			};
 		}
 
 		const fileType = getFileType(file.type);
 		if (!fileType) {
-			return { valid: false, error: `Unsupported file type. Allowed types: ${Object.keys(ALLOWED_TYPES).join(', ')}` };
+			return {
+				valid: false,
+				error: `Unsupported file type. Allowed types: ${Object.keys(ALLOWED_TYPES).join(', ')}`
+			};
 		}
 
 		return { valid: true };
@@ -133,7 +139,6 @@
 			} else {
 				throw new Error(result.error || 'Upload failed');
 			}
-
 		} catch (error: any) {
 			console.error('Upload error:', error);
 			uploadStatus = 'error';
@@ -179,7 +184,7 @@
 					<div class="file-size">{formatFileSize(selectedFile.size)}</div>
 				</div>
 				{#if uploadStatus === 'idle'}
-					<button class="remove-btn" onclick={removeFile} disabled={disabled}>
+					<button class="remove-btn" onclick={removeFile} {disabled}>
 						<X size={16} />
 					</button>
 				{:else if uploadStatus === 'uploading'}
@@ -201,7 +206,7 @@
 			{/if}
 
 			{#if uploadStatus === 'idle'}
-				<button class="upload-btn" onclick={uploadFile} disabled={disabled}>
+				<button class="upload-btn" onclick={uploadFile} {disabled}>
 					<Upload size={16} />
 					Upload Document
 				</button>
@@ -224,15 +229,11 @@
 					type="file"
 					accept=".pdf,.docx,.txt,.md"
 					onchange={handleFileInput}
-					disabled={disabled}
+					{disabled}
 					style="display: none"
 					bind:this={fileInput}
 				/>
-				<button
-					class="browse-btn"
-					onclick={() => fileInput?.click()}
-					disabled={disabled}
-				>
+				<button class="browse-btn" onclick={() => fileInput?.click()} {disabled}>
 					Browse Files
 				</button>
 			</div>
@@ -284,8 +285,6 @@
 		gap: 1rem;
 	}
 
-
-
 	.upload-text {
 		display: flex;
 		flex-direction: column;
@@ -332,8 +331,6 @@
 		border: 1px solid #e5e7eb;
 		border-radius: 6px;
 	}
-
-
 
 	.file-details {
 		flex: 1;
@@ -425,8 +422,6 @@
 		flex-shrink: 0;
 	}
 
-
-
 	.error-message {
 		margin-top: 0.5rem;
 		padding: 0.5rem;
@@ -445,8 +440,6 @@
 		gap: 0.5rem;
 		padding: 1rem;
 	}
-
-
 
 	.success-text {
 		font-weight: 500;

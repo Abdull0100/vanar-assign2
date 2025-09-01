@@ -45,27 +45,37 @@
 	<title>Forgot Password - Vanar Chain</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center px-4">
-	<div class="max-w-md w-full">
+<div
+	class="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 px-4"
+>
+	<div class="w-full max-w-md">
 		<!-- Header -->
-		<div class="text-center mb-8">
-			<div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 mb-4">
+		<div class="mb-8 text-center">
+			<div
+				class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-100 to-purple-100"
+			>
 				<span class="text-3xl">🔑</span>
 			</div>
-			<h1 class="text-3xl font-bold text-gray-900 mb-2">Forgot Password?</h1>
-			<p class="text-gray-600">Enter your email address and we'll send you a link to reset your password</p>
+			<h1 class="mb-2 text-3xl font-bold text-gray-900">Forgot Password?</h1>
+			<p class="text-gray-600">
+				Enter your email address and we'll send you a link to reset your password
+			</p>
 		</div>
 
 		<!-- Reset Form -->
-		<div class="bg-white rounded-2xl shadow-xl p-8">
+		<div class="rounded-2xl bg-white p-8 shadow-xl">
 			{#if success}
 				<div class="text-center">
-					<div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-4">
+					<div
+						class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-green-100"
+					>
 						<span class="text-3xl text-green-600">✅</span>
 					</div>
-					<h2 class="text-xl font-semibold text-gray-900 mb-2">Check Your Email</h2>
-					<p class="text-gray-600 mb-6">{success}</p>
-					<p class="text-sm text-gray-500">Please check your email and click the reset link to continue.</p>
+					<h2 class="mb-2 text-xl font-semibold text-gray-900">Check Your Email</h2>
+					<p class="mb-6 text-gray-600">{success}</p>
+					<p class="text-sm text-gray-500">
+						Please check your email and click the reset link to continue.
+					</p>
 				</div>
 			{:else}
 				<form on:submit|preventDefault={requestPasswordReset} class="space-y-6">
@@ -76,7 +86,7 @@
 					{/if}
 
 					<div>
-						<label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+						<label for="email" class="mb-2 block text-sm font-medium text-gray-700">
 							Email Address
 						</label>
 						<input
@@ -84,7 +94,7 @@
 							id="email"
 							bind:value={email}
 							required
-							class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-colors"
+							class="block w-full rounded-lg border-gray-300 shadow-sm transition-colors focus:border-blue-500 focus:ring-blue-500"
 							placeholder="Enter your email address"
 						/>
 					</div>
@@ -92,10 +102,10 @@
 					<button
 						type="submit"
 						disabled={loading || !email.trim()}
-						class="w-full flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-purple-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+						class="flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-3 font-medium text-white transition-all duration-200 hover:from-blue-700 hover:to-purple-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 					>
 						{#if loading}
-							<div class="h-5 w-5 animate-spin rounded-full border-b-2 border-white mr-2"></div>
+							<div class="mr-2 h-5 w-5 animate-spin rounded-full border-b-2 border-white"></div>
 							Sending Reset Link...
 						{:else}
 							<span class="mr-2">📧</span>
@@ -113,10 +123,8 @@
 		</div>
 
 		<!-- Footer -->
-		<div class="text-center mt-8">
-			<p class="text-sm text-gray-500">
-				© 2025  Vanar Chain. The Chain That Thinks.
-			</p>
+		<div class="mt-8 text-center">
+			<p class="text-sm text-gray-500">© 2025 Vanar Chain. The Chain That Thinks.</p>
 		</div>
 	</div>
 </div>

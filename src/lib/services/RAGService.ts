@@ -52,7 +52,7 @@ export class RAGService {
 					return []; // No documents in this conversation
 				}
 
-				const documentIds = conversationDocuments.map(doc => doc.id);
+				const documentIds = conversationDocuments.map((doc) => doc.id);
 
 				// Perform vector similarity search within conversation
 				const similarChunks = await this.findSimilarChunks(
@@ -64,13 +64,13 @@ export class RAGService {
 
 				// Filter by similarity threshold and limit
 				const relevantChunks = similarChunks
-					.filter(result => result.similarity >= similarityThreshold)
+					.filter((result) => result.similarity >= similarityThreshold)
 					.slice(0, limit);
 
 				// Enrich with document names
 				const enrichedChunks: RetrievedChunk[] = [];
 				for (const result of relevantChunks) {
-					const document = conversationDocuments.find(doc => doc.id === result.chunk.documentId);
+					const document = conversationDocuments.find((doc) => doc.id === result.chunk.documentId);
 					if (document) {
 						enrichedChunks.push({
 							chunk: result.chunk,
@@ -85,10 +85,7 @@ export class RAGService {
 
 			// Legacy behavior: search all user's documents
 			const userDocuments = await db.query.documents.findMany({
-				where: and(
-					eq(documents.userId, userId),
-					eq(documents.status, 'completed')
-				),
+				where: and(eq(documents.userId, userId), eq(documents.status, 'completed')),
 				columns: { id: true, originalName: true }
 			});
 
@@ -96,7 +93,7 @@ export class RAGService {
 				return [];
 			}
 
-			const documentIds = userDocuments.map(doc => doc.id);
+			const documentIds = userDocuments.map((doc) => doc.id);
 
 			// Perform vector similarity search
 			const similarChunks = await this.findSimilarChunks(
@@ -107,13 +104,13 @@ export class RAGService {
 
 			// Filter by similarity threshold and limit
 			const relevantChunks = similarChunks
-				.filter(result => result.similarity >= similarityThreshold)
+				.filter((result) => result.similarity >= similarityThreshold)
 				.slice(0, limit);
 
 			// Enrich with document names
 			const enrichedChunks: RetrievedChunk[] = [];
 			for (const result of relevantChunks) {
-				const document = userDocuments.find(doc => doc.id === result.chunk.documentId);
+				const document = userDocuments.find((doc) => doc.id === result.chunk.documentId);
 				if (document) {
 					enrichedChunks.push({
 						chunk: result.chunk,
@@ -124,7 +121,6 @@ export class RAGService {
 			}
 
 			return enrichedChunks;
-
 		} catch (error: any) {
 			console.error('RAG retrieval error:', error);
 			return [];
@@ -139,12 +135,12 @@ export class RAGService {
 			const response = await fetch('http://localhost:8000/embed', {
 				method: 'POST',
 				headers: {
-					'Content-Type': 'application/json',
+					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
 					text: text,
 					user_id: 'system' // System user for general embeddings
-				}),
+				})
 			});
 
 			if (!response.ok) {
@@ -169,12 +165,12 @@ export class RAGService {
 			const response = await fetch('http://localhost:8000/embed/batch', {
 				method: 'POST',
 				headers: {
-					'Content-Type': 'application/json',
+					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
 					texts: texts,
 					user_id: 'system'
-				}),
+				})
 			});
 
 			if (!response.ok) {
@@ -207,7 +203,7 @@ export class RAGService {
 			const word = words[i];
 			let hash = 0;
 			for (let j = 0; j < word.length; j++) {
-				hash = ((hash << 5) - hash) + word.charCodeAt(j);
+				hash = (hash << 5) - hash + word.charCodeAt(j);
 				hash = hash & hash; // Convert to 32-bit integer
 			}
 
@@ -220,7 +216,7 @@ export class RAGService {
 
 		// Normalize the embedding
 		const magnitude = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
-		return embedding.map(val => val / magnitude);
+		return embedding.map((val) => val / magnitude);
 	}
 
 	/**
@@ -237,15 +233,16 @@ export class RAGService {
 			const response = await fetch('http://localhost:8000/search', {
 				method: 'POST',
 				headers: {
-					'Content-Type': 'application/json',
+					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
 					query_embedding: queryEmbedding,
-					user_id: documentIds.length > 0 ? (await this.getUserIdFromDocument(documentIds[0])) : 'system',
+					user_id:
+						documentIds.length > 0 ? await this.getUserIdFromDocument(documentIds[0]) : 'system',
 					conversation_id: conversationId || undefined,
 					limit: limit,
 					threshold: 0.6
-				}),
+				})
 			});
 
 			if (!response.ok) {
@@ -271,7 +268,6 @@ export class RAGService {
 			}));
 
 			return similarities;
-
 		} catch (error) {
 			console.error('Vector search error:', error);
 			// Fallback to direct SQL vector search
@@ -337,13 +333,13 @@ export class RAGService {
 				FROM ${documentChunks} dc
 				WHERE dc."userId" = ${userId}::uuid
 				AND dc.embedding IS NOT NULL
-				AND dc."documentId" = ANY(ARRAY[${documentIds.map(id => `'${id}'`).join(',')}]::uuid[])
+				AND dc."documentId" = ANY(ARRAY[${documentIds.map((id) => `'${id}'`).join(',')}]::uuid[])
 				AND 1 - (dc.embedding <=> ${embeddingStr}::vector) >= 0.3
 				ORDER BY dc.embedding <=> ${embeddingStr}::vector
 				LIMIT ${limit}
 			`);
 
-			return result.map(row => ({
+			return result.map((row) => ({
 				chunk: {
 					id: row.id as string,
 					documentId: row.documentId as string,
@@ -357,7 +353,6 @@ export class RAGService {
 				} as DocumentChunk,
 				similarity: parseFloat(row.cosine_similarity as string)
 			}));
-
 		} catch (error) {
 			console.error('Direct vector search error:', error);
 			// Final fallback to mock similarity search
@@ -400,7 +395,7 @@ export class RAGService {
 			});
 
 			// Calculate cosine similarity for each chunk
-			const similarities = chunks.map(chunk => {
+			const similarities = chunks.map((chunk) => {
 				const similarity = this.cosineSimilarity(queryEmbedding, chunk.embedding || []);
 				return {
 					chunk,
@@ -409,10 +404,7 @@ export class RAGService {
 			});
 
 			// Sort by similarity (descending) and return top results
-			return similarities
-				.sort((a, b) => b.similarity - a.similarity)
-				.slice(0, limit);
-
+			return similarities.sort((a, b) => b.similarity - a.similarity).slice(0, limit);
 		} catch (error) {
 			console.error('Fallback similarity search error:', error);
 			return [];
@@ -455,7 +447,9 @@ export class RAGService {
 		retrievedChunks: RetrievedChunk[]
 	): Promise<Citation[]> {
 		try {
-			console.log(`Creating citations for message ${chatMessageId} with ${retrievedChunks.length} chunks`);
+			console.log(
+				`Creating citations for message ${chatMessageId} with ${retrievedChunks.length} chunks`
+			);
 			const citationRecords: NewCitation[] = [];
 
 			for (const retrieved of retrievedChunks) {
@@ -466,7 +460,9 @@ export class RAGService {
 					documentId: retrieved.chunk.documentId,
 					chunkIds: [retrieved.chunk.id],
 					relevanceScore: Math.round(retrieved.similarity * 100),
-					citationText: retrieved.chunk.content.substring(0, 200) + (retrieved.chunk.content.length > 200 ? '...' : ''),
+					citationText:
+						retrieved.chunk.content.substring(0, 200) +
+						(retrieved.chunk.content.length > 200 ? '...' : ''),
 					pageNumber: metadata?.pageNumber || null,
 					section: metadata?.section || null
 				});
@@ -481,7 +477,6 @@ export class RAGService {
 			}
 
 			return [];
-
 		} catch (error: any) {
 			console.error('Citation creation error:', error);
 			return [];
@@ -529,10 +524,7 @@ export class RAGService {
 	 */
 	async hasProcessedDocuments(userId: string, conversationId?: string): Promise<boolean> {
 		try {
-			const whereConditions = [
-				eq(documents.userId, userId),
-				eq(documents.status, 'completed')
-			];
+			const whereConditions = [eq(documents.userId, userId), eq(documents.status, 'completed')];
 
 			// If conversationId is provided, scope to that conversation
 			if (conversationId) {

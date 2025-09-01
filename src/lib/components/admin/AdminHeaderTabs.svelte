@@ -9,7 +9,9 @@
 </script>
 
 <div class="mb-8">
-	<h1 class="lg:text-3xl font-bold font-sans text-foreground md:text-md sm:text-sm">Comprehensive Admin Dashboard</h1>
+	<h1 class="md:text-md font-sans font-bold text-foreground sm:text-sm lg:text-3xl">
+		Comprehensive Admin Dashboard
+	</h1>
 	<p class="mt-2 font-sans">Monitor user activities, sessions, and system analytics</p>
 </div>
 
@@ -17,27 +19,30 @@
 	<nav class="flex gap-2">
 		<button
 			type="button"
-			class="px-4 py-2 text-sm font-medium rounded border-b-2 transition-colors duration-200 {activeTab === 'overview' 
-				? 'border-primary text-primary bg-primary/10' 
-				: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border hover:bg-muted/50'}"
+			class="rounded border-b-2 px-4 py-2 text-sm font-medium transition-colors duration-200 {activeTab ===
+			'overview'
+				? 'border-primary bg-primary/10 text-primary'
+				: 'border-transparent text-muted-foreground hover:border-border hover:bg-muted/50 hover:text-foreground'}"
 			on:click={() => handleTabClick('overview')}
 		>
 			Overview
 		</button>
 		<button
 			type="button"
-			class="px-4 py-2 text-sm font-medium rounded border-b-2 transition-colors duration-200 {activeTab === 'users' 
-				? 'border-primary text-primary bg-primary/10' 
-				: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border hover:bg-muted/50'}"
+			class="rounded border-b-2 px-4 py-2 text-sm font-medium transition-colors duration-200 {activeTab ===
+			'users'
+				? 'border-primary bg-primary/10 text-primary'
+				: 'border-transparent text-muted-foreground hover:border-border hover:bg-muted/50 hover:text-foreground'}"
 			on:click={() => handleTabClick('users')}
 		>
 			User Management
 		</button>
 		<button
 			type="button"
-			class="px-4 py-2 text-sm font-medium rounded border-b-2 transition-colors duration-200 {activeTab === 'activities' 
-				? 'border-primary text-primary bg-primary/10' 
-				: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border hover:bg-muted/50'}"
+			class="rounded border-b-2 px-4 py-2 text-sm font-medium transition-colors duration-200 {activeTab ===
+			'activities'
+				? 'border-primary bg-primary/10 text-primary'
+				: 'border-transparent text-muted-foreground hover:border-border hover:bg-muted/50 hover:text-foreground'}"
 			on:click={() => handleTabClick('activities')}
 		>
 			Recent Activities
@@ -45,4 +50,3 @@
 	</nav>
 	<Separator class="mt-2" />
 </div>
-

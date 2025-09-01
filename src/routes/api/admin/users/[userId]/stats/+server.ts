@@ -16,13 +16,15 @@ export const GET: RequestHandler = async ({ params }) => {
 		const stats = await db.select().from(userStats).where(eq(userStats.userId, userId)).limit(1);
 
 		// Fetch the most recent activity for this user
-		const lastActivity = await db.select().from(userActivities)
+		const lastActivity = await db
+			.select()
+			.from(userActivities)
 			.where(eq(userActivities.userId, userId))
 			.orderBy(desc(userActivities.createdAt))
 			.limit(1);
 
 		if (stats.length === 0) {
-			return json({ 
+			return json({
 				stats: {
 					totalChatMessages: 0,
 					totalConversations: 0,
@@ -30,25 +32,31 @@ export const GET: RequestHandler = async ({ params }) => {
 					lastLogin: null,
 					profileUpdateCount: 0,
 					passwordChangeCount: 0,
-					lastActivityDetails: lastActivity.length > 0 ? {
-						description: lastActivity[0].description,
-						activityType: lastActivity[0].activityType,
-						createdAt: lastActivity[0].createdAt
-					} : null
+					lastActivityDetails:
+						lastActivity.length > 0
+							? {
+									description: lastActivity[0].description,
+									activityType: lastActivity[0].activityType,
+									createdAt: lastActivity[0].createdAt
+								}
+							: null
 				}
 			});
 		}
 
 		const userStatsData = stats[0];
-		
+
 		// Add last activity details to the stats
 		const statsWithActivity = {
 			...userStatsData,
-			lastActivityDetails: lastActivity.length > 0 ? {
-				description: lastActivity[0].description,
-				activityType: lastActivity[0].activityType,
-				createdAt: lastActivity[0].createdAt
-			} : null
+			lastActivityDetails:
+				lastActivity.length > 0
+					? {
+							description: lastActivity[0].description,
+							activityType: lastActivity[0].activityType,
+							createdAt: lastActivity[0].createdAt
+						}
+					: null
 		};
 
 		return json({ stats: statsWithActivity });

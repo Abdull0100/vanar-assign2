@@ -65,4 +65,4 @@ export const POST: RequestHandler = async ({ request }) => {
 		console.error('Signup error:', error);
 		return json({ error: 'Internal server error' }, { status: 500 });
 	}
-}
+};

@@ -31,7 +31,10 @@ export const DELETE: RequestHandler = async ({ params, locals, request }) => {
 		}
 
 		// Fetch the user before deletion to get their details for the email
-		const [userToDelete] = await db.select().from(users).where(eq(users.id, userId as string));
+		const [userToDelete] = await db
+			.select()
+			.from(users)
+			.where(eq(users.id, userId as string));
 
 		if (!userToDelete) {
 			return json({ error: 'User not found' }, { status: 404 });
@@ -49,10 +52,10 @@ export const DELETE: RequestHandler = async ({ params, locals, request }) => {
 		// Delete related data first to handle foreign key constraints
 		// Delete sessions (these don't have cascade delete)
 		await db.delete(sessions).where(eq(sessions.userId, userId as string));
-		
+
 		// Delete accounts (these have cascade delete but we'll be explicit)
 		await db.delete(accounts).where(eq(accounts.userId, userId as string));
-		
+
 		// Delete chat messages (these have cascade delete but we'll be explicit)
 		await db.delete(chatMessages).where(eq(chatMessages.userId, userId as string));
 
@@ -67,12 +70,8 @@ export const DELETE: RequestHandler = async ({ params, locals, request }) => {
 
 		// Send deletion email notification
 		if (userToDelete.email) {
-			const adminName = session.user.name || session.user.email || "Administrator";
-			await sendAccountDeletionEmail(
-				userToDelete.email, 
-				userToDelete.name || "User", 
-				adminName
-			);
+			const adminName = session.user.name || session.user.email || 'Administrator';
+			await sendAccountDeletionEmail(userToDelete.email, userToDelete.name || 'User', adminName);
 		}
 
 		return json({ message: 'User deleted successfully' });

@@ -91,8 +91,6 @@
 		showChangePasswordModal = false;
 	}
 
-
-
 	async function changePassword() {
 		if (newPassword !== confirmNewPassword) {
 			passwordError = 'New passwords do not match';
@@ -144,8 +142,6 @@
 	function closeDeleteAccountModal() {
 		showDeleteAccountModal = false;
 	}
-
-
 
 	async function deleteAccount() {
 		if (deleteConfirmation !== 'DELETE') {
@@ -205,21 +201,22 @@
 				{:else}
 					<div class="grid gap-6 lg:grid-cols-3">
 						<div class="lg:col-span-2">
-							<ProfileAccountOverview 
-								{user} 
-								bind:name 
-								bind:email 
-								{error} 
-								{success} 
-								{saving} 
+							<ProfileAccountOverview
+								{user}
+								bind:name
+								bind:email
+								{error}
+								{success}
+								{saving}
 								onSubmit={updateProfile}
-								onReset={() => { name = user?.name || ''; error = ''; success = ''; }}
+								onReset={() => {
+									name = user?.name || '';
+									error = '';
+									success = '';
+								}}
 							/>
 						</div>
-						<ProfileSidebar {user}
-							openChangePasswordModal={openChangePasswordModal}
-							openDeleteAccountModal={openDeleteAccountModal}
-						/>
+						<ProfileSidebar {user} {openChangePasswordModal} {openDeleteAccountModal} />
 					</div>
 				{/if}
 			</div>
@@ -228,24 +225,24 @@
 </div>
 
 <ProfileChangePasswordModal
-    show={showChangePasswordModal}
-    bind:currentPassword
-    bind:newPassword
-    bind:confirmNewPassword
-    {changingPassword}
-    {passwordError}
-    {passwordSuccess}
-    onClose={closeChangePasswordModal}
-    onSubmit={changePassword}
+	show={showChangePasswordModal}
+	bind:currentPassword
+	bind:newPassword
+	bind:confirmNewPassword
+	{changingPassword}
+	{passwordError}
+	{passwordSuccess}
+	onClose={closeChangePasswordModal}
+	onSubmit={changePassword}
 />
 
 <ProfileDeleteAccountModal
-    show={showDeleteAccountModal}
-    {user}
-    bind:deletePassword
-    bind:deleteConfirmation
-    {deletingAccount}
-    {deleteError}
-    onClose={closeDeleteAccountModal}
-    onSubmit={deleteAccount}
+	show={showDeleteAccountModal}
+	{user}
+	bind:deletePassword
+	bind:deleteConfirmation
+	{deletingAccount}
+	{deleteError}
+	onClose={closeDeleteAccountModal}
+	onSubmit={deleteAccount}
 />

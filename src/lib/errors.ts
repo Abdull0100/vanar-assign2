@@ -46,11 +46,11 @@ export function handleApiError(err: unknown): never {
 	if (err instanceof AppError) {
 		throw error(err.status, err.message);
 	}
-	
+
 	if (err instanceof Error) {
 		console.error('API Error:', err);
 		throw error(500, 'Internal server error');
 	}
-	
+
 	throw error(500, 'An unexpected error occurred');
 }

@@ -19,24 +19,25 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		// Find and validate reset token
 		const resetToken = await db.query.passwordResetTokens.findFirst({
-			where: and(
-				eq(passwordResetTokens.token, token),
-				gt(passwordResetTokens.expires, new Date())
-			)
+			where: and(eq(passwordResetTokens.token, token), gt(passwordResetTokens.expires, new Date()))
 		});
 
 		if (!resetToken) {
-			return json({ 
-				error: 'Invalid or expired reset token. Please request a new password reset.' 
-			}, { status: 400 });
+			return json(
+				{
+					error: 'Invalid or expired reset token. Please request a new password reset.'
+				},
+				{ status: 400 }
+			);
 		}
 
 		// Hash new password
 		const hashedPassword = await bcrypt.hash(password, 12);
 
 		// Update user password
-		await db.update(users)
-			.set({ 
+		await db
+			.update(users)
+			.set({
 				password: hashedPassword,
 				updatedAt: new Date()
 			})
@@ -45,10 +46,9 @@ export const POST: RequestHandler = async ({ request }) => {
 		// Delete the used reset token
 		await db.delete(passwordResetTokens).where(eq(passwordResetTokens.token, token));
 
-		return json({ 
-			message: 'Password has been reset successfully. You can now sign in with your new password.' 
+		return json({
+			message: 'Password has been reset successfully. You can now sign in with your new password.'
 		});
-
 	} catch (error) {
 		handleApiError(error);
 	}

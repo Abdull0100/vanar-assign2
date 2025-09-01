@@ -1,0 +1,1 @@
+ALTER TABLE "chatMessages" DROP COLUMN "activePath";

@@ -298,10 +298,18 @@ export function createChatStore(userId: string | null) {
 				.map((m) => ({ message: m.content, response: m.content }));
 			const convId = getValue(currentConversationId);
 			const apiConversationId = convId && convId.startsWith('temp-') ? undefined : convId;
+			const activePathValue = getValue(activePath);
+			const parentMessageId = activePathValue.length > 0 ? activePathValue[activePathValue.length - 1] : null;
+
 			const response = await fetch('/api/chat', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ message: messageContent, history, conversationId: apiConversationId })
+				body: JSON.stringify({
+					message: messageContent,
+					history,
+					conversationId: apiConversationId,
+					parentMessageId
+				})
 			});
 
 			if (response.ok && response.headers.get('content-type')?.includes('text/event-stream')) {

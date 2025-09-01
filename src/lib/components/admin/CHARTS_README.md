@@ -5,11 +5,13 @@ This admin dashboard includes comprehensive charts to visualize user data and sy
 ## Chart Components
 
 ### Current Implementation
+
 - **AdminCharts.svelte**: Adaptive component that tries to use shadcn-svelte charts, falls back to custom SVG charts
 - **AdminCustomCharts.svelte**: Custom SVG-based charts using theme-aware colors
 - **AdminChartsOverview.svelte**: Full shadcn-svelte implementation (requires chart components)
 
 ### Features
+
 - **Activity Trend Chart**: 7-day line chart with area fills showing activity and login patterns
 - **User Role Distribution**: Pie chart showing admin vs regular users
 - **Verification Status**: Email verification distribution
@@ -36,6 +38,7 @@ After installation, the `AdminCharts` component will automatically detect and us
 ## Customization
 
 All charts use CSS custom properties for theming:
+
 - `--chart-1` through `--chart-5` for color schemes
 - `--primary`, `--secondary`, etc. for UI elements
 - Fully responsive and accessible
@@ -44,8 +47,9 @@ All charts use CSS custom properties for theming:
 ## Data Sources
 
 Charts automatically pull data from:
+
 - `adminStore.users`: User role and verification data
-- `adminStore.userStats`: Chat and conversation statistics  
+- `adminStore.userStats`: Chat and conversation statistics
 - `adminStore.allRecentActivities`: Activity trends and patterns
 
 The charts update in real-time as admin data changes through the SSE connection.

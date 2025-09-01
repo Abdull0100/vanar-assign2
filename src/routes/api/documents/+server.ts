@@ -41,7 +41,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
 		return json({
 			success: true,
-			documents: userDocuments.map(doc => ({
+			documents: userDocuments.map((doc) => ({
 				id: doc.id,
 				fileName: doc.fileName,
 				originalName: doc.originalName,
@@ -59,20 +59,13 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 				hasMore: offset + limit < Number(count)
 			}
 		});
-
 	} catch (error: any) {
 		console.error('Documents fetch error:', error);
 
 		if (error instanceof AuthError) {
-			return json(
-				{ success: false, error: error.message },
-				{ status: 401 }
-			);
+			return json({ success: false, error: error.message }, { status: 401 });
 		}
 
-		return json(
-			{ success: false, error: 'Failed to fetch documents' },
-			{ status: 500 }
-		);
+		return json({ success: false, error: 'Failed to fetch documents' }, { status: 500 });
 	}
 };

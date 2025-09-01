@@ -1,14 +1,14 @@
 <script lang="ts">
-	import { cn } from "$lib/utils.js";
-	import type { HTMLInputAttributes } from "svelte/elements";
+	import { cn } from '$lib/utils.js';
+	import type { HTMLInputAttributes } from 'svelte/elements';
 
 	type $$Props = HTMLInputAttributes & {
 		class?: string;
 	};
 
-	let className: $$Props["class"] = undefined;
+	let className: $$Props['class'] = undefined;
 	export { className as class };
-	export let value: $$Props["value"] = undefined;
+	export let value: $$Props['value'] = undefined;
 
 	// We need this to support both controlled and uncontrolled components
 	let inputElement: HTMLInputElement;
@@ -21,7 +21,7 @@
 <input
 	bind:this={inputElement}
 	class={cn(
-		"h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+		'h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50',
 		className
 	)}
 	bind:value

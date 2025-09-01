@@ -1,42 +1,52 @@
-import { pgTable, text, timestamp, uuid, integer, primaryKey, boolean, jsonb, customType } from 'drizzle-orm/pg-core';
+import {
+	pgTable,
+	text,
+	timestamp,
+	uuid,
+	integer,
+	primaryKey,
+	boolean,
+	jsonb,
+	customType
+} from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // Custom vector type for pgvector
 const vector = customType<{
-    data: number[];
-    driverData: string;
+	data: number[];
+	driverData: string;
 }>({
-    dataType(config: unknown) {
-        const configObj = config as { dimensions?: number } | undefined;
-        if (!configObj) return 'vector(768)'; // Default for Gemini embeddings
-        return `vector(${configObj.dimensions || 768})`;
-    },
-    toDriver(value: number[]): string {
-        // Convert to PostgreSQL vector format: [1.0,2.0,3.0]
-        return `[${value.join(',')}]`;
-    },
-    fromDriver(value: string | number[]): number[] {
-        try {
-            // Handle case where value is already an array (from database)
-            if (Array.isArray(value)) {
-                return value;
-            }
+	dataType(config: unknown) {
+		const configObj = config as { dimensions?: number } | undefined;
+		if (!configObj) return 'vector(768)'; // Default for Gemini embeddings
+		return `vector(${configObj.dimensions || 768})`;
+	},
+	toDriver(value: number[]): string {
+		// Convert to PostgreSQL vector format: [1.0,2.0,3.0]
+		return `[${value.join(',')}]`;
+	},
+	fromDriver(value: string | number[]): number[] {
+		try {
+			// Handle case where value is already an array (from database)
+			if (Array.isArray(value)) {
+				return value;
+			}
 
-            // Parse vector string format [1.0,2.0,3.0]
-            const vectorStr = value as string;
-            if (vectorStr.startsWith('[') && vectorStr.endsWith(']')) {
-                const values = vectorStr.slice(1, -1).split(',');
-                return values.map(v => parseFloat(v.trim()));
-            }
+			// Parse vector string format [1.0,2.0,3.0]
+			const vectorStr = value as string;
+			if (vectorStr.startsWith('[') && vectorStr.endsWith(']')) {
+				const values = vectorStr.slice(1, -1).split(',');
+				return values.map((v) => parseFloat(v.trim()));
+			}
 
-            // Fallback: try parsing as JSON
-            const parsed = JSON.parse(vectorStr);
-            return Array.isArray(parsed) ? parsed : [];
-        } catch (error) {
-            console.error('Error parsing vector:', error, 'Value:', value);
-            return [];
-        }
-    },
+			// Fallback: try parsing as JSON
+			const parsed = JSON.parse(vectorStr);
+			return Array.isArray(parsed) ? parsed : [];
+		} catch (error) {
+			console.error('Error parsing vector:', error, 'Value:', value);
+			return [];
+		}
+	}
 });
 
 export const users = pgTable('users', {
@@ -115,11 +125,11 @@ export const conversations = pgTable('conversations', {
 export const chatMessages = pgTable('chatMessages', {
 	id: uuid('id').primaryKey().defaultRandom(), // Unique message ID
 	conversationId: uuid('conversationId')
-	  .notNull()
-	  .references(() => conversations.id, { onDelete: 'cascade' }),
+		.notNull()
+		.references(() => conversations.id, { onDelete: 'cascade' }),
 	userId: uuid('userId')
-	  .notNull()
-	  .references(() => users.id, { onDelete: 'cascade' }),
+		.notNull()
+		.references(() => users.id, { onDelete: 'cascade' }),
 	role: text('role').notNull().default('user'), // 'user' | 'assistant' | 'system'
 	content: text('content').notNull(), // Message content
 	parentId: uuid('parentId'), // Parent message ID (null for root)
@@ -128,8 +138,7 @@ export const chatMessages = pgTable('chatMessages', {
 	updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 	// Legacy flat conversation pointer
 	previousId: uuid('previousId') // (deprecated, linear flow only)
-  });
-  
+});
 
 // User Sessions table - tracks user login sessions
 export const userSessions = pgTable('userSessions', {
@@ -166,8 +175,7 @@ export const adminActions = pgTable('adminActions', {
 	adminId: uuid('adminId')
 		.notNull()
 		.references(() => users.id, { onDelete: 'cascade' }),
-	targetUserId: uuid('targetUserId')
-		.references(() => users.id, { onDelete: 'set null' }), // The user affected by the action (optional for system-wide actions)
+	targetUserId: uuid('targetUserId').references(() => users.id, { onDelete: 'set null' }), // The user affected by the action (optional for system-wide actions)
 	actionType: text('actionType').notNull(), // 'user_delete', 'user_disable', 'user_enable', 'role_change', 'user_ban', etc.
 	description: text('description').notNull(),
 	metadata: jsonb('metadata'), // Store additional data like previous values, reason, etc.
@@ -292,8 +300,9 @@ export const documents = pgTable('documents', {
 	userId: uuid('userId')
 		.notNull()
 		.references(() => users.id, { onDelete: 'cascade' }),
-	conversationId: uuid('conversationId')
-		.references(() => conversations.id, { onDelete: 'cascade' }), // Optional: scope to specific conversation
+	conversationId: uuid('conversationId').references(() => conversations.id, {
+		onDelete: 'cascade'
+	}), // Optional: scope to specific conversation
 	fileName: text('fileName').notNull(),
 	originalName: text('originalName').notNull(),
 	fileSize: integer('fileSize').notNull(),
@@ -315,8 +324,9 @@ export const documentChunks = pgTable('documentChunks', {
 	userId: uuid('userId')
 		.notNull()
 		.references(() => users.id, { onDelete: 'cascade' }),
-	conversationId: uuid('conversationId')
-		.references(() => conversations.id, { onDelete: 'cascade' }), // Optional: scope to specific conversation
+	conversationId: uuid('conversationId').references(() => conversations.id, {
+		onDelete: 'cascade'
+	}), // Optional: scope to specific conversation
 	content: text('content').notNull(),
 	chunkIndex: integer('chunkIndex').notNull(),
 	totalChunks: integer('totalChunks').notNull(),
@@ -387,7 +397,3 @@ export const citationsRelations = relations(citations, ({ one }) => ({
 		references: [documents.id]
 	})
 }));
-
-
-
-

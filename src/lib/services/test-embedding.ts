@@ -29,7 +29,6 @@ async function testEmbeddings() {
 		} else {
 			console.log('❌ Embedding dimensions incorrect. Expected 768, got:', embeddings[0]?.length);
 		}
-
 	} catch (error) {
 		console.error('❌ Embedding test failed:', error);
 	}

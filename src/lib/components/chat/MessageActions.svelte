@@ -6,7 +6,7 @@
 	export let messageContent: string;
 	export let isStreaming: boolean = false;
 	export let copiedMessageId: string | null = null;
-	
+
 	export let onEdit: ((messageId: string, newContent: string) => void) | null = null;
 	export let onRegenerate: ((messageId: string, newContent: string) => void) | null = null;
 	export let onContinue: ((messageId: string) => void) | null = null;
@@ -44,17 +44,19 @@
 </script>
 
 {#if !isStreaming}
-	<div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+	<div
+		class="flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+	>
 		<!-- Copy button (always available) -->
 		<button
 			on:click={handleCopy}
-			class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors duration-150"
+			class="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground"
 			title="Copy message"
 		>
 			{#if isCopied}
-				<Check class="w-4 h-4" />
+				<Check class="h-4 w-4" />
 			{:else}
-				<Copy class="w-4 h-4" />
+				<Copy class="h-4 w-4" />
 			{/if}
 		</button>
 
@@ -62,10 +64,10 @@
 		{#if messageRole === 'user'}
 			<button
 				on:click={handleEdit}
-				class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors duration-150"
+				class="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground"
 				title="Edit & Fork"
 			>
-				<Edit class="w-4 h-4" />
+				<Edit class="h-4 w-4" />
 			</button>
 		{/if}
 
@@ -73,20 +75,20 @@
 		{#if messageRole === 'assistant'}
 			<button
 				on:click={handleRegenerate}
-				class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors duration-150"
+				class="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground"
 				title="Regenerate & Fork"
 			>
-				<RotateCcw class="w-4 h-4" />
+				<RotateCcw class="h-4 w-4" />
 			</button>
 		{/if}
 
 		<!-- Continue action (available for all messages) -->
 		<button
 			on:click={handleContinue}
-			class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors duration-150"
+			class="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground"
 			title="Continue conversation"
 		>
-			<MessageSquare class="w-4 h-4" />
+			<MessageSquare class="h-4 w-4" />
 		</button>
 	</div>
 {/if}

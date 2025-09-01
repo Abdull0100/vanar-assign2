@@ -66,5 +66,3 @@ export async function deleteUser(userId: string) {
 	}
 	return response.json().catch(() => ({}));
 }
-
-

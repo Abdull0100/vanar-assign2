@@ -6,10 +6,10 @@ export const GET: RequestHandler = async () => {
 	try {
 		// Get all verification tokens
 		const allTokens = await db.select().from(verificationTokens);
-		
+
 		console.log('All verification tokens in database:', allTokens);
-		
-		return json({ 
+
+		return json({
 			tokens: allTokens,
 			count: allTokens.length,
 			tableName: 'verificationTokens'

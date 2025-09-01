@@ -3,7 +3,7 @@ import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ url }) => {
 	const errorType = url.searchParams.get('type') || '500';
-	
+
 	switch (errorType) {
 		case '404':
 			throw error(404, 'This is a test 404 error page');

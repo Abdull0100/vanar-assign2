@@ -39,6 +39,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const message: string = body.message;
 		const _history: HistoryTurn[] | undefined = Array.isArray(body.history) ? body.history : undefined;
 		const conversationId: string | undefined = body.conversationId;
+		const parentMessageId: string | undefined = body.parentMessageId;
 		const session = await locals.getSession?.();
 
 		if (!session?.user?.id) {
@@ -150,19 +151,25 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const treeManager = new ChatTreeManager();
 		treeManager.loadFromDatabase(allMessages);
 
-		// Determine the correct parent for the new message
-		// It should be the last message in the current active branch
-		let parentMessageId: string | null = null;
-		const activeConversation = treeManager.getActiveConversation();
+		// Use the provided parentMessageId if available, otherwise determine from active conversation
+		let actualParentMessageId: string | null = parentMessageId || null;
 
-		if (activeConversation.length > 0) {
-			// Use the last message in the active conversation as the parent
-			parentMessageId = activeConversation[activeConversation.length - 1].id;
-			console.log('Adding new message as child of:', parentMessageId);
+		if (!actualParentMessageId) {
+			// Determine the correct parent for the new message
+			// It should be the last message in the current active branch
+			const activeConversation = treeManager.getActiveConversation();
+
+			if (activeConversation.length > 0) {
+				// Use the last message in the active conversation as the parent
+				actualParentMessageId = activeConversation[activeConversation.length - 1].id;
+				console.log('Adding new message as child of (inferred):', actualParentMessageId);
+			}
+		} else {
+			console.log('Adding new message as child of (provided):', actualParentMessageId);
 		}
 
 		// Add user message to tree
-		const userTreeNode = parentMessageId
+		const userTreeNode = actualParentMessageId
 			? treeManager.addMessageToBranch({
 				id: crypto.randomUUID(),
 				role: 'user',
@@ -171,7 +178,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				updatedAt: new Date().toISOString(),
 				conversationId: targetConversationId,
 				userId: session.user.id
-			}, parentMessageId)
+			}, actualParentMessageId)
 			: treeManager.addMessage({
 				id: crypto.randomUUID(),
 				role: 'user',
@@ -189,7 +196,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			userId: session.user.id,
 			role: 'user',
 			content: message,
-			parentId: userTreeNode.parentId,
+			parentId: actualParentMessageId,
 			childrenIds: userTreeNode.childrenIds,
 			previousId: previousId, // Set previousId for database compatibility
 			createdAt: new Date(),
@@ -197,16 +204,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}).returning();
 
 		// Update parent's childrenIds if it exists
-		if (userTreeNode.parentId) {
-			const treeParent = treeManager.getMessage(userTreeNode.parentId);
+		if (actualParentMessageId) {
+			const treeParent = treeManager.getMessage(actualParentMessageId);
 			const updatedChildrenIds = treeParent ? treeParent.childrenIds : userTreeNode.childrenIds;
-			
+
 			await db.update(chatMessages)
-				.set({ 
+				.set({
 					childrenIds: updatedChildrenIds,
 					updatedAt: new Date()
 				})
-				.where(eq(chatMessages.id, userTreeNode.parentId));
+				.where(eq(chatMessages.id, actualParentMessageId));
 			console.log('Updated user message parent childrenIds to:', updatedChildrenIds);
 		}
 

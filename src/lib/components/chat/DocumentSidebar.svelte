@@ -31,7 +31,7 @@
 {#if isOpen}
 	<!-- Backdrop -->
 	<div
-		class="fixed inset-0 bg-black/50 z-40 transition-opacity duration-200"
+		class="fixed inset-0 z-40 bg-black/50 transition-opacity duration-200"
 		on:click={closeSidebar}
 		on:keydown={(e) => e.key === 'Escape' && closeSidebar()}
 		role="button"
@@ -40,42 +40,38 @@
 	></div>
 
 	<!-- Sidebar -->
-	<div class="fixed right-0 top-0 h-full w-96 bg-white shadow-xl z-50 transform transition-transform duration-200 ease-in-out">
+	<div
+		class="fixed top-0 right-0 z-50 h-full w-96 transform bg-white shadow-xl transition-transform duration-200 ease-in-out"
+	>
 		<!-- Header -->
-		<div class="flex items-center justify-between p-4 border-b border-gray-200">
+		<div class="flex items-center justify-between border-b border-gray-200 p-4">
 			<div class="flex items-center gap-2">
-				<FileText class="w-5 h-5 text-blue-600" />
+				<FileText class="h-5 w-5 text-blue-600" />
 				<h2 class="text-lg font-semibold text-gray-900">Document Management</h2>
 			</div>
 			<button
 				on:click={closeSidebar}
-				class="p-1 hover:bg-gray-100 rounded-md transition-colors"
+				class="rounded-md p-1 transition-colors hover:bg-gray-100"
 				title="Close sidebar"
 			>
-				<X class="w-5 h-5 text-gray-500" />
+				<X class="h-5 w-5 text-gray-500" />
 			</button>
 		</div>
 
 		<!-- Content -->
 		<div class="flex-1 overflow-y-auto">
 			<!-- Upload Section -->
-			<div class="p-4 border-b border-gray-200">
-				<h3 class="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
-					<Upload class="w-4 h-4" />
+			<div class="border-b border-gray-200 p-4">
+				<h3 class="mb-3 flex items-center gap-2 text-sm font-medium text-gray-900">
+					<Upload class="h-4 w-4" />
 					Upload Document
 				</h3>
-				<DocumentUpload
-					{conversationId}
-					on:uploadSuccess={handleUploadSuccess}
-				/>
+				<DocumentUpload {conversationId} on:uploadSuccess={handleUploadSuccess} />
 			</div>
 
 			<!-- Documents List Section -->
 			<div class="p-4">
-				<DocumentList
-					{refreshTrigger}
-					on:documentDeleted={handleDocumentDeleted}
-				/>
+				<DocumentList {refreshTrigger} on:documentDeleted={handleDocumentDeleted} />
 			</div>
 		</div>
 	</div>

@@ -153,6 +153,7 @@ GEMINI_API_KEY=your-gemini-api-key
 ### OAuth Setup
 
 #### Google OAuth
+
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create a new project or select existing one
 3. Enable Google+ API
@@ -162,6 +163,7 @@ GEMINI_API_KEY=your-gemini-api-key
    - `http://localhost:5173/api/auth/callback/google/`
 
 #### GitHub OAuth
+
 1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
 2. Create new OAuth App
 3. Set callback URL: `http://localhost:5173/api/auth/callback/github`
@@ -491,6 +493,7 @@ If you encounter issues:
 ## 🆕 Recent Updates & Improvements
 
 ### Latest Fixes (Latest Session)
+
 - ✅ **Accessibility Compliance**: Full ARIA support and keyboard navigation
 - ✅ **Profile Page**: Fixed modal interactions and form handling
 - ✅ **Email System**: Streamlined Gmail configuration
@@ -501,6 +504,7 @@ If you encounter issues:
 - ✅ **Empty Room Filtering**: Automatic removal of conversations with no messages
 
 ### Key Improvements Made
+
 - **Accessibility**: WCAG compliant with proper ARIA roles and keyboard support
 - **Email Functionality**: Robust verification and password reset system
 - **Error Handling**: Beautiful custom error pages with production security
@@ -513,6 +517,7 @@ If you encounter issues:
 ## 🎯 Assignment 2 Requirements Met
 
 ### ✅ Core Features
+
 - [x] **Auth.js Integration** - Complete authentication system
 - [x] **Database Sessions** - PostgreSQL-based sessions (no JWT)
 - [x] **Protected Routes** - Role-based access control
@@ -523,6 +528,7 @@ If you encounter issues:
 - [x] **OAuth Integration** - Google and GitHub support
 
 ### ✅ Technical Requirements
+
 - [x] **SvelteKit 5.0** - Modern framework implementation
 - [x] **PostgreSQL** - Production-ready database
 - [x] **Drizzle ORM** - Type-safe database operations
@@ -532,6 +538,7 @@ If you encounter issues:
 - [x] **Documentation** - Complete setup and usage guides
 
 ### ✅ Bonus Features
+
 - [x] **AI Chat Interface** - Google Gemini integration
 - [x] **Streaming Responses** - Real-time AI interaction
 - [x] **Responsive Design** - Mobile-first approach

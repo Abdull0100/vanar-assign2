@@ -12,17 +12,17 @@ type ChatMessage = InferSelectModel<typeof chatMessages>;
  * Each row represents a complete Q&A pair.
  */
 export function buildRecentTranscript(messages: ChatMessage[]): string {
-  if (!messages || messages.length === 0) return '';
-  let out = '';
-  for (const m of messages) {
-    // Each row contains user context + AI response
-    if (m.role === 'user') {
-      out += `User: ${m.content}\n`;
-    } else if (m.role === 'assistant') {
-      out += `Vanar: ${m.content}\n`;
-    }
-  }
-  return out.trim();
+	if (!messages || messages.length === 0) return '';
+	let out = '';
+	for (const m of messages) {
+		// Each row contains user context + AI response
+		if (m.role === 'user') {
+			out += `User: ${m.content}\n`;
+		} else if (m.role === 'assistant') {
+			out += `Vanar: ${m.content}\n`;
+		}
+	}
+	return out.trim();
 }
 
 // Types for the required JSON structure
@@ -59,7 +59,7 @@ export interface ChatHistoryResponse {
  */
 export function transformChatHistory(dbConversations: any[]): ChatHistoryResponse {
 	return {
-		conversations: dbConversations.map(conv => transformConversation(conv))
+		conversations: dbConversations.map((conv) => transformConversation(conv))
 	};
 }
 
@@ -95,20 +95,20 @@ export function transformChatMessage(dbMessage: any): ChatMessageResponse {
  * Each row represents a single message with role-based content.
  */
 export function transformDbMessagesToView(dbMessages: any[]): Array<{
-  id: string;
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-  createdAt: string;
-  isStreaming?: boolean;
+	id: string;
+	role: 'user' | 'assistant' | 'system';
+	content: string;
+	createdAt: string;
+	isStreaming?: boolean;
 }> {
-  if (!dbMessages || !Array.isArray(dbMessages)) return [];
-  return dbMessages.map((msg: any) => ({
-    id: msg.id,
-    role: msg.role || 'user',
-    content: msg.content || '',
-    createdAt: msg.createdAt,
-    isStreaming: false
-  }));
+	if (!dbMessages || !Array.isArray(dbMessages)) return [];
+	return dbMessages.map((msg: any) => ({
+		id: msg.id,
+		role: msg.role || 'user',
+		content: msg.content || '',
+		createdAt: msg.createdAt,
+		isStreaming: false
+	}));
 }
 
 /**
@@ -149,20 +149,23 @@ export function createEmptyConversation(): Omit<ConversationResponse, 'id' | 'me
  * Get the root message of a conversation thread
  */
 export function getRootMessage(messages: ChatMessage[]): ChatMessage | null {
-	return messages.find(msg => !msg.parentId) || null;
+	return messages.find((msg) => !msg.parentId) || null;
 }
 
 /**
  * Get all child messages of a specific parent message
  */
 export function getChildMessages(messages: ChatMessage[], parentId: string): ChatMessage[] {
-	return messages.filter(msg => msg.parentId === parentId);
+	return messages.filter((msg) => msg.parentId === parentId);
 }
 
 /**
  * Get the full conversation thread starting from a root message
  */
-export function getConversationThread(messages: ChatMessage[], rootMessageId: string): ChatMessage[] {
+export function getConversationThread(
+	messages: ChatMessage[],
+	rootMessageId: string
+): ChatMessage[] {
 	const thread: ChatMessage[] = [];
 	const visited = new Set<string>();
 
@@ -170,14 +173,14 @@ export function getConversationThread(messages: ChatMessage[], rootMessageId: st
 		if (visited.has(messageId)) return;
 		visited.add(messageId);
 
-		const message = messages.find(msg => msg.id === messageId);
+		const message = messages.find((msg) => msg.id === messageId);
 		if (!message) return;
 
 		thread.push(message);
 
 		// Traverse children
-		const children = messages.filter(msg => msg.parentId === messageId);
-		children.forEach(child => traverse(child.id));
+		const children = messages.filter((msg) => msg.parentId === messageId);
+		children.forEach((child) => traverse(child.id));
 	}
 
 	traverse(rootMessageId);
@@ -196,11 +199,11 @@ export function hasForks(message: ChatMessage): boolean {
  */
 export function getMessageDepth(messages: ChatMessage[], messageId: string): number {
 	let depth = 0;
-	let currentMessage = messages.find(msg => msg.id === messageId);
+	let currentMessage = messages.find((msg) => msg.id === messageId);
 
 	while (currentMessage?.parentId) {
 		depth++;
-		currentMessage = messages.find(msg => msg.id === currentMessage?.parentId);
+		currentMessage = messages.find((msg) => msg.id === currentMessage?.parentId);
 	}
 
 	return depth;

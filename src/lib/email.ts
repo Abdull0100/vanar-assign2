@@ -225,7 +225,11 @@ export const sendEmail = async (to: string, subject: string, html: string) => {
 };
 
 // Specific email functions
-export const sendVerificationEmail = async (email: string, tokenOrUrl: string, baseUrl?: string) => {
+export const sendVerificationEmail = async (
+	email: string,
+	tokenOrUrl: string,
+	baseUrl?: string
+) => {
 	// Handle both token (string) and full URL from Auth.js
 	let url: string;
 	if (tokenOrUrl.startsWith('http')) {
@@ -236,12 +240,12 @@ export const sendVerificationEmail = async (email: string, tokenOrUrl: string, b
 		const domain = baseUrl || 'http://localhost:5173';
 		url = `${domain}${tokenOrUrl}`;
 	}
-	
+
 	console.log('Sending verification email to:', email, 'with URL:', url);
-	
+
 	const html = createVerificationEmail(email, url);
 	const result = await sendEmail(email, 'Verify Your Email - Vanar Chain', html);
-	
+
 	console.log('Verification email send result:', result);
 	return result;
 };
@@ -255,7 +259,7 @@ export const sendPasswordResetEmail = async (email: string, token: string, baseU
 
 export const sendAdminPromotionEmail = async (email: string, name: string) => {
 	const html = createAdminPromotionEmail(email, name);
-	return await sendEmail(email, '🎉 Congratulations! You\'re Now an Admin - Vanar Chain', html);
+	return await sendEmail(email, "🎉 Congratulations! You're Now an Admin - Vanar Chain", html);
 };
 
 export const sendAdminDemotionEmail = async (email: string, name: string, adminName: string) => {

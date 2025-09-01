@@ -19,11 +19,15 @@ export const GET: RequestHandler = async ({ locals, request }) => {
 
 		// Get all users with their stats
 		const allUsers = await db.select().from(users).orderBy(users.createdAt);
-		
+
 		// Get user stats for each user
 		const allUsersWithStats = await Promise.all(
 			allUsers.map(async (user) => {
-				const stats = await db.select().from(userStats).where(eq(userStats.userId, user.id)).limit(1);
+				const stats = await db
+					.select()
+					.from(userStats)
+					.where(eq(userStats.userId, user.id))
+					.limit(1);
 				return {
 					...user,
 					userStats: stats
@@ -33,22 +37,27 @@ export const GET: RequestHandler = async ({ locals, request }) => {
 
 		// Get overall system statistics
 		const totalUsers = allUsersWithStats.length;
-		const verifiedUsers = allUsersWithStats.filter(u => u.emailVerified).length;
-		const adminUsers = allUsersWithStats.filter(u => u.role === 'admin').length;
-		const regularUsers = allUsersWithStats.filter(u => u.role === 'user').length;
+		const verifiedUsers = allUsersWithStats.filter((u) => u.emailVerified).length;
+		const adminUsers = allUsersWithStats.filter((u) => u.role === 'admin').length;
+		const regularUsers = allUsersWithStats.filter((u) => u.role === 'user').length;
 
 		// Calculate chat statistics
-		const totalChatMessages = allUsersWithStats.reduce((sum, user) => 
-			sum + (user.userStats?.[0]?.totalChatMessages || 0), 0
+		const totalChatMessages = allUsersWithStats.reduce(
+			(sum, user) => sum + (user.userStats?.[0]?.totalChatMessages || 0),
+			0
 		);
-		const totalConversations = allUsersWithStats.reduce((sum, user) => 
-			sum + (user.userStats?.[0]?.totalConversations || 0), 0
+		const totalConversations = allUsersWithStats.reduce(
+			(sum, user) => sum + (user.userStats?.[0]?.totalConversations || 0),
+			0
 		);
 
 		// Get most active users
 		const mostActiveUsers = allUsersWithStats
-			.filter(user => user.userStats?.[0])
-			.sort((a, b) => (b.userStats[0]?.totalChatMessages || 0) - (a.userStats[0]?.totalChatMessages || 0))
+			.filter((user) => user.userStats?.[0])
+			.sort(
+				(a, b) =>
+					(b.userStats[0]?.totalChatMessages || 0) - (a.userStats[0]?.totalChatMessages || 0)
+			)
 			.slice(0, 10);
 
 		// Get recent activity
@@ -63,7 +72,7 @@ export const GET: RequestHandler = async ({ locals, request }) => {
 				totalChatMessages,
 				totalConversations
 			},
-			mostActiveUsers: mostActiveUsers.map(user => ({
+			mostActiveUsers: mostActiveUsers.map((user) => ({
 				id: user.id,
 				name: user.name,
 				email: user.email,
@@ -71,7 +80,7 @@ export const GET: RequestHandler = async ({ locals, request }) => {
 				stats: user.userStats?.[0] || null
 			})),
 			recentActivity,
-			userStats: allUsersWithStats.map(user => ({
+			userStats: allUsersWithStats.map((user) => ({
 				id: user.id,
 				name: user.name,
 				email: user.email,

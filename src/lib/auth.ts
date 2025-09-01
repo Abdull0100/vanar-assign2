@@ -9,9 +9,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { eq } from 'drizzle-orm';
 
-import { 
-	AUTH_SECRET
-} from '$env/static/private';
+import { AUTH_SECRET } from '$env/static/private';
 import { db } from './db';
 import { users, accounts, sessions, verificationTokens } from './db/schema';
 import { sendVerificationEmail } from '$lib/email';
@@ -76,7 +74,6 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 		// 		}
 		// 	}
 		// }),
-		
 		// OAuth providers are now enabled
 	],
 
@@ -95,12 +92,12 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 				const dbUser = await db.query.users.findFirst({
 					where: eq(users.email, user.email!)
 				});
-				
+
 				if (dbUser && !dbUser.emailVerified) {
 					return false; // Prevent unverified users from signing in
 				}
 			}
-			
+
 			return true;
 		},
 
@@ -108,7 +105,7 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 			// Handle redirects properly
 			if (url.startsWith('/')) return `${baseUrl}${url}`;
 			if (new URL(url).origin === baseUrl) return url;
-			
+
 			// Default redirect to dashboard after successful auth
 			return `${baseUrl}/dashboard`;
 		}
