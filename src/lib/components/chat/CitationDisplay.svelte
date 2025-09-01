@@ -33,12 +33,23 @@
 
 			if (result.success) {
 				citations = result.citations;
+				// If no citations returned, don't show any UI
+				if (citations.length === 0) {
+					loading = false;
+					return;
+				}
 			} else {
-				throw new Error(result.error || 'Failed to fetch citations');
+				// If the API returns an error (like message not found), silently handle it
+				// This is expected for messages without citations
+				citations = [];
+				loading = false;
+				return;
 			}
 		} catch (err: any) {
-			console.error('Fetch citations error:', err);
-			error = err.message || 'Failed to load citations';
+			// Silently handle fetch errors for messages without citations
+			// This prevents console spam for normal chat messages
+			citations = [];
+			error = '';
 		} finally {
 			loading = false;
 		}

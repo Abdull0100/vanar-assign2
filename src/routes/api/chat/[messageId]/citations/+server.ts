@@ -49,7 +49,27 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				columns: { id: true, userId: true, role: true }
 			});
 			console.log('Message exists in DB:', messageExists ? `userId: ${messageExists.userId}, role: ${messageExists.role}` : 'NOT FOUND AT ALL');
-			throw new ValidationError('Chat message not found or access denied');
+			
+			// Return empty citations instead of throwing error for non-existent messages
+			return json({
+				success: true,
+				citations: []
+			});
+		}
+
+		// First check if any citations exist for this message
+		const citationCount = await db.query.citations.findFirst({
+			where: eq(citations.chatMessageId, messageId),
+			columns: { id: true }
+		});
+
+		// If no citations exist, return empty array immediately
+		if (!citationCount) {
+			console.log(`No citations found for message ${messageId} - returning empty array`);
+			return json({
+				success: true,
+				citations: []
+			});
 		}
 
 		// Get citations for the message
@@ -66,6 +86,8 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			},
 			orderBy: (citations, { desc }) => [desc(citations.relevanceScore)]
 		});
+
+		console.log(`Found ${messageCitations.length} citations for message ${messageId}`);
 
 		return json({
 			success: true,

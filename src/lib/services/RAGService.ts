@@ -493,4 +493,112 @@ export class RAGService {
 			return false;
 		}
 	}
+
+	/**
+	 * Determine if a query should trigger document retrieval
+	 * Returns false for casual/short inputs, true for meaningful queries
+	 */
+	static shouldPerformRetrieval(query: string): boolean {
+		if (!query || typeof query !== 'string') {
+			return false;
+		}
+
+		const trimmedQuery = query.trim().toLowerCase();
+
+		// Skip very short inputs (less than 3 characters)
+		if (trimmedQuery.length < 3) {
+			return false;
+		}
+
+		// Common casual/greeting patterns to skip
+		const casualPatterns = [
+			// Greetings
+			/^(hi|hello|hey|yo|sup)\s*$/,
+			// Simple responses
+			/^(ok|okay|alright|sure|yes|yeah|yep|no|nope)\s*$/,
+			// Thanks/politeness
+			/^(thanks|thank you|thx|ty)\s*$/,
+			// Goodbyes
+			/^(bye|goodbye|see you|cya)\s*$/,
+			// Social
+			/^(how are you|what's up|wassup)\??$/,
+			// Simple reactions
+			/^(good|nice|cool|great|awesome|wow|lol|haha)\s*$/,
+			// Test inputs
+			/^(test|testing)\s*$/
+		];
+
+		// Check if query matches any casual pattern
+		if (casualPatterns.some(pattern => pattern.test(trimmedQuery))) {
+			return false;
+		}
+
+		// Skip single word casual inputs
+		const words = trimmedQuery.split(/\s+/).filter(word => word.length > 0);
+		if (words.length === 1) {
+			const casualWords = [
+				'hi', 'hello', 'hey', 'yo', 'ok', 'okay', 'yes', 'no', 
+				'thanks', 'bye', 'good', 'bad', 'nice', 'cool', 'wow', 
+				'great', 'awesome', 'sure', 'fine', 'test', 'hy'
+			];
+			
+			if (casualWords.includes(trimmedQuery)) {
+				return false;
+			}
+		}
+
+		// For queries longer than 15 characters, likely meaningful
+		if (trimmedQuery.length > 15) {
+			return true;
+		}
+
+		// Check for question indicators
+		if (trimmedQuery.includes('?') || 
+			/\b(what|how|why|when|where|which|who|can|could|would|should)\b/.test(trimmedQuery)) {
+			return true;
+		}
+
+		// Check for content-related keywords that might be in documents
+		const contentKeywords = [
+			'assignment', 'project', 'task', 'homework', 'work', 'job',
+			'explain', 'describe', 'show', 'tell', 'find', 'search',
+			'document', 'file', 'report', 'data', 'information',
+			'help', 'problem', 'issue', 'solution', 'answer',
+			'algorithm', 'graph', 'neural', 'network', 'image', 'processing'
+		];
+
+		// Check for queries that are clearly outside document scope
+		const outsideScopeKeywords = [
+			'pakistan', 'country', 'geography', 'politics', 'history',
+			'weather', 'news', 'sports', 'entertainment', 'celebrity',
+			'recipe', 'cooking', 'travel', 'tourism', 'shopping'
+		];
+
+		// Check for common "tell me about X" patterns for general topics (but allow PDF/document queries)
+		const generalTopicPatterns = [
+			/^tell me about (pakistan|india|china|america|canada|australia)$/,
+			/^what is (pakistan|india|china|america|canada|australia)$/,
+			/^about (pakistan|india|china|america|canada|australia)$/
+		];
+
+		// If query matches general topic patterns (but not document-related), skip retrieval
+		if (generalTopicPatterns.some(pattern => pattern.test(trimmedQuery))) {
+			console.log(`Detected general topic query: "${trimmedQuery}" - skipping retrieval`);
+			return false;
+		}
+
+		// Only skip for outside-scope keywords if they're not part of a document query
+		const isDocumentQuery = /\b(pdf|document|file|interns|assignment|project)\b/.test(trimmedQuery);
+		if (!isDocumentQuery && outsideScopeKeywords.some(keyword => trimmedQuery.includes(keyword))) {
+			console.log(`Detected outside-scope keyword in query: "${trimmedQuery}" - skipping retrieval`);
+			return false;
+		}
+
+		if (contentKeywords.some(keyword => trimmedQuery.includes(keyword))) {
+			return true;
+		}
+
+		// Default to false for short, unclear queries
+		return trimmedQuery.length > 15;
+	}
 }

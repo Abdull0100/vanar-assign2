@@ -309,10 +309,34 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		let ragContext = '';
 		let retrievedChunks: Awaited<ReturnType<typeof ragService.retrieveRelevantChunks>> = [];
 
-		if (hasDocuments) {
-			// Retrieve relevant document chunks
-			retrievedChunks = await ragService.retrieveRelevantChunks(message, session.user.id, 5, 0.6);
-			ragContext = ragService.buildContextString(retrievedChunks);
+		// Enhanced RAG decision logic with similarity checking
+		const shouldRetrieve = RAGService.shouldPerformRetrieval(message);
+		console.log(`RAG Decision - Query: "${message}", HasDocs: ${hasDocuments}, ShouldRetrieve: ${shouldRetrieve}`);
+		
+		if (hasDocuments && shouldRetrieve) {
+			console.log('Performing trial document retrieval to check relevance');
+			// Perform trial retrieval to check similarity scores
+			const trialChunks = await ragService.retrieveRelevantChunks(message, session.user.id, 3, 0.6);
+			
+			// Check if top result meets similarity threshold (0.60 for better document access)
+			const hasRelevantResults = trialChunks.length > 0 && trialChunks[0].similarity >= 0.60;
+			console.log(`Trial retrieval: ${trialChunks.length} chunks, top similarity: ${trialChunks[0]?.similarity || 0}, relevant: ${hasRelevantResults}`);
+			
+			if (hasRelevantResults) {
+				console.log('High similarity found - using document retrieval');
+				// Use the trial results since they meet the threshold
+				retrievedChunks = trialChunks;
+				ragContext = ragService.buildContextString(retrievedChunks);
+				console.log(`Using ${retrievedChunks.length} relevant chunks (top score: ${trialChunks[0].similarity})`);
+			} else {
+				console.log('Low similarity scores - falling back to general AI response');
+				retrievedChunks = []; // Don't use low-relevance results
+				ragContext = '';
+			}
+		} else {
+			console.log('Skipping document retrieval - casual/short input detected or no documents');
+			retrievedChunks = []; // Explicitly ensure empty array
+			ragContext = '';
 		}
 
 		// Prepare the prompt with conversation context and RAG information
@@ -328,17 +352,22 @@ ${hasDocuments ? 'Please provide a helpful response based on the available conte
 
 		// Stream the response
 		const result = await genAI.getGenerativeModel({ model: 'gemini-1.5-flash' }).generateContentStream(prompt);
+		let streamClosed = false;
 		const stream = new ReadableStream({
 			async start(controller) {
 				try {
 					let fullResponse = '';
 					
 					for await (const chunk of result.stream) {
+						if (streamClosed) break;
+						
 						const chunkText = chunk.text();
 						fullResponse += chunkText;
 						
-						// Send the chunk to the client
-						controller.enqueue(`data: ${JSON.stringify({ chunk: chunkText })}\n\n`);
+						// Send the chunk to the client (only if stream is still open)
+						if (!streamClosed) {
+							controller.enqueue(`data: ${JSON.stringify({ chunk: chunkText })}\n\n`);
+						}
 					}
 					
 					// Save the complete response as a new assistant message using tree structure
@@ -385,20 +414,25 @@ ${hasDocuments ? 'Please provide a helpful response based on the available conte
 						// Create citations if we retrieved relevant chunks
 						if (retrievedChunks.length > 0) {
 							try {
+								console.log(`Creating citations for message ${assistantTreeNode.id} with ${retrievedChunks.length} chunks`);
 								await ragService.createCitations(assistantTreeNode.id, retrievedChunks);
-								console.log(`Created ${retrievedChunks.length} citations for message ${assistantTreeNode.id}`);
+								console.log(`Successfully created ${retrievedChunks.length} citations for message ${assistantTreeNode.id}`);
 							} catch (citationError) {
 								console.warn('Failed to create citations:', citationError);
 							}
+						} else {
+							console.log(`No citations needed for message ${assistantTreeNode.id} - no retrieved chunks`);
 						}
 					}
 					
-					// Send completion signal
-					controller.enqueue(`data: ${JSON.stringify({ 
-						done: true, 
-						fullResponse,
-						conversationId: targetConversationId // Include the target conversation ID
-					})}\n\n`);
+					// Send completion signal (only if stream is still open)
+					if (!streamClosed) {
+						controller.enqueue(`data: ${JSON.stringify({ 
+							done: true, 
+							fullResponse,
+							conversationId: targetConversationId // Include the target conversation ID
+						})}\n\n`);
+					}
 					
 					// Periodically update rolling summary every 10 messages
 					try {
@@ -461,12 +495,18 @@ ${hasDocuments ? 'Please provide a helpful response based on the available conte
 						});
 					}
 					
-					controller.enqueue(`data: ${JSON.stringify({ 
-						error: errorMessage,
-						conversationId: targetConversationId // Include the target conversation ID
-					})}\n\n`);
+					if (!streamClosed) {
+						controller.enqueue(`data: ${JSON.stringify({ 
+							error: errorMessage,
+							conversationId: targetConversationId // Include the target conversation ID
+						})}\n\n`);
+					}
+					streamClosed = true;
 					controller.close();
 				}
+			},
+			cancel() {
+				streamClosed = true;
 			}
 		});
 
