@@ -98,9 +98,8 @@
 </svelte:head>
 
 <div class="min-h-screen bg-background">
-	<Navigation user={user ?? null} currentPage="chat" />
-	<div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-		<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6 h-[calc(100vh-8rem)] min-h-[600px]">
+	<div class="flex h-screen">
+		<div class="w-[450px] flex-shrink-0">
 			<ChatSidebar
 				memoizedConversations={$conversations}
 				currentConversationId={$currentConversationId}
@@ -111,37 +110,36 @@
 				error={$error}
 				getTimeUntilRetry={getTimeUntilRetry}
 				{initializing}
+				{user}
 			/>
 
-			<div class="lg:col-span-3 order-1 lg:order-2 min-h-0 h-full flex flex-col">
-				<div class="rounded-xl bg-card shadow-lg overflow-hidden h-full min-h-0 flex flex-col border">
-					<ChatHeader
-						error={$error}
-						retryCountdown={0}
-						{getTimeUntilRetry}
-						on:toggleDocuments={toggleDocumentSidebar}
-					/>
-					<ChatMessages
-						bind:this={chatMessagesRef}
-						messages={$messages}
-						{initializing}
-						onForkMessage={forkMessage}
-						onRegenerateMessage={regenerateMessage}
-						onSwitchBranch={switchBranch}
-						branchNavigation={$branchNavigation}
-					/>
-					{#if $error}
-						<ChatErrorBanner
-							error={$error}
-							{canRetryNow}
-							{getTimeUntilRetry}
-							clearErrorState={clearErrorState}
-							onRetry={() => { clearErrorState(); handleSend(); }}
-						/>
-					{/if}
-					<ChatInput value={messageText} loading={$loading} onSend={handleSend} onInput={(v) => messageText = v} />
-				</div>
-			</div>
+		</div>
+		<div class="flex-1 flex flex-col bg-background">
+			<ChatHeader
+				error={$error}
+				retryCountdown={0}
+				{getTimeUntilRetry}
+				on:toggleDocuments={toggleDocumentSidebar}
+			/>
+			<ChatMessages
+				bind:this={chatMessagesRef}
+				messages={$messages}
+				{initializing}
+				onForkMessage={forkMessage}
+				onRegenerateMessage={regenerateMessage}
+				onSwitchBranch={switchBranch}
+				branchNavigation={$branchNavigation}
+			/>
+			{#if $error}
+				<ChatErrorBanner
+					error={$error}
+					{canRetryNow}
+					{getTimeUntilRetry}
+					clearErrorState={clearErrorState}
+					onRetry={() => { clearErrorState(); handleSend(); }}
+				/>
+			{/if}
+			<ChatInput value={messageText} loading={$loading} onSend={handleSend} onInput={(v) => messageText = v} />
 		</div>
 	</div>
 
