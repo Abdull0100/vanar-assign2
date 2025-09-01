@@ -1220,6 +1220,164 @@ Please provide a helpful response. Keep it conversational and relevant to the co
 				}
 				break;
 
+			case 'regenerate_message':
+				try {
+					const originalMessage = treeManager.getMessage(messageId);
+					if (!originalMessage) {
+						console.error('Original message not found for regeneration:', messageId);
+						throw new ValidationError('Message not found');
+					}
+
+					if (originalMessage.role !== 'assistant') {
+						throw new ValidationError('Only assistant messages can be regenerated');
+					}
+
+					console.log('Regenerating AI response:', messageId);
+
+					// Fork the AI response (this creates a new branch starting from the AI response)
+					const forkedMessage = treeManager.forkMessage(messageId, originalMessage.content, 'assistant');
+					console.log('Created forked AI message:', forkedMessage.id);
+
+					// Get conversation context for regeneration
+					const activeConversationBeforeRegeneration = treeManager.getActiveConversation();
+					const activePathBeforeRegeneration = activeConversationBeforeRegeneration.map(msg => msg.id);
+
+					// Find the user message that prompted this AI response
+					const userMessage = activeConversationBeforeRegeneration.find(msg => msg.role === 'user');
+					if (!userMessage) {
+						throw new ValidationError('Could not find user message for regeneration context');
+					}
+
+					// Get conversation context for AI regeneration
+					const conversationForTranscript = activeConversationBeforeRegeneration.slice(0, -1); // Exclude the current AI response
+					const transcript = buildRecentTranscript(conversationForTranscript);
+
+					// Prepare prompt for regeneration
+					const prompt = `You are Vanar, a helpful AI assistant. You are having a conversation with a user. Please respond naturally and helpfully to their message.
+
+Recent Conversation Context:\n${transcript}
+
+User's latest message: ${userMessage.content}
+
+Please provide a helpful response. Keep it conversational and relevant to the context.`;
+
+					// Generate new AI response
+					const aiResult = await genAI.getGenerativeModel({ model: 'gemini-1.5-flash' }).generateContent(prompt);
+					const newAiResponse = aiResult.response.text();
+
+					// Create the regenerated AI response as a child of the forked message
+					const regeneratedMessage = treeManager.addMessage({
+						id: crypto.randomUUID(),
+						role: 'assistant',
+						content: newAiResponse,
+						createdAt: new Date().toISOString(),
+						updatedAt: new Date().toISOString(),
+						conversationId: forkedMessage.conversationId,
+						userId: forkedMessage.userId
+					});
+
+					// Save the regenerated message to database
+					await db.insert(chatMessages).values({
+						id: regeneratedMessage.id,
+						conversationId: regeneratedMessage.conversationId,
+						userId: regeneratedMessage.userId,
+						role: 'assistant',
+						content: regeneratedMessage.content,
+						parentId: regeneratedMessage.parentId,
+						childrenIds: regeneratedMessage.childrenIds,
+						previousId: forkedMessage.id, // Link to the forked message
+						createdAt: new Date(regeneratedMessage.createdAt),
+						updatedAt: new Date(regeneratedMessage.updatedAt)
+					});
+
+					// Update parent's childrenIds if it exists
+					if (regeneratedMessage.parentId) {
+						const treeParent = treeManager.getMessage(regeneratedMessage.parentId);
+						const updatedChildrenIds = treeParent ? treeParent.childrenIds : regeneratedMessage.childrenIds;
+
+						await db.update(chatMessages)
+							.set({
+								childrenIds: updatedChildrenIds,
+								updatedAt: new Date()
+							})
+							.where(eq(chatMessages.id, regeneratedMessage.parentId));
+						console.log('Updated regenerated message parent childrenIds to:', updatedChildrenIds);
+					}
+
+					// Get the final active conversation and tree data
+					const finalActiveConversation = treeManager.getActiveConversation();
+					const finalActivePath = finalActiveConversation.map(msg => msg.id);
+					const finalBranchNavigation: BranchNavigation[] = [];
+
+					// Calculate branch navigation for the final state
+					for (const msgId of finalActivePath) {
+						const message = treeManager.getMessage(msgId);
+						if (message && message.childrenIds && message.childrenIds.length > 1) {
+							let currentChildIndex = 0;
+							for (let i = 0; i < message.childrenIds.length; i++) {
+								const childId = message.childrenIds[i];
+								const childIndex = finalActivePath.indexOf(childId);
+								if (childIndex !== -1) {
+									currentChildIndex = i;
+									break;
+								}
+							}
+
+							finalBranchNavigation.push({
+								messageId: msgId,
+								currentIndex: currentChildIndex,
+								totalBranches: message.childrenIds.length,
+								childrenIds: message.childrenIds
+							});
+						}
+					}
+
+					// Also check for branch navigation on messages that have multiple children but might not be in active path
+					const treeMessages = treeManager.getAllMessages();
+					for (const message of treeMessages) {
+						if (message.childrenIds && message.childrenIds.length > 1 && !finalBranchNavigation.find(nav => nav.messageId === message.id)) {
+							let currentChildIndex = 0;
+							for (let i = 0; i < message.childrenIds.length; i++) {
+								const childId = message.childrenIds[i];
+								const childIndex = finalActivePath.indexOf(childId);
+								if (childIndex !== -1) {
+									currentChildIndex = i;
+									break;
+								}
+							}
+
+							finalBranchNavigation.push({
+								messageId: message.id,
+								currentIndex: currentChildIndex,
+								totalBranches: message.childrenIds.length,
+								childrenIds: message.childrenIds
+							});
+						}
+					}
+
+					result = {
+						success: true,
+						message: 'AI response regenerated successfully',
+						forkedMessage,
+						regeneratedMessage,
+						activePath: finalActivePath,
+						activeConversation: finalActiveConversation.map(msg => ({
+							id: msg.id,
+							role: msg.role,
+							content: msg.content,
+							createdAt: msg.createdAt,
+							isStreaming: false
+						})),
+						treeStructure: treeManager.getTreeStructure(),
+						branchNavigation: finalBranchNavigation
+					};
+				} catch (regenerateError) {
+					console.error('Regenerate operation failed:', regenerateError);
+					const errorMessage = regenerateError instanceof Error ? regenerateError.message : 'Unknown error';
+					throw new Error(`Failed to regenerate AI response: ${errorMessage}`);
+				}
+				break;
+
 			case 'switch_branch':
 				if (typeof branchIndex !== 'number') {
 					throw new ValidationError('Branch index is required for switching branches');

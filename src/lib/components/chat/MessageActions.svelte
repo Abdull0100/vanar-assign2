@@ -8,7 +8,7 @@
 	export let copiedMessageId: string | null = null;
 
 	export let onEdit: ((messageId: string, newContent: string) => void) | null = null;
-	export let onRegenerate: ((messageId: string, newContent: string) => void) | null = null;
+	export let onRegenerate: ((messageId: string) => void) | null = null;
 	export let onContinue: ((messageId: string) => void) | null = null;
 	export let onCopy: ((messageId: string, content: string) => void) | null = null;
 
@@ -24,7 +24,8 @@
 
 	function handleRegenerate() {
 		if (onRegenerate) {
-			onRegenerate(messageId, messageContent);
+			// For regeneration, we don't need to pass new content since we're regenerating based on existing context
+			onRegenerate(messageId);
 		}
 	}
 

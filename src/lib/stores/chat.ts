@@ -649,11 +649,61 @@ export function createChatStore(userId: string | null) {
 	}
 
 	async function regenerateMessage(messageId: string) {
-		const message = getValue(messages).find(m => m.id === messageId);
-		if (!message || message.role !== 'assistant') return;
+		const conversationId = getValue(currentConversationId);
+		if (!conversationId) return;
 
-		// Use editMessage (which creates a branch) with the same content
-		await editMessage(messageId, message.content);
+		console.log('Attempting to regenerate AI response:', messageId);
+		loading.set(true);
+		error.set('');
+
+		try {
+			const response = await fetch('/api/chat', {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					action: 'regenerate_message',
+					messageId,
+					conversationId
+				})
+			});
+
+			console.log('Regenerate request sent, response status:', response.status);
+
+			if (response.ok) {
+				const data = await response.json();
+				console.log('Regenerate successful, response data:', {
+					hasActivePath: !!data.activePath,
+					activePathLength: data.activePath?.length,
+					hasActiveConversation: !!data.activeConversation,
+					activeConversationLength: data.activeConversation?.length,
+					hasForkedMessage: !!data.forkedMessage,
+					hasRegeneratedMessage: !!data.regeneratedMessage
+				});
+
+				// Immediately update the UI with the response data
+				if (data.activePath) {
+					activePath.set(data.activePath);
+				}
+				if (data.activeConversation) {
+					messages.set(data.activeConversation);
+				}
+				if (data.branchNavigation) {
+					branchNavigation.set(data.branchNavigation);
+				}
+
+				// Refresh conversation data to get the latest tree structure
+				await refreshConversationData(conversationId);
+			} else {
+				const errorData = await response.json();
+				console.error('Regenerate failed:', errorData);
+				error.set(errorData.error || 'Failed to regenerate AI response');
+			}
+		} catch (err) {
+			console.error('Regenerate message error:', err);
+			error.set('An error occurred while regenerating the AI response');
+		} finally {
+			loading.set(false);
+		}
 	}
 
 	function setActiveDocument(documentId: string, originalName: string) {

@@ -97,6 +97,7 @@
 
 	function handleRegenerate(messageId: string) {
 		if (onRegenerateMessage) {
+			// Note: onRegenerateMessage now only takes messageId, content is handled server-side
 			onRegenerateMessage(messageId);
 		}
 	}
