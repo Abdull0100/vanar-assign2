@@ -25,6 +25,8 @@
 	let copiedMessageId: string | null = null;
 	let editingMessageId: string | null = null;
 	let editText: string = '';
+	let copiedCodeBlockId: string | null = null;
+	let renderedMessages: Map<string, string> = new Map();
 
 	function isAtBottom() {
 		if (!messagesContainer) return true;
@@ -47,19 +49,114 @@
 	export function scrollToBottomPublic() { scrollToBottom(); }
 	export function smartScrollToBottomPublic() { smartScrollToBottom(); }
 
-	$: if (messages && messagesContainer) {
-		setTimeout(smartScrollToBottom, 100);
+
+
+	// Reactive statement to render Markdown for messages
+	$: if (messages) {
+		messages.forEach(async (message) => {
+			if (!renderedMessages.has(message.id)) {
+				const rendered = await renderMarkdown(message.content);
+				renderedMessages.set(message.id, rendered);
+				renderedMessages = renderedMessages; // Trigger reactivity
+			}
+		});
 	}
 
-	function renderMarkdown(text: string): string {
+	$: if (messages && messagesContainer) {
+		setTimeout(smartScrollToBottom, 100);
+		applySyntaxHighlighting();
+	}
+
+	async function renderMarkdown(text: string): Promise<string> {
 		if (!text) return '';
-		marked.setOptions({ breaks: true, gfm: true });
+		
+		// Configure marked options for better rendering
+		marked.setOptions({ 
+			breaks: true, 
+			gfm: true
+		});
+		
 		try {
-			const result = marked(text);
+			let result = await marked(text);
+			
+			// Add copy buttons to code blocks
+			result = addCopyButtonsToCodeBlocks(result);
+			
 			return typeof result === 'string' ? result : text;
 		} catch (error) {
 			console.error('Markdown rendering error:', error);
 			return text;
+		}
+	}
+
+	function addCopyButtonsToCodeBlocks(html: string): string {
+		// Generate unique IDs for code blocks
+		let codeBlockCounter = 0;
+		
+		return html.replace(/<pre><code[^>]*>([\s\S]*?)<\/code><\/pre>/g, (match, codeContent) => {
+			codeBlockCounter++;
+			const codeBlockId = `code-block-${Date.now()}-${codeBlockCounter}`;
+			
+			// Decode HTML entities in the code content
+			const decodedContent = codeContent
+				.replace(/&lt;/g, '<')
+				.replace(/&gt;/g, '>')
+				.replace(/&amp;/g, '&')
+				.replace(/&quot;/g, '"')
+				.replace(/&#39;/g, "'");
+			
+			return `
+				<div class="code-block-wrapper relative">
+					<button 
+						class="copy-code-btn absolute top-2 right-2 z-10 px-2 py-1 text-xs rounded bg-muted/80 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors duration-200"
+						data-code-id="${codeBlockId}"
+						data-code-content="${btoa(decodedContent)}"
+						title="Copy code"
+					>
+						<span class="copy-text">Copy</span>
+						<span class="copied-text hidden">Copied!</span>
+					</button>
+					<pre><code>${codeContent}</code></pre>
+				</div>
+			`;
+		});
+	}
+
+	// Function to apply syntax highlighting after DOM updates
+	function applySyntaxHighlighting() {
+		if (typeof window !== 'undefined') {
+			setTimeout(() => {
+				try {
+					Prism.highlightAll();
+					setupCopyButtons();
+				} catch (error) {
+					console.error('Syntax highlighting error:', error);
+				}
+			}, 100);
+		}
+	}
+
+	function setupCopyButtons() {
+		const copyButtons = document.querySelectorAll('.copy-code-btn');
+		copyButtons.forEach(button => {
+			// Remove existing event listeners to prevent duplicates
+			button.removeEventListener('click', handleCopyButtonClick);
+			button.addEventListener('click', handleCopyButtonClick);
+		});
+	}
+
+	function handleCopyButtonClick(event: Event) {
+		const button = event.currentTarget as HTMLElement;
+		const codeId = button.getAttribute('data-code-id');
+		const encodedContent = button.getAttribute('data-code-content');
+		
+		if (codeId && encodedContent) {
+			try {
+				const codeContent = atob(encodedContent);
+				copyCodeBlock(codeId, codeContent);
+			} catch (error) {
+				console.error('Failed to decode code content:', error);
+			}
 		}
 	}
 
@@ -75,6 +172,24 @@
 			copiedMessageId = messageId;
 			setTimeout(() => { copiedMessageId = null; }, 2000);
 		}).catch(err => { console.error('Failed to copy text: ', err); });
+	}
+
+	function copyCodeBlock(codeBlockId: string, codeContent: string) {
+		navigator.clipboard.writeText(codeContent).then(() => {
+			copiedCodeBlockId = codeBlockId;
+			
+			// Update button state
+			const button = document.querySelector(`[data-code-id="${codeBlockId}"]`) as HTMLElement;
+			if (button) {
+				button.classList.add('copied');
+				setTimeout(() => { 
+					button.classList.remove('copied');
+					copiedCodeBlockId = null;
+				}, 2000);
+			} else {
+				setTimeout(() => { copiedCodeBlockId = null; }, 2000);
+			}
+		}).catch(err => { console.error('Failed to copy code: ', err); });
 	}
 
 	function cancelEdit() {
@@ -235,7 +350,9 @@
 									{:else}
                                         <!-- Normal Display -->
 										<div class="rounded-2xl rounded-br-sm bg-primary px-4 py-3 text-primary-foreground shadow-lg">
-											<p class="text-sm leading-relaxed">{messageItem.content}</p>
+											<div class="text-sm leading-relaxed prose prose-sm max-w-none prose-invert">
+												{@html renderedMessages.get(messageItem.id) || messageItem.content}
+											</div>
 										</div>
 									{/if}
 									<div class="h-8 w-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
@@ -325,7 +442,7 @@
 										{#if messageItem.isStreaming}
                                             <!-- Streaming Display -->
 											<div class="text-sm leading-relaxed text-foreground prose prose-sm max-w-none">
-												{#if messageItem.content && messageItem.content.length > 0}<span>{@html renderMarkdown(messageItem.content)}</span><span class="inline-block w-0.5 h-4 bg-primary animate-pulse ml-1"></span>{:else}<span class="inline-block w-0.5 h-4 bg-primary animate-pulse ml-1"></span>{/if}
+												{#if messageItem.content && messageItem.content.length > 0}<span>{@html renderedMessages.get(messageItem.id) || messageItem.content}</span><span class="inline-block w-0.5 h-4 bg-primary animate-pulse ml-1"></span>{:else}<span class="inline-block w-0.5 h-4 bg-primary animate-pulse ml-1"></span>{/if}
 											</div>
 											<div class="flex items-center mt-2 space-x-2">
 												<div class="flex items-center space-x-1">
@@ -338,7 +455,7 @@
 										{:else if messageItem.content && messageItem.content.length > 0}
                                             <!-- Normal Display -->
 											<div class="text-sm leading-relaxed text-foreground prose prose-sm max-w-none">
-												{@html renderMarkdown(messageItem.content)}
+												{@html renderedMessages.get(messageItem.id) || messageItem.content}
 											</div>
 											<CitationDisplay messageId={messageItem.id} />
 											<p class="mt-2 text-xs text-muted-foreground">
@@ -381,4 +498,45 @@
 	:global(.prose table) { border-collapse: collapse; width: 100%; margin: 1rem 0; }
 	:global(.prose th, .prose td) { border: 1px solid hsl(var(--border)); padding: 0.5rem; text-align: left; }
 	:global(.prose th) { background-color: hsl(var(--muted)); font-weight: 600; }
+	
+	/* Enhanced Markdown styling for both user and assistant messages */
+	:global(.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6) { 
+		margin-top: 1.5rem; margin-bottom: 0.75rem; font-weight: 600; line-height: 1.25; 
+	}
+	:global(.prose h1) { font-size: 1.5rem; }
+	:global(.prose h2) { font-size: 1.25rem; }
+	:global(.prose h3) { font-size: 1.125rem; }
+	:global(.prose p) { margin: 0.75rem 0; line-height: 1.6; }
+	:global(.prose ul, .prose ol) { margin: 0.75rem 0; padding-left: 1.5rem; }
+	:global(.prose li) { margin: 0.25rem 0; }
+	:global(.prose strong) { font-weight: 600; }
+	:global(.prose em) { font-style: italic; }
+	:global(.prose a) { color: hsl(var(--primary)); text-decoration: underline; text-decoration-color: hsl(var(--primary) / 0.4); }
+	:global(.prose a:hover) { text-decoration-color: hsl(var(--primary)); }
+	
+	/* Inverted prose for user messages (light text on dark background) */
+	:global(.prose-invert) { color: hsl(var(--primary-foreground)); }
+	:global(.prose-invert code) { background-color: hsl(var(--primary-foreground) / 0.1); color: hsl(var(--primary-foreground)); }
+	:global(.prose-invert pre) { background-color: hsl(var(--primary-foreground) / 0.1); border-color: hsl(var(--primary-foreground) / 0.2); }
+	:global(.prose-invert blockquote) { border-left-color: hsl(var(--primary-foreground) / 0.3); color: hsl(var(--primary-foreground) / 0.8); }
+	:global(.prose-invert a) { color: hsl(var(--primary-foreground)); text-decoration-color: hsl(var(--primary-foreground) / 0.6); }
+	:global(.prose-invert a:hover) { text-decoration-color: hsl(var(--primary-foreground)); }
+	
+	/* Code block copy button styling */
+	:global(.code-block-wrapper) { position: relative; }
+	:global(.copy-code-btn) { 
+		opacity: 0; 
+		transition: opacity 0.2s ease-in-out;
+		backdrop-filter: blur(4px);
+		border: 1px solid hsl(var(--border) / 0.3);
+	}
+	:global(.code-block-wrapper:hover .copy-code-btn) { opacity: 1; }
+	:global(.copy-code-btn:hover) { 
+		background-color: hsl(var(--muted)) !important;
+		color: hsl(var(--foreground)) !important;
+	}
+	:global(.copy-code-btn .copied-text) { color: hsl(var(--primary)); font-weight: 500; }
+	:global(.copy-code-btn.copied .copy-text) { display: none; }
+	:global(.copy-code-btn.copied .copied-text) { display: inline; }
+	:global(.copy-code-btn:not(.copied) .copied-text) { display: none; }
 </style>

@@ -27,7 +27,7 @@
 					value={value}
 					oninput={(e) => onInput((e.target as HTMLTextAreaElement).value)}
 					onkeydown={handleKeyPress}
-					placeholder="Type your message here... (Press Enter to send, Shift+Enter for new line)"
+					placeholder="Type your message here... (Press Enter to send, Shift+Enter for new line) • Supports Markdown formatting"
 					rows="2"
 					maxlength="2000"
 					class="
@@ -60,6 +60,9 @@
 				{/if}
 				<div class="absolute right-3 bottom-3 text-xs text-muted-foreground">
 					{value.length}/2000
+				</div>
+				<div class="absolute left-3 bottom-3 text-xs text-muted-foreground">
+					**bold** *italic* `code` [link](url)
 				</div>
 			</div>
 		</div>
