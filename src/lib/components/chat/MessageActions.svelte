@@ -53,7 +53,7 @@
 		<Button
 			variant="ghost"
 			size="sm"
-			on:click={handleCopy}
+			onclick={handleCopy}
 			class="h-7 w-7 p-0 text-muted-foreground hover:bg-muted hover:text-foreground"
 			title="Copy message"
 		>
@@ -66,38 +66,38 @@
 
 		<!-- User message actions -->
 		{#if messageRole === 'user'}
-			<Button
-				variant="ghost"
-				size="sm"
-				on:click={handleEdit}
-				class="h-7 w-7 p-0 text-primary hover:bg-primary/20 hover:text-primary-foreground"
-				title="Edit & Fork"
-			>
+					<Button
+			variant="ghost"
+			size="sm"
+			onclick={handleEdit}
+			class="h-7 w-7 p-0 text-primary hover:bg-primary/20 hover:text-primary-foreground"
+			title="Edit & Fork"
+		>
 				<Edit class="h-4 w-4" />
 			</Button>
 		{/if}
 
 		<!-- Assistant message actions -->
 		{#if messageRole === 'assistant'}
-			<Button
-				variant="ghost"
-				size="sm"
-				on:click={handleRegenerate}
-				class="h-7 w-7 p-0 text-muted-foreground hover:bg-muted hover:text-foreground"
-				title="Regenerate & Fork"
-			>
+					<Button
+			variant="ghost"
+			size="sm"
+			onclick={handleRegenerate}
+			class="h-7 w-7 p-0 text-muted-foreground hover:bg-muted hover:text-foreground"
+			title="Regenerate & Fork"
+		>
 				<RotateCcw class="h-4 w-4" />
 			</Button>
 		{/if}
 
 		<!-- Continue action (available for all messages) -->
-		<Button
-			variant="ghost"
-			size="sm"
-			on:click={handleContinue}
-			class="h-7 w-7 p-0 text-muted-foreground hover:bg-muted hover:text-foreground"
-			title="Continue conversation"
-		>
+			<Button
+		variant="ghost"
+		size="sm"
+		onclick={handleContinue}
+		class="h-7 w-7 p-0 text-muted-foreground hover:bg-muted hover:text-foreground"
+		title="Continue conversation"
+	>
 			<MessageSquare class="h-4 w-4" />
 		</Button>
 	</div>

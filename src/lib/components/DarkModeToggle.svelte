@@ -11,7 +11,7 @@
 <Button
 	{variant}
 	{size}
-	onclick={() => darkMode.toggle()}
+	onclick={darkMode.toggle}
 	aria-label={$darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
 	class="transition-all duration-200"
 >
