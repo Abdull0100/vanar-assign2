@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Edit, RotateCcw, MessageSquare, Copy, Check } from '@lucide/svelte';
+	import { Button } from '$lib/components/ui/button';
 
 	export let messageRole: 'user' | 'assistant' | 'system';
 	export let messageId: string;
@@ -49,9 +50,11 @@
 		class="flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
 	>
 		<!-- Copy button (always available) -->
-		<button
+		<Button
+			variant="ghost"
+			size="sm"
 			on:click={handleCopy}
-			class="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground"
+			class="h-7 w-7 p-0 text-muted-foreground hover:bg-muted hover:text-foreground"
 			title="Copy message"
 		>
 			{#if isCopied}
@@ -59,37 +62,43 @@
 			{:else}
 				<Copy class="h-4 w-4" />
 			{/if}
-		</button>
+		</Button>
 
 		<!-- User message actions -->
 		{#if messageRole === 'user'}
-			<button
+			<Button
+				variant="ghost"
+				size="sm"
 				on:click={handleEdit}
-				class="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground"
+				class="h-7 w-7 p-0 text-primary hover:bg-primary/20 hover:text-primary-foreground"
 				title="Edit & Fork"
 			>
 				<Edit class="h-4 w-4" />
-			</button>
+			</Button>
 		{/if}
 
 		<!-- Assistant message actions -->
 		{#if messageRole === 'assistant'}
-			<button
+			<Button
+				variant="ghost"
+				size="sm"
 				on:click={handleRegenerate}
-				class="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground"
+				class="h-7 w-7 p-0 text-muted-foreground hover:bg-muted hover:text-foreground"
 				title="Regenerate & Fork"
 			>
 				<RotateCcw class="h-4 w-4" />
-			</button>
+			</Button>
 		{/if}
 
 		<!-- Continue action (available for all messages) -->
-		<button
+		<Button
+			variant="ghost"
+			size="sm"
 			on:click={handleContinue}
-			class="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground"
+			class="h-7 w-7 p-0 text-muted-foreground hover:bg-muted hover:text-foreground"
 			title="Continue conversation"
 		>
 			<MessageSquare class="h-4 w-4" />
-		</button>
+		</Button>
 	</div>
 {/if}

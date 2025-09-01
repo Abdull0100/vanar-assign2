@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { FileText, ExternalLink, ChevronDown, ChevronUp } from '@lucide/svelte';
+	import * as Card from '$lib/components/ui/card';
+	import { Button } from '$lib/components/ui/button';
+	import { Badge } from '$lib/components/ui/badge';
 
 	export let messageId: string;
 
@@ -62,7 +65,7 @@
 			case 'txt':
 				return 'text-green-600';
 			default:
-				return 'text-gray-600';
+				return 'text-muted-foreground';
 		}
 	}
 
@@ -83,91 +86,94 @@
 </script>
 
 {#if loading}
-	<div class="citation-loading">
+	<div class="flex items-center gap-2 py-2 text-xs text-muted-foreground">
 		<div class="loading-spinner"></div>
 		<span>Loading sources...</span>
 	</div>
 {:else if error}
-	<div class="citation-error">
+	<div class="flex items-center gap-2 py-2 text-xs text-destructive">
 		<span>Failed to load sources</span>
 	</div>
 {:else if citations.length > 0}
-	<div class="citation-container">
-		<div class="citation-header">
-			<span class="citation-label">Sources</span>
-			<span class="citation-count">({citations.length})</span>
-		</div>
-
-		<div class="citation-list">
+	<Card.Root class="mt-4 border-t border-border pt-4">
+		<Card.Header class="pb-3">
+			<div class="flex items-center gap-2">
+				<span class="text-xs font-semibold uppercase tracking-wide text-foreground">Sources</span>
+				<Badge variant="secondary" class="text-xs">
+					{citations.length}
+				</Badge>
+			</div>
+		</Card.Header>
+		<Card.Content class="space-y-3">
 			{#each visibleCitations as citation (citation.id)}
-				<div class="citation-item">
-					<div class="citation-main">
-						<div class="document-info">
-							<svelte:component
-								this={getFileTypeIcon(citation.fileType)}
-								class="file-icon {getFileTypeColor(citation.fileType)}"
-								size={14}
-							/>
-							<div class="document-details">
-								<span class="document-name" title={citation.documentName}>
-									{citation.documentName}
-								</span>
-								{#if citation.pageNumber}
-									<span class="page-info">Page {citation.pageNumber}</span>
-								{/if}
-								{#if citation.section}
-									<span class="section-info">• {citation.section}</span>
-								{/if}
+				<Card.Root class="border-border bg-muted/50">
+					<Card.Content class="p-3">
+						<div class="flex justify-between items-start mb-2">
+							<div class="flex items-center gap-2 flex-1 min-w-0">
+								<svelte:component
+									this={getFileTypeIcon(citation.fileType)}
+									class="file-icon {getFileTypeColor(citation.fileType)}"
+									size={14}
+								/>
+								<div class="min-w-0 flex-1">
+									<span class="block font-medium text-foreground text-sm mb-1 truncate" title={citation.documentName}>
+										{citation.documentName}
+									</span>
+									<div class="flex items-center gap-2 text-xs text-muted-foreground">
+										{#if citation.pageNumber}
+											<span>Page {citation.pageNumber}</span>
+										{/if}
+										{#if citation.section}
+											<span>• {citation.section}</span>
+										{/if}
+									</div>
+								</div>
 							</div>
-						</div>
-						<div class="citation-meta">
 							{#if citation.relevanceScore}
-								<span class="relevance-score">
+								<Badge variant="outline" class="text-xs text-green-600 border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800 dark:text-green-400">
 									{Math.round(citation.relevanceScore)}% relevant
-								</span>
+								</Badge>
 							{/if}
 						</div>
-					</div>
 
-					{#if citation.citationText}
-						<div class="citation-text">
-							"{formatCitationText(citation.citationText)}"
-						</div>
-					{/if}
-				</div>
+						{#if citation.citationText}
+							<div class="relative pl-6 text-sm text-muted-foreground leading-relaxed italic">
+								<div class="absolute left-0 top-0 text-2xl text-muted-foreground/60 leading-none">"</div>
+								{formatCitationText(citation.citationText)}
+							</div>
+						{/if}
+					</Card.Content>
+				</Card.Root>
 			{/each}
-		</div>
+		</Card.Content>
 
 		{#if hasMore}
-			<button class="expand-btn" onclick={toggleExpanded}>
-				{#if expanded}
-					<ChevronUp size={14} />
-					Show less
-				{:else}
-					<ChevronDown size={14} />
-					Show {citations.length - maxVisible} more
-				{/if}
-			</button>
+			<Card.Footer class="pt-0">
+				<Button
+					variant="outline"
+					size="sm"
+					onclick={toggleExpanded}
+					class="w-fit"
+				>
+					{#if expanded}
+						<ChevronUp size={14} class="mr-1" />
+						Show less
+					{:else}
+						<ChevronDown size={14} class="mr-1" />
+						Show {citations.length - maxVisible} more
+					{/if}
+				</Button>
+			</Card.Footer>
 		{/if}
-	</div>
+	</Card.Root>
 {/if}
 
 <style>
-	.citation-loading,
-	.citation-error {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 0.5rem 0;
-		font-size: 0.75rem;
-		color: #6b7280;
-	}
-
 	.loading-spinner {
 		width: 12px;
 		height: 12px;
-		border: 2px solid #e5e7eb;
-		border-top: 2px solid #3b82f6;
+		border: 2px solid hsl(var(--muted));
+		border-top: 2px solid hsl(var(--primary));
 		border-radius: 50%;
 		animation: spin 1s linear infinite;
 	}
@@ -181,135 +187,4 @@
 		}
 	}
 
-	.citation-container {
-		margin-top: 1rem;
-		padding-top: 1rem;
-		border-top: 1px solid #e5e7eb;
-	}
-
-	.citation-header {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		margin-bottom: 0.75rem;
-	}
-
-	.citation-label {
-		font-size: 0.75rem;
-		font-weight: 600;
-		color: #374151;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-	}
-
-	.citation-count {
-		font-size: 0.75rem;
-		color: #6b7280;
-	}
-
-	.citation-list {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-	}
-
-	.citation-item {
-		padding: 0.75rem;
-		background: #f9fafb;
-		border: 1px solid #f3f4f6;
-		border-radius: 6px;
-		font-size: 0.875rem;
-	}
-
-	.citation-main {
-		display: flex;
-		justify-content: space-between;
-		align-items: flex-start;
-		margin-bottom: 0.5rem;
-	}
-
-	.document-info {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		flex: 1;
-		min-width: 0;
-	}
-
-	.document-details {
-		min-width: 0;
-		flex: 1;
-	}
-
-	.document-name {
-		display: block;
-		font-weight: 500;
-		color: #374151;
-		margin-bottom: 0.125rem;
-		word-break: break-word;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-
-	.page-info,
-	.section-info {
-		display: inline-block;
-		font-size: 0.75rem;
-		color: #6b7280;
-		margin-right: 0.5rem;
-	}
-
-	.citation-meta {
-		flex-shrink: 0;
-		margin-left: 1rem;
-	}
-
-	.relevance-score {
-		font-size: 0.75rem;
-		color: #059669;
-		font-weight: 500;
-		white-space: nowrap;
-	}
-
-	.citation-text {
-		font-size: 0.8125rem;
-		color: #4b5563;
-		line-height: 1.4;
-		font-style: italic;
-		padding-left: 1.75rem;
-		position: relative;
-	}
-
-	.citation-text::before {
-		content: '"';
-		position: absolute;
-		left: 0;
-		top: 0;
-		font-size: 1.5rem;
-		line-height: 1;
-		color: #9ca3af;
-	}
-
-	.expand-btn {
-		display: flex;
-		align-items: center;
-		gap: 0.375rem;
-		padding: 0.5rem;
-		margin-top: 0.5rem;
-		background: none;
-		border: 1px solid #d1d5db;
-		border-radius: 6px;
-		color: #6b7280;
-		font-size: 0.75rem;
-		font-weight: 500;
-		cursor: pointer;
-		transition: all 0.2s ease;
-		width: fit-content;
-	}
-
-	.expand-btn:hover {
-		background: #f9fafb;
-		border-color: #9ca3af;
-		color: #374151;
-	}
 </style>

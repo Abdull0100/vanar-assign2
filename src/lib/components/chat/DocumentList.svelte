@@ -120,13 +120,13 @@
 	function getStatusColor(status: string) {
 		switch (status) {
 			case 'completed':
-				return 'text-green-600';
+				return 'text-primary';
 			case 'processing':
-				return 'text-blue-600';
+				return 'text-primary';
 			case 'failed':
-				return 'text-red-600';
+				return 'text-destructive';
 			default:
-				return 'text-gray-600';
+				return 'text-muted-foreground';
 		}
 	}
 
@@ -171,78 +171,85 @@
 </script>
 
 <div class="document-list">
-	<div class="header">
-		<h3 class="title">Your Documents</h3>
-		<button class="refresh-btn" onclick={fetchDocuments} disabled={loading}>
-			<RefreshCw class="icon" className={loading ? 'spinning' : ''} size={16} />
+	<div class="flex items-center justify-between">
+		<h3 class="text-lg font-semibold text-foreground">Your Documents</h3>
+		<button
+			title="Refresh documents"
+			onclick={fetchDocuments}
+			disabled={loading}
+			class="border-border bg-muted text-muted-foreground flex h-8 w-8 items-center justify-center rounded-full border transition-all duration-200 ease-in-out hover:scale-110 hover:border-accent hover:bg-accent hover:text-accent-foreground active:scale-95"
+		>
+			<RefreshCw class="h-4 w-4" className={loading ? 'spinning' : ''} size={16} />
 		</button>
 	</div>
 
 	{#if loading && documents.length === 0}
-		<div class="loading-state">
-			<RefreshCw class="spinning" size={24} />
-			<p>Loading documents...</p>
-		</div>
+		<p class="mt-4 text-center">Loading documents...</p>
 	{:else if error}
-		<div class="error-state">
-			<AlertCircle size={24} class="error-icon" />
+		<div class="bg-destructive/10 mt-4 rounded-lg p-4 text-center text-destructive">
 			<p>{error}</p>
-			<button class="retry-btn" onclick={fetchDocuments}>Retry</button>
+			<button 
+				onclick={fetchDocuments}
+				class="mt-4 inline-flex items-center justify-center rounded-md border border-primary bg-primary px-4 py-2 font-semibold text-primary-foreground shadow-sm transition-all duration-200 ease-in-out hover:scale-[1.02] hover:border-secondary hover:bg-secondary hover:text-secondary-foreground active:scale-[0.98]"
+			>
+				Retry
+			</button>
 		</div>
 	{:else if documents.length === 0}
-		<div class="empty-state">
-			<FileText size={32} class="empty-icon" />
-			<p>No documents uploaded yet</p>
-			<p class="empty-subtitle">Upload some documents to enhance your conversations</p>
+		<div class="mt-4 py-8 text-center">
+			<p class="font-semibold text-foreground">No documents uploaded yet</p>
+			<p>Upload some documents to enhance your conversations</p>
 		</div>
 	{:else}
-		<div class="documents-grid">
+		<ul class="mt-4 space-y-3">
 			{#each documents as doc (doc.id)}
-				<div class="document-card" class:processing={doc.status === 'processing'}>
-					<div class="card-header">
-						<div class="file-info">
-							<FileText class="file-icon" size={20} />
-							<div class="file-details">
-								<h4 class="file-name" title={doc.fileName}>{doc.originalName}</h4>
-								<p class="file-meta">
+				<li class="border-border bg-muted/50 rounded-lg border p-3">
+					<div class="flex justify-between items-start mb-3">
+						<div class="flex gap-3 flex-1 min-w-0">
+							<FileText class="file-icon text-muted-foreground" size={20} />
+							<div class="min-w-0 flex-1">
+								<h4 class="file-name font-medium text-foreground mb-1 text-sm" title={doc.fileName}>
+									{doc.originalName}
+								</h4>
+								<p class="file-meta text-xs text-muted-foreground">
 									{formatFileSize(doc.fileSize)} • {doc.fileType.toUpperCase()}
 								</p>
 							</div>
 						</div>
-						<div class="status-indicator">
+						<div class="flex items-center gap-1.5 flex-shrink-0">
 							<svelte:component
 								this={getStatusIcon(doc.status)}
 								class="status-icon {getStatusColor(doc.status)}"
 								size={16}
 							/>
-							<span class="status-text">{getStatusText(doc.status)}</span>
+							<span class="status-text text-xs font-medium">{getStatusText(doc.status)}</span>
 						</div>
 					</div>
 
 					{#if doc.errorMessage}
-						<div class="error-message">
+						<div class="flex items-center gap-2 p-2 bg-destructive/10 border border-destructive/30 rounded text-xs text-destructive mb-3">
 							<AlertCircle size={14} />
 							<span>{doc.errorMessage}</span>
 						</div>
 					{/if}
 
-					<div class="card-footer">
-						<p class="upload-date">Uploaded {formatDate(doc.createdAt)}</p>
-						<div class="actions">
+					<div class="flex items-center justify-between border-t border-border pt-3">
+						<p class="text-xs text-muted-foreground/70">Uploaded {formatDate(doc.createdAt)}</p>
+						<div class="flex items-center space-x-2">
 							{#if doc.status === 'completed'}
-								<button
-									class="action-btn download-btn"
-									title="Download"
+								<button 
+									title="Download" 
 									onclick={() => downloadDocument(doc)}
+									class="border-border bg-muted text-muted-foreground flex h-8 w-8 items-center justify-center rounded-full border transition-all duration-200 ease-in-out hover:scale-110 hover:border-accent hover:bg-accent hover:text-accent-foreground active:scale-95"
 								>
 									<Download size={14} />
 								</button>
 							{/if}
-							<button
-								class="action-btn delete-btn"
+							<button 
+								title="Delete" 
 								onclick={() => deleteDocument(doc.id)}
-								disabled={deletingId === doc.id}
-								title="Delete"
+								disabled={deletingId === doc.id} 
+								class="border-border bg-muted text-muted-foreground flex h-8 w-8 items-center justify-center rounded-full border transition-all duration-200 ease-in-out hover:scale-110 hover:border-destructive hover:bg-destructive hover:text-destructive-foreground active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
 							>
 								{#if deletingId === doc.id}
 									<RefreshCw class="spinning" size={14} />
@@ -252,51 +259,15 @@
 							</button>
 						</div>
 					</div>
-				</div>
+				</li>
 			{/each}
-		</div>
+		</ul>
 	{/if}
 </div>
 
 <style>
 	.document-list {
 		width: 100%;
-	}
-
-	.header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-bottom: 1rem;
-		padding-bottom: 0.5rem;
-		border-bottom: 1px solid #e5e7eb;
-	}
-
-	.title {
-		font-size: 1.125rem;
-		font-weight: 600;
-		color: #374151;
-		margin: 0;
-	}
-
-	.refresh-btn {
-		padding: 0.5rem;
-		background: none;
-		border: none;
-		color: #6b7280;
-		cursor: pointer;
-		border-radius: 6px;
-		transition: all 0.2s ease;
-	}
-
-	.refresh-btn:hover:not(:disabled) {
-		background: #f3f4f6;
-		color: #374151;
-	}
-
-	.refresh-btn:disabled {
-		cursor: not-allowed;
-		opacity: 0.5;
 	}
 
 	@keyframes spin {
@@ -308,175 +279,10 @@
 		}
 	}
 
-	.loading-state,
-	.error-state,
-	.empty-state {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		padding: 3rem 1rem;
-		text-align: center;
-		gap: 1rem;
-	}
-
-	.loading-state p,
-	.error-state p,
-	.empty-state p {
-		color: #6b7280;
-		margin: 0;
-	}
-
-	.empty-subtitle {
-		font-size: 0.875rem;
-		color: #9ca3af;
-	}
-
-	.retry-btn {
-		padding: 0.5rem 1rem;
-		background: #3b82f6;
-		color: white;
-		border: none;
-		border-radius: 6px;
-		font-size: 0.875rem;
-		cursor: pointer;
-		transition: background 0.2s ease;
-	}
-
-	.retry-btn:hover {
-		background: #2563eb;
-	}
-
-	.documents-grid {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-	}
-
-	.document-card {
-		background: white;
-		border: 1px solid #e5e7eb;
-		border-radius: 8px;
-		padding: 1rem;
-		transition: all 0.2s ease;
-	}
-
-	.document-card:hover {
-		border-color: #d1d5db;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-	}
-
-	.document-card.processing {
-		opacity: 0.8;
-	}
-
-	.card-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: flex-start;
-		margin-bottom: 0.75rem;
-	}
-
-	.file-info {
-		display: flex;
-		gap: 0.75rem;
-		flex: 1;
-		min-width: 0;
-	}
-
-	.file-details {
-		min-width: 0;
-		flex: 1;
-	}
 
 	.file-name {
-		font-weight: 500;
-		color: #374151;
-		margin: 0 0 0.25rem 0;
-		font-size: 0.875rem;
 		word-break: break-word;
 		overflow: hidden;
 		text-overflow: ellipsis;
-	}
-
-	.file-meta {
-		font-size: 0.75rem;
-		color: #6b7280;
-		margin: 0;
-	}
-
-	.status-indicator {
-		display: flex;
-		align-items: center;
-		gap: 0.375rem;
-		flex-shrink: 0;
-	}
-
-	.status-text {
-		font-size: 0.75rem;
-		font-weight: 500;
-	}
-
-	.error-message {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 0.5rem;
-		background: #fef2f2;
-		border: 1px solid #fecaca;
-		border-radius: 4px;
-		font-size: 0.75rem;
-		color: #dc2626;
-		margin-bottom: 0.75rem;
-	}
-
-	.card-footer {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-	}
-
-	.upload-date {
-		font-size: 0.75rem;
-		color: #9ca3af;
-		margin: 0;
-	}
-
-	.actions {
-		display: flex;
-		gap: 0.25rem;
-	}
-
-	.action-btn {
-		padding: 0.375rem;
-		background: none;
-		border: none;
-		color: #6b7280;
-		cursor: pointer;
-		border-radius: 4px;
-		transition: all 0.2s ease;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.action-btn:hover {
-		background: #f3f4f6;
-		color: #374151;
-	}
-
-	.delete-btn:hover {
-		background: #fef2f2;
-		color: #dc2626;
-	}
-
-	.download-btn:hover {
-		background: #f0f9ff;
-		color: #2563eb;
-	}
-
-	.action-btn:disabled {
-		cursor: not-allowed;
-		opacity: 0.5;
 	}
 </style>

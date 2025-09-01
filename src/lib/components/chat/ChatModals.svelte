@@ -35,7 +35,7 @@
 						<AlertTriangle class="h-5 w-5 text-destructive" />
 					</div>
 					<div class="flex-1">
-						<p class="text-sm">
+						<p class="text-sm text-foreground">
 							Are you sure you want to delete <strong>"{deleteTarget.title}"</strong>?
 						</p>
 					</div>
@@ -95,7 +95,7 @@
 						<AlertTriangle class="h-5 w-5 text-destructive" />
 					</div>
 					<div class="flex-1">
-						<p class="text-sm">
+						<p class="text-sm text-foreground">
 							Are you sure you want to clear <strong>{deleteAllTarget.title}</strong>?
 						</p>
 					</div>

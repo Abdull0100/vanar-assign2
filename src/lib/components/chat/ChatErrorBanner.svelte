@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { AlertTriangle, Clock, RotateCcw, X } from '@lucide/svelte';
+	import { Button } from '$lib/components/ui/button';
 
 	export let error: string = '';
 	export let retryCountdown: number = 0;
@@ -42,26 +43,30 @@
 						{/if}
 					</div>
 				</div>
-				<button
-					on:click={clearErrorState}
-					class="ml-2 text-destructive/60 transition-colors hover:text-destructive"
+				<Button
+					variant="ghost"
+					size="sm"
+					onclick={clearErrorState}
+					class="ml-2 h-6 w-6 p-0 text-destructive/60 transition-colors hover:text-destructive"
 					aria-label="Dismiss error message"
 				>
 					<X class="h-4 w-4" />
-				</button>
+				</Button>
 			</div>
 			{#if error.includes('rate limit') || error.includes('quota') || error.includes('high demand')}
 				<div class="mt-3 border-t border-destructive/20 pt-3">
 					<div class="flex items-center justify-between">
-						<button
-							on:click={onRetry}
+						<Button
+							variant="outline"
+							size="sm"
+							onclick={onRetry}
 							disabled={!canRetryNow()}
-							class="inline-flex items-center rounded-md bg-destructive/20 px-3 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/30 disabled:cursor-not-allowed disabled:opacity-50"
+							class="inline-flex items-center bg-destructive/20 text-destructive border-destructive/30 hover:bg-destructive/30 disabled:cursor-not-allowed disabled:opacity-50"
 							aria-label="Retry sending message"
 						>
 							<RotateCcw class="mr-1 h-3 w-3" />
 							{canRetryNow() ? 'Retry Now' : `Wait ${getTimeUntilRetry()}`}
-						</button>
+						</Button>
 						{#if retryCountdown > 0}
 							<div class="text-xs text-destructive/80">
 								Next retry: {getTimeUntilRetry()}

@@ -130,8 +130,8 @@
 					
 					<!-- Document Indicator -->
 					{#if $activeDocument}
-						<div class="px-4 py-2 bg-blue-50 border-b border-blue-200">
-							<p class="text-sm text-blue-600">
+						<div class="px-4 py-2 bg-background border-b border-border">
+							<p class="text-sm text-foreground">
 								Using document: <span class="font-medium">{$activeDocument.originalName}</span>
 							</p>
 						</div>

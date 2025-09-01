@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { FileText, Upload, X } from '@lucide/svelte';
+	import * as Card from '$lib/components/ui/card';
+	import { Button } from '$lib/components/ui/button';
 	import DocumentUpload from './DocumentUpload.svelte';
 	import DocumentList from './DocumentList.svelte';
 
@@ -31,50 +33,55 @@
 {#if isOpen}
 	<!-- Backdrop -->
 	<div
-		class="fixed inset-0 z-40 bg-black/50 transition-opacity duration-200"
-		on:click={closeSidebar}
-		on:keydown={(e) => e.key === 'Escape' && closeSidebar()}
+		class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+		onclick={closeSidebar}
+		onkeydown={(e) => e.key === 'Escape' && closeSidebar()}
 		role="button"
 		tabindex="0"
 		aria-label="Close document sidebar"
 	></div>
 
 	<!-- Sidebar -->
-	<div
-		class="fixed top-0 right-0 z-50 h-full w-96 transform bg-white shadow-xl transition-transform duration-200 ease-in-out"
+	<aside
+		class="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-border bg-background shadow-2xl"
 	>
 		<!-- Header -->
-		<div class="flex items-center justify-between border-b border-gray-200 p-4">
+		<div class="flex items-center justify-between border-b border-border p-4">
 			<div class="flex items-center gap-2">
-				<FileText class="h-5 w-5 text-blue-600" />
-				<h2 class="text-lg font-semibold text-gray-900">Document Management</h2>
+				<FileText class="h-5 w-5 text-primary" />
+				<h2 class="text-lg font-semibold text-foreground">Document Management</h2>
 			</div>
-			<button
-				on:click={closeSidebar}
-				class="rounded-md p-1 transition-colors hover:bg-gray-100"
-				title="Close sidebar"
+			<Button
+				variant="ghost"
+				size="sm"
+				onclick={closeSidebar}
+				class="h-8 w-8 p-0"
+				aria-label="Close document sidebar"
 			>
-				<X class="h-5 w-5 text-gray-500" />
-			</button>
+				<X class="h-4 w-4" />
+			</Button>
 		</div>
 
 		<!-- Content -->
-		<div class="flex-1 overflow-y-auto">
-			<!-- Upload Section -->
-			<div class="border-b border-gray-200 p-4">
-				<h3 class="mb-3 flex items-center gap-2 text-sm font-medium text-gray-900">
-					<Upload class="h-4 w-4" />
-					Upload Document
-				</h3>
-				<DocumentUpload {conversationId} on:uploadSuccess={handleUploadSuccess} />
-			</div>
+		<div class="flex-grow space-y-6 overflow-y-auto p-4">
+			<!-- DocumentUpload will go here -->
+			<Card.Root class="border-border bg-card shadow-sm">
+				<Card.Header>
+					<Card.Title class="text-lg font-semibold text-card-foreground">Upload Document</Card.Title>
+				</Card.Header>
+				<Card.Content>
+					<DocumentUpload {conversationId} on:uploadSuccess={handleUploadSuccess} />
+				</Card.Content>
+			</Card.Root>
 
-			<!-- Documents List Section -->
-			<div class="p-4">
-				<DocumentList {refreshTrigger} on:documentDeleted={handleDocumentDeleted} />
-			</div>
+			<!-- DocumentList will go here -->
+			<Card.Root class="border-border bg-card shadow-sm">
+				<Card.Content class="p-4">
+					<DocumentList {refreshTrigger} on:documentDeleted={handleDocumentDeleted} />
+				</Card.Content>
+			</Card.Root>
 		</div>
-	</div>
+	</aside>
 {/if}
 
 <style>
@@ -84,16 +91,16 @@
 	}
 
 	:global(.sidebar-content::-webkit-scrollbar-track) {
-		background: #f1f1f1;
+		background: hsl(var(--muted));
 		border-radius: 3px;
 	}
 
 	:global(.sidebar-content::-webkit-scrollbar-thumb) {
-		background: #c1c1c1;
+		background: hsl(var(--muted-foreground) / 0.6);
 		border-radius: 3px;
 	}
 
 	:global(.sidebar-content::-webkit-scrollbar-thumb:hover) {
-		background: #a8a8a8;
+		background: hsl(var(--muted-foreground) / 0.8);
 	}
 </style>

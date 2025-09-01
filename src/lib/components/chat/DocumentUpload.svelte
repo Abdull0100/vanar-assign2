@@ -164,85 +164,87 @@
 </script>
 
 <div class="document-upload">
-	<div
-		class="upload-area"
-		class:dragging={isDragging}
-		class:disabled
-		ondragover={handleDragOver}
-		ondragleave={handleDragLeave}
-		ondrop={handleDrop}
-		role="button"
-		tabindex="0"
-		aria-label="Upload area for documents"
-	>
-		{#if selectedFile && uploadStatus !== 'success'}
-			<!-- File selected state -->
-			<div class="file-info">
-				<FileText class="file-icon" size={24} />
-				<div class="file-details">
-					<div class="file-name">{selectedFile.name}</div>
-					<div class="file-size">{formatFileSize(selectedFile.size)}</div>
-				</div>
-				{#if uploadStatus === 'idle'}
-					<button class="remove-btn" onclick={removeFile} {disabled}>
-						<X size={16} />
-					</button>
-				{:else if uploadStatus === 'uploading'}
-					<div class="upload-progress">
-						<div class="progress-bar">
-							<div class="progress-fill" style="width: {uploadProgress}%"></div>
-						</div>
-						<span class="progress-text">{uploadProgress}%</span>
-					</div>
-				{:else if uploadStatus === 'error'}
-					<div class="error-indicator">
-						<AlertCircle size={16} class="error-icon" />
-					</div>
-				{/if}
+	{#if selectedFile && uploadStatus !== 'success'}
+		<div class="border-border bg-muted flex items-center justify-between rounded-lg border p-3">
+			<div class="min-w-0 flex-1">
+				<p class="truncate font-medium text-foreground">{selectedFile.name}</p>
+				<p class="text-sm">{formatFileSize(selectedFile.size)}</p>
 			</div>
-
-			{#if uploadStatus === 'error' && errorMessage}
-				<div class="error-message">{errorMessage}</div>
-			{/if}
-
 			{#if uploadStatus === 'idle'}
-				<button class="upload-btn" onclick={uploadFile} {disabled}>
-					<Upload size={16} />
-					Upload Document
+				<button class="remove-btn" onclick={removeFile} {disabled}>
+					<X size={16} />
 				</button>
-			{/if}
-		{:else if uploadStatus === 'success'}
-			<!-- Success state -->
-			<div class="success-state">
-				<Check class="success-icon" size={24} />
-				<div class="success-text">Document uploaded successfully!</div>
-			</div>
-		{:else}
-			<!-- Default upload state -->
-			<div class="upload-prompt">
-				<Upload class="upload-icon" size={32} />
-				<div class="upload-text">
-					<div class="primary-text">Drop your document here</div>
-					<div class="secondary-text">or click to browse</div>
+			{:else if uploadStatus === 'uploading'}
+				<div class="upload-progress">
+					<div class="progress-bar">
+						<div class="progress-fill" style="width: {uploadProgress}%"></div>
+					</div>
+					<span class="progress-text">{uploadProgress}%</span>
 				</div>
-				<input
-					type="file"
-					accept=".pdf,.docx,.txt,.md"
-					onchange={handleFileInput}
-					{disabled}
-					style="display: none"
-					bind:this={fileInput}
-				/>
-				<button class="browse-btn" onclick={() => fileInput?.click()} {disabled}>
-					Browse Files
-				</button>
-			</div>
-		{/if}
-	</div>
+			{:else if uploadStatus === 'error'}
+				<div class="error-indicator">
+					<AlertCircle size={16} class="error-icon" />
+				</div>
+			{/if}
+		</div>
 
-	<div class="upload-info">
-		<p>Supported formats: PDF, DOCX, TXT, MD (max 10MB)</p>
-	</div>
+		{#if uploadStatus === 'error' && errorMessage}
+			<p class="mt-2 text-sm text-destructive">{errorMessage}</p>
+		{/if}
+
+		{#if uploadStatus === 'idle'}
+			<button
+				onclick={uploadFile}
+				{disabled}
+				class="mt-4 inline-flex w-full items-center justify-center rounded-md border border-primary bg-primary px-4 py-2 font-semibold text-primary-foreground shadow-sm transition-all duration-200 ease-in-out hover:scale-[1.02] hover:border-secondary hover:bg-secondary hover:text-secondary-foreground active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+			>
+				<Upload size={16} class="mr-2" />
+				Upload Document
+			</button>
+		{/if}
+	{:else if uploadStatus === 'success'}
+		<div class="rounded-lg bg-green-500/10 p-4 text-center text-green-500">
+			<p class="font-semibold">Document uploaded successfully!</p>
+		</div>
+	{:else}
+		<div 
+			class="border-border group rounded-lg border-2 border-dashed p-6 text-center transition-colors duration-200 hover:border-primary hover:bg-primary/5"
+			class:dragging={isDragging}
+			class:disabled
+			ondragover={handleDragOver}
+			ondragleave={handleDragLeave}
+			ondrop={handleDrop}
+			role="button"
+			tabindex="0"
+			aria-label="Upload area for documents"
+		>
+			<svg class="mx-auto h-12 w-12 text-muted-foreground transition-colors duration-200 group-hover:text-primary" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
+				<path d="M12 12v9" />
+				<path d="m16 16-4-4-4 4" />
+			</svg>
+			<p class="mt-4">Drop your document here or click to browse</p>
+			<input
+				type="file"
+				accept=".pdf,.docx,.txt,.md"
+				onchange={handleFileInput}
+				{disabled}
+				style="display: none"
+				bind:this={fileInput}
+			/>
+			<button
+				onclick={() => fileInput?.click()}
+				{disabled}
+				class="mt-4 inline-flex items-center justify-center rounded-md border border-primary bg-primary px-4 py-2 font-semibold text-primary-foreground shadow-sm transition-all duration-200 ease-in-out hover:scale-[1.02] hover:border-secondary hover:bg-secondary hover:text-secondary-foreground active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+			>
+				Browse Files
+			</button>
+		</div>
+	{/if}
+
+	<p class="mt-2 text-center text-xs">
+		Supported formats: PDF, DOCX, TXT, MD (max 10MB)
+	</p>
 </div>
 
 <style>
@@ -251,144 +253,34 @@
 		max-width: 400px;
 	}
 
-	.upload-area {
-		border: 2px dashed #d1d5db;
-		border-radius: 8px;
-		padding: 2rem;
-		text-align: center;
-		transition: all 0.2s ease;
-		cursor: pointer;
-		background: #fafafa;
-		position: relative;
-	}
-
-	.upload-area:hover:not(.disabled) {
-		border-color: #3b82f6;
-		background: #f0f9ff;
-	}
-
-	.upload-area.dragging {
-		border-color: #3b82f6;
-		background: #eff6ff;
-		transform: scale(1.02);
-	}
-
-	.upload-area.disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.upload-prompt {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 1rem;
-	}
-
-	.upload-text {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-	}
-
-	.primary-text {
-		font-weight: 500;
-		color: #374151;
-	}
-
-	.secondary-text {
-		font-size: 0.875rem;
-		color: #6b7280;
-	}
-
-	.browse-btn {
-		padding: 0.5rem 1rem;
-		background: #3b82f6;
-		color: white;
-		border: none;
-		border-radius: 6px;
-		font-size: 0.875rem;
-		font-weight: 500;
-		cursor: pointer;
-		transition: background 0.2s ease;
-	}
-
-	.browse-btn:hover:not(:disabled) {
-		background: #2563eb;
-	}
-
-	.browse-btn:disabled {
-		background: #9ca3af;
-		cursor: not-allowed;
-	}
-
-	.file-info {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-		padding: 1rem;
-		background: white;
-		border: 1px solid #e5e7eb;
-		border-radius: 6px;
-	}
-
-	.file-details {
-		flex: 1;
-		text-align: left;
-	}
-
-	.file-name {
-		font-weight: 500;
-		color: #374151;
-		font-size: 0.875rem;
-		word-break: break-all;
-	}
-
-	.file-size {
-		font-size: 0.75rem;
-		color: #6b7280;
-		margin-top: 0.25rem;
-	}
-
 	.remove-btn {
-		padding: 0.25rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: 2rem;
+		width: 2rem;
 		background: none;
-		border: none;
-		color: #6b7280;
+		border: 1px solid hsl(var(--border));
+		color: hsl(var(--muted-foreground));
 		cursor: pointer;
-		border-radius: 4px;
-		transition: all 0.2s ease;
+		border-radius: 50%;
+		transition: all 0.2s ease-in-out;
 		flex-shrink: 0;
 	}
 
-	.remove-btn:hover {
-		background: #f3f4f6;
-		color: #374151;
+	.remove-btn:hover:not(:disabled) {
+		background: hsl(var(--muted));
+		color: hsl(var(--foreground));
+		transform: scale(1.1);
 	}
 
-	.upload-btn {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 0.5rem 1rem;
-		background: #10b981;
-		color: white;
-		border: none;
-		border-radius: 6px;
-		font-size: 0.875rem;
-		font-weight: 500;
-		cursor: pointer;
-		transition: background 0.2s ease;
-		margin-top: 1rem;
+	.remove-btn:active:not(:disabled) {
+		transform: scale(0.95);
 	}
 
-	.upload-btn:hover:not(:disabled) {
-		background: #059669;
-	}
-
-	.upload-btn:disabled {
-		background: #9ca3af;
-		cursor: not-allowed;
+	.remove-btn:focus {
+		outline: none;
+		box-shadow: 0 0 0 2px hsl(var(--ring));
 	}
 
 	.upload-progress {
@@ -401,20 +293,20 @@
 	.progress-bar {
 		width: 60px;
 		height: 6px;
-		background: #e5e7eb;
+		background: hsl(var(--muted));
 		border-radius: 3px;
 		overflow: hidden;
 	}
 
 	.progress-fill {
 		height: 100%;
-		background: #3b82f6;
+		background: hsl(var(--primary));
 		transition: width 0.2s ease;
 	}
 
 	.progress-text {
 		font-size: 0.75rem;
-		color: #6b7280;
+		color: hsl(var(--muted-foreground));
 		font-weight: 500;
 	}
 
@@ -422,39 +314,18 @@
 		flex-shrink: 0;
 	}
 
-	.error-message {
-		margin-top: 0.5rem;
-		padding: 0.5rem;
-		background: #fef2f2;
-		border: 1px solid #fecaca;
-		border-radius: 4px;
-		font-size: 0.75rem;
-		color: #dc2626;
-		text-align: left;
+	.error-icon {
+		color: hsl(var(--destructive));
 	}
 
-	.success-state {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 1rem;
+	.dragging {
+		border-color: hsl(var(--primary));
+		background: hsl(var(--primary) / 0.05);
+		transform: scale(1.02);
 	}
 
-	.success-text {
-		font-weight: 500;
-		color: #374151;
-		font-size: 0.875rem;
-	}
-
-	.upload-info {
-		margin-top: 1rem;
-		text-align: center;
-	}
-
-	.upload-info p {
-		font-size: 0.75rem;
-		color: #6b7280;
-		margin: 0;
+	.disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
 	}
 </style>

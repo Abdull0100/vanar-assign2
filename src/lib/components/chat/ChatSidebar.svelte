@@ -19,7 +19,7 @@
 <div class="order-2 lg:order-1 lg:col-span-1">
 	<Card.Root class="flex h-full flex-col">
 		<Card.Header class="flex-row items-center justify-between space-y-0 pb-2">
-			<Card.Title class="text-base lg:text-lg">Chat Rooms</Card.Title>
+			<Card.Title class="text-base lg:text-lg text-card-foreground">Chat Rooms</Card.Title>
 			<Button onclick={onNewConversation} size="sm" aria-label="Start a new conversation room">
 				<Plus class="mr-1 h-3 w-3 lg:mr-2 lg:h-4 lg:w-4" />
 				<span class="hidden sm:inline">New Room</span>
@@ -62,7 +62,7 @@
 						>
 							<MessageSquare class="h-5 w-5 text-muted-foreground lg:h-6 lg:w-6" />
 						</div>
-						<h3 class="mb-2 text-base font-semibold lg:text-lg">No chat rooms yet</h3>
+						<h3 class="mb-2 text-base font-semibold text-foreground lg:text-lg">No chat rooms yet</h3>
 						<p class="mb-4 text-xs text-muted-foreground lg:text-sm">
 							Create your first room to start chatting with Vanar AI
 						</p>
@@ -88,7 +88,7 @@
 							aria-pressed={currentConversationId === conv.id}
 						>
 							<div class="flex items-center justify-between">
-								<p class="mr-2 flex-1 truncate text-xs font-medium lg:mr-3 lg:text-sm">
+								<p class="mr-2 flex-1 truncate text-xs font-medium text-foreground lg:mr-3 lg:text-sm">
 									{conv.roomName}
 								</p>
 								<Button
