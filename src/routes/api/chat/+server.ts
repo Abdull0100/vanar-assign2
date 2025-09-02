@@ -1234,22 +1234,45 @@ Please provide a helpful response. Keep it conversational and relevant to the co
 
 					console.log('Regenerating AI response:', messageId);
 
-					// Fork the AI response (this creates a new branch starting from the AI response)
-					const forkedMessage = treeManager.forkMessage(messageId, originalMessage.content, 'assistant');
-					console.log('Created forked AI message:', forkedMessage.id);
+					// Get the active conversation to find context for regeneration
+					const activeConversation = treeManager.getActiveConversation();
+					const activePath = activeConversation.map(msg => msg.id);
 
-					// Get conversation context for regeneration
-					const activeConversationBeforeRegeneration = treeManager.getActiveConversation();
-					const activePathBeforeRegeneration = activeConversationBeforeRegeneration.map(msg => msg.id);
-
-					// Find the user message that prompted this AI response
-					const userMessage = activeConversationBeforeRegeneration.find(msg => msg.role === 'user');
-					if (!userMessage) {
+					// Find the user message that prompted this AI response (should be the previous message in active path)
+					const originalMessageIndex = activePath.indexOf(messageId);
+					if (originalMessageIndex === -1 || originalMessageIndex === 0) {
 						throw new ValidationError('Could not find user message for regeneration context');
 					}
 
-					// Get conversation context for AI regeneration
-					const conversationForTranscript = activeConversationBeforeRegeneration.slice(0, -1); // Exclude the current AI response
+					const userMessage = activeConversation[originalMessageIndex - 1];
+					if (!userMessage || userMessage.role !== 'user') {
+						throw new ValidationError('Could not find valid user message for regeneration context');
+					}
+
+					// Get conversation context for regeneration (exclude the current AI response being regenerated)
+					const conversationForTranscript: Array<{
+						id: string;
+						role: string;
+						content: string;
+						createdAt: Date;
+						updatedAt: Date;
+						userId: string;
+						conversationId: string;
+						parentId: string | null;
+						childrenIds: string[] | null;
+						previousId: string | null;
+					}> = activeConversation.slice(0, originalMessageIndex).map(msg => ({
+						id: msg.id,
+						role: msg.role,
+						content: msg.content,
+						createdAt: new Date(msg.createdAt),
+						updatedAt: new Date(msg.updatedAt),
+						userId: msg.userId,
+						conversationId: msg.conversationId,
+						parentId: msg.parentId,
+						childrenIds: msg.childrenIds,
+						previousId: null
+					}));
 					const transcript = buildRecentTranscript(conversationForTranscript);
 
 					// Prepare prompt for regeneration
@@ -1261,50 +1284,63 @@ User's latest message: ${userMessage.content}
 
 Please provide a helpful response. Keep it conversational and relevant to the context.`;
 
+					// Check if Gemini API is available
+					if (!genAI) {
+						throw new ValidationError('AI service is currently unavailable');
+					}
+
 					// Generate new AI response
 					const aiResult = await genAI.getGenerativeModel({ model: 'gemini-1.5-flash' }).generateContent(prompt);
 					const newAiResponse = aiResult.response.text();
 
-					// Create the regenerated AI response as a child of the forked message
-					const regeneratedMessage = treeManager.addMessage({
-						id: crypto.randomUUID(),
+					// Create the regenerated AI response as a new message with the original message as parent
+					const regeneratedMessageId = crypto.randomUUID();
+					const regeneratedMessage = treeManager.addMessageToBranch({
+						id: regeneratedMessageId,
 						role: 'assistant',
 						content: newAiResponse,
 						createdAt: new Date().toISOString(),
 						updatedAt: new Date().toISOString(),
-						conversationId: forkedMessage.conversationId,
-						userId: forkedMessage.userId
-					});
+						conversationId: originalMessage.conversationId,
+						userId: originalMessage.userId
+					}, messageId); // Add as child of the original message
+
+					console.log('Created regenerated AI message:', regeneratedMessage.id, 'as child of:', messageId);
 
 					// Save the regenerated message to database
 					await db.insert(chatMessages).values({
 						id: regeneratedMessage.id,
-						conversationId: regeneratedMessage.conversationId,
-						userId: regeneratedMessage.userId,
+						conversationId: originalMessage.conversationId,
+						userId: originalMessage.userId,
 						role: 'assistant',
-						content: regeneratedMessage.content,
-						parentId: regeneratedMessage.parentId,
+						content: newAiResponse,
+						parentId: messageId, // Set parent to the original message being regenerated
 						childrenIds: regeneratedMessage.childrenIds,
-						previousId: forkedMessage.id, // Link to the forked message
-						createdAt: new Date(regeneratedMessage.createdAt),
-						updatedAt: new Date(regeneratedMessage.updatedAt)
+						previousId: userMessage.id, // Link to the user message for linear flow
+						createdAt: new Date(),
+						updatedAt: new Date()
 					});
 
-					// Update parent's childrenIds if it exists
-					if (regeneratedMessage.parentId) {
-						const treeParent = treeManager.getMessage(regeneratedMessage.parentId);
-						const updatedChildrenIds = treeParent ? treeParent.childrenIds : regeneratedMessage.childrenIds;
+					// Update the original message's childrenIds to include the new regenerated message
+					const originalMessageFromDb = await db.query.chatMessages.findFirst({
+						where: eq(chatMessages.id, messageId)
+					});
 
+					if (originalMessageFromDb) {
+						const updatedChildrenIds = [...(originalMessageFromDb.childrenIds || []), regeneratedMessage.id];
 						await db.update(chatMessages)
 							.set({
 								childrenIds: updatedChildrenIds,
 								updatedAt: new Date()
 							})
-							.where(eq(chatMessages.id, regeneratedMessage.parentId));
-						console.log('Updated regenerated message parent childrenIds to:', updatedChildrenIds);
+							.where(eq(chatMessages.id, messageId));
+						console.log('Updated original message childrenIds to:', updatedChildrenIds);
 					}
 
-					// Get the final active conversation and tree data
+					// Switch to the newly regenerated message branch to make it active
+					treeManager.switchBranch(regeneratedMessage.id);
+
+					// Get the final active conversation and tree data after switching to regenerated branch
 					const finalActiveConversation = treeManager.getActiveConversation();
 					const finalActivePath = finalActiveConversation.map(msg => msg.id);
 					const finalBranchNavigation: BranchNavigation[] = [];
@@ -1358,7 +1394,6 @@ Please provide a helpful response. Keep it conversational and relevant to the co
 					result = {
 						success: true,
 						message: 'AI response regenerated successfully',
-						forkedMessage,
 						regeneratedMessage,
 						activePath: finalActivePath,
 						activeConversation: finalActiveConversation.map(msg => ({

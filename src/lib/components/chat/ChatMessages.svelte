@@ -213,6 +213,23 @@
 		}
 		return null;
 	}
+
+	// Helper function to find parent navigation data for AI messages (regenerated responses)
+	function findAIParentNavData(
+		aiMessageIndex: number
+	): { messageId: string; currentIndex: number; totalBranches: number } | null {
+		if (aiMessageIndex < 1) return null;
+		const currentAIMessage = messages[aiMessageIndex];
+
+		// Search through all branch data to find if this AI message is a child of any parent
+		for (const nav of branchNavigation) {
+			// If the parent's children include our current AI message, we've found the right navigator
+			if (nav.childrenIds?.includes(currentAIMessage.id)) {
+				return nav;
+			}
+		}
+		return null;
+	}
 </script>
 
 <div class="flex-1 overflow-y-auto bg-background">
@@ -351,7 +368,7 @@
 								</div>
 							{/if}
 
-
+						<!-- This is the assistant message -->
 						{:else if messageItem.role === 'assistant'}
 							<!-- Assistant Message -->
 							<div class="flex justify-start">
@@ -410,24 +427,55 @@
 							{#if messageItem.content && messageItem.content.length > 0 && !messageItem.isStreaming}
 								<div class="mt-1 ml-10 flex justify-start">
 									<div
-										class="flex space-x-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+										class="flex items-center space-x-2 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
 									>
-										<button
-											on:click={() => copyResponse(messageItem.id, messageItem.content)}
-											class="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-											title="Copy"
-										>
-											{#if copiedMessageId === messageItem.id}<Check class="h-4 w-4" />{:else}<Copy
-													class="h-4 w-4"
-												/>{/if}
-										</button>
-										<button
-											on:click={() => handleRegenerate(messageItem.id)}
-											class="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-											title="Regenerate & Fork"
-										>
-											<RotateCcw class="h-4 w-4" />
-										</button>
+										<!-- Branch Navigation (if available) -->
+										{#if messageItem.role === 'assistant'}
+											{@const navForAssistantAsParent = getBranchNavigationForMessage(messageItem.id)}
+											{@const navForAssistantAsChild = findAIParentNavData(idx)}
+											{@const rootBranchNav = getRootBranchNavigation(messageItem.id)}
+											{@const isRootMessage = isRootMessageWithSiblings(messageItem.id)}
+											{#if navForAssistantAsParent || navForAssistantAsChild || isRootMessage}
+												<div class="flex items-center gap-1 text-xs text-muted-foreground">
+													{#if navForAssistantAsParent}
+														<BranchNavigator
+															branchNav={navForAssistantAsParent}
+															on:switch={handleSwitchBranch}
+														/>
+													{:else if navForAssistantAsChild}
+														<BranchNavigator
+															branchNav={navForAssistantAsChild}
+															on:switch={handleSwitchBranch}
+														/>
+													{:else if isRootMessage && rootBranchNav}
+														<BranchNavigator
+															branchNav={rootBranchNav}
+															on:switch={handleSwitchBranch}
+														/>
+													{/if}
+												</div>
+											{/if}
+										{/if}
+
+										<!-- Action buttons -->
+										<div class="flex space-x-1">
+											<button
+												on:click={() => copyResponse(messageItem.id, messageItem.content)}
+												class="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+												title="Copy"
+											>
+												{#if copiedMessageId === messageItem.id}<Check class="h-4 w-4" />{:else}<Copy
+														class="h-4 w-4"
+													/>{/if}
+											</button>
+											<button
+												on:click={() => handleRegenerate(messageItem.id)}
+												class="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+												title="Regenerate & Fork"
+											>
+												<RotateCcw class="h-4 w-4" />
+											</button>
+										</div>
 									</div>
 								</div>
 							{/if}
