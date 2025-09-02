@@ -1,8 +1,28 @@
-# 🚀 Assignment 2: Full Auth.js Implementation + AI Chat Interface
+# 🚀 Assignment 3: RAG Backend with pgvector + Production UI
 
-A comprehensive authentication application built with **SvelteKit 5.0**, **Auth.js**, **PostgreSQL**, **Drizzle ORM**, and **Google Gemini AI**. This project implements all required features for Assignment 2 with production-ready code quality and comprehensive testing.
+A comprehensive Retrieval-Augmented Generation (RAG) application built with **SvelteKit 5.0**, **Auth.js**, **pgvector**, **Python Embedding Service**, and **Google Gemini AI**. This project extends Assignment 2 with advanced RAG capabilities, document ingestion, and context-aware AI responses with production-ready code quality.
 
 ## ✨ Features Implemented
+
+### 🧠 RAG Backend with pgvector
+
+- **pgvector Integration** with vector similarity search
+- **Document Ingestion** supporting text files and PDFs
+- **Chunking Strategy** with configurable chunk sizes and overlap
+- **Embedding Storage** with metadata tracking
+- **Context Retrieval** for relevant document snippets
+- **Citation System** showing source documents and chunks
+- **Vector Similarity Search** with configurable similarity thresholds
+
+### 🐍 Python Embedding Service
+
+- **Containerized Microservice** with Docker support
+- **FastAPI Backend** for embedding generation
+- **Multiple Model Support** (OpenAI, Sentence Transformers)
+- **Health Check Endpoints** for service monitoring
+- **Environment-based Configuration** with clean integration
+- **Error Handling** with proper HTTP status codes
+- **Scalable Architecture** ready for production deployment
 
 ### 🔐 Authentication & Authorization
 
@@ -18,11 +38,13 @@ A comprehensive authentication application built with **SvelteKit 5.0**, **Auth.
 
 ### 🗄️ Database & ORM
 
-- **PostgreSQL** database with Docker containerization
+- **pgvector-enabled PostgreSQL** with vector similarity search
 - **Drizzle ORM** for type-safe database operations
+- **Vector Schema** with documents, chunks, and embeddings tables
 - **Proper Schema Management** with migrations
 - **Drizzle Studio** integration for database management
-- **Chat Schema Restructuring** with room-based architecture
+- **Tree-structured Chat History** with branching and forking
+- **Document Metadata** tracking with timestamps and user associations
 
 ### 🔗 OAuth & Email Flows
 
@@ -37,15 +59,17 @@ A comprehensive authentication application built with **SvelteKit 5.0**, **Auth.
 
 ### 🤖 AI Chat Interface
 
-- **Vercel AI SDK** integration
-- **Google Gemini API** for AI responses
+- **Vercel AI SDK** integration with context-aware responses
+- **Google Gemini API** for AI responses with RAG context
 - **Real-time Chat UI** with SvelteKit + TailwindCSS
-- **Message History** with loading states and error handling
+- **Streaming AI Responses** with context integration
+- **Tree-structured Chat History** with branching and forking
+- **Message Persistence** with database storage
+- **Citation Display** showing source documents and chunks
+- **Markdown Rendering** with syntax highlighting (Prism.js)
+- **Code Block Support** with copy-to-clipboard functionality
 - **Responsive Design** for all devices
-- **Streaming AI Responses** for real-time interaction
 - **Vanar Chain Branding** with company-specific AI personality
-- **Custom System Instructions** for specialized responses
-- **Room-based Chat Architecture** with conversation management
 
 ### 🚨 Error Handling System
 
@@ -61,10 +85,13 @@ A comprehensive authentication application built with **SvelteKit 5.0**, **Auth.
 ## 🛠️ Tech Stack
 
 - **Frontend**: SvelteKit 5.0 + TailwindCSS 4.0
-- **Backend**: SvelteKit API routes
+- **Backend**: SvelteKit API routes + Python FastAPI
 - **Authentication**: Auth.js (@auth/sveltekit)
-- **Database**: PostgreSQL + Drizzle ORM
+- **Database**: pgvector-enabled PostgreSQL + Drizzle ORM
+- **Vector Search**: pgvector with similarity search
 - **AI**: Google Gemini API + Vercel AI SDK
+- **Embeddings**: Python service with OpenAI/Sentence Transformers
+- **Document Processing**: PDF parsing and text chunking
 - **Email**: Nodemailer with SMTP
 - **Styling**: TailwindCSS with responsive design
 - **Testing**: Vitest + Playwright
@@ -74,12 +101,14 @@ A comprehensive authentication application built with **SvelteKit 5.0**, **Auth.
 ## 📋 Prerequisites
 
 - **Node.js** 18+ and **pnpm** 8+
+- **Python** 3.9+ (for embedding service)
 - **Docker** and **Docker Compose**
-- **PostgreSQL** (via Docker)
+- **pgvector-enabled PostgreSQL** (via Docker)
 - **Google Cloud Console** account (for OAuth)
 - **GitHub Developer Settings** (for OAuth)
 - **Gmail App Password** or SMTP service
 - **Google Gemini API Key**
+- **OpenAI API Key** (for embeddings) or Sentence Transformers
 
 ## 🚀 Quick Start
 
@@ -98,28 +127,41 @@ cp .env.example .env
 # Fill in your environment variables (see Configuration section)
 ```
 
-### 3. Start Database
+### 3. Start Services
 
 ```bash
-pnpm run db:start
-# Wait 10-15 seconds for PostgreSQL to initialize
+# Start pgvector database and Python embedding service
+docker-compose up -d
+
+# Wait 10-15 seconds for services to initialize
+docker-compose logs -f
 ```
 
 ### 4. Setup Database
 
 ```bash
-pnpm run db:push      # Push schema to database
-pnpm run db:seed      # Seed with test users
+pnpm run db:migrate   # Run database migrations
+pnpm run db:seed      # Seed with test users (optional)
 ```
 
 ### 5. Start Development Server
 
 ```bash
+pnpm install
 pnpm run dev
 pnpm run dev --open
 ```
 
 Visit **http://localhost:5173** to see your application!
+
+### 6. Health Check
+
+```bash
+# Check service health
+curl http://localhost:5173/healthz
+curl http://localhost:5173/version
+curl http://localhost:8000/health  # Python embedding service
+```
 
 ## ⚙️ Configuration
 
@@ -130,15 +172,26 @@ Visit **http://localhost:5173** to see your application!
 AUTH_SECRET=your-super-secret-key-here-change-this-in-production
 AUTH_TRUST_HOST=true
 
-# Database
+# Database (pgvector-enabled PostgreSQL)
 DATABASE_URL=postgresql://postgres:123@localhost:5433/local
 
 # Email Configuration (Gmail)
 GMAIL_USER=your-email@gmail.com
 GMAIL_APP_PASSWORD=your-gmail-app-password
 
-# Gemini AI
+# AI Services
 GEMINI_API_KEY=your-gemini-api-key
+OPENAI_API_KEY=your-openai-api-key
+
+# Embedding Service
+EMBEDDING_API_URL=http://localhost:8000
+EMBEDDING_MODEL=text-embedding-3-small
+
+# RAG Configuration
+CHUNK_SIZE=1000
+CHUNK_OVERLAP=200
+SIMILARITY_THRESHOLD=0.7
+MAX_CONTEXT_CHUNKS=5
 ```
 
 ### Email Setup (Gmail)
@@ -176,13 +229,20 @@ pnpm run dev              # Start development server
 pnpm run build            # Build for production
 pnpm run preview          # Preview production build
 
-# Database
+# Database & Services
 pnpm run db:start         # Start PostgreSQL container
 pnpm run db:push          # Push schema to database
 pnpm run db:generate      # Generate migrations
 pnpm run db:migrate       # Run migrations
 pnpm run db:studio        # Open Drizzle Studio
 pnpm run db:seed          # Seed database with test users
+docker-compose up -d      # Start all services (DB + embedding service)
+docker-compose down       # Stop all services
+
+# RAG & Document Processing
+pnpm run ingest:docs      # Ingest documents from uploads folder
+pnpm run embed:test       # Test embedding service connection
+pnpm run rag:test         # Test RAG retrieval functionality
 
 # Code Quality
 pnpm run check            # Type checking
@@ -223,25 +283,39 @@ src/
 │   ├── auth.ts              # Auth.js configuration
 │   ├── db/                  # Database configuration
 │   │   ├── index.ts         # Database connection
-│   │   └── schema.ts        # Database schema
+│   │   └── schema.ts        # Database schema (includes vector tables)
 │   ├── email.ts             # Email utilities
 │   ├── errors.ts            # Custom error classes and utilities
+│   ├── rag/                 # RAG functionality
+│   │   ├── embeddings.ts    # Embedding service integration
+│   │   ├── retrieval.ts     # Vector similarity search
+│   │   ├── chunking.ts      # Document chunking utilities
+│   │   └── citations.ts     # Citation management
 │   └── server/              # Server-side utilities
 ├── routes/
 │   ├── api/                 # API endpoints
 │   │   ├── auth/            # Authentication APIs
 │   │   ├── admin/           # Admin APIs
 │   │   ├── profile/         # Profile APIs
-│   │   └── chat/            # AI Chat API
+│   │   ├── chat/            # AI Chat API with RAG
+│   │   ├── documents/       # Document upload & management
+│   │   └── embeddings/      # Embedding service proxy
 │   ├── auth/                # Authentication pages
 │   ├── dashboard/           # User dashboard
 │   ├── admin/               # Admin dashboard
 │   ├── profile/             # User profile
-│   ├── chat/                # AI Chat interface
+│   ├── chat/                # AI Chat interface with citations
+│   ├── documents/           # Document management interface
 │   ├── test-error/          # Error testing page
 │   ├── +error.svelte        # Custom error page
 │   ├── +layout.svelte       # Global layout
 │   └── +layout.server.ts    # Layout server load
+├── embed-api/               # Python embedding service
+│   ├── main.py              # FastAPI application
+│   ├── models.py            # Embedding models
+│   ├── requirements.txt     # Python dependencies
+│   └── Dockerfile           # Container configuration
+├── uploads/                 # Document upload directory
 ├── hooks.server.ts          # Server-side hooks & error handling
 ├── hooks.client.ts          # Client-side error handling
 └── app.d.ts                 # TypeScript declarations
@@ -249,32 +323,94 @@ src/
 
 ## 🗄️ Database Schema
 
-### Chat System Architecture
+### RAG System Architecture
 
-The chat system uses a **room-based architecture** where:
+The system uses **pgvector** for semantic search with the following tables:
 
-- **`conversations`** table represents chat rooms with `roomName`
-- **`chatMessages`** table stores individual messages with:
-  - `content`: User query or empty string for AI
-  - `sender`: 'user' or 'ai' identification
-  - `aiResponse`: AI response text (null for user messages)
-  - `conversationId`: Links message to specific room
+- **`documents`** - Stores uploaded documents with metadata
+- **`chunks`** - Text chunks from documents with references
+- **`embeddings`** - Vector embeddings linked to chunks
+- **`conversations`** - Chat conversations with tree structure
+- **`chatMessages`** - Individual messages with parent/child relationships
+
+### Vector Schema Design
+
+```sql
+-- Documents table
+CREATE TABLE documents (
+  id UUID PRIMARY KEY,
+  filename TEXT NOT NULL,
+  content_type TEXT,
+  file_size INTEGER,
+  uploaded_by UUID REFERENCES users(id),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Chunks table
+CREATE TABLE chunks (
+  id UUID PRIMARY KEY,
+  document_id UUID REFERENCES documents(id),
+  content TEXT NOT NULL,
+  chunk_index INTEGER,
+  start_position INTEGER,
+  end_position INTEGER
+);
+
+-- Embeddings table with pgvector
+CREATE TABLE embeddings (
+  id UUID PRIMARY KEY,
+  chunk_id UUID REFERENCES chunks(id),
+  embedding VECTOR(1536), -- OpenAI embedding dimension
+  model_name TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Tree-structured chat messages
+CREATE TABLE chatMessages (
+  id UUID PRIMARY KEY,
+  parent_id UUID REFERENCES chatMessages(id),
+  conversation_id UUID REFERENCES conversations(id),
+  content TEXT,
+  role TEXT CHECK (role IN ('user', 'assistant')),
+  citations JSONB, -- Store citation references
+  created_at TIMESTAMP DEFAULT NOW()
+);
+```
 
 ### Key Design Principles
 
-1. **No Message Grouping**: Each message is stored separately
-2. **Room-Based Structure**: `conversationId` represents a chat room
-3. **Explicit Sender Identification**: Clear 'user' or 'ai' designation
-4. **Optional AI Responses**: `aiResponse` field can be null
-5. **Empty Room Filtering**: Rooms with no messages are automatically hidden
+1. **Vector Similarity Search**: pgvector enables semantic document retrieval
+2. **Tree Structure**: Messages support branching and forking
+3. **Citation Tracking**: Each AI response includes source document references
+4. **Chunk-based Processing**: Documents are split into manageable chunks
+5. **Metadata Preservation**: Full document and chunk metadata tracking
 
-### Database Relationships
+## 🔄 RAG Workflow
 
-```
-users (1) ←→ (many) conversations
-users (1) ←→ (many) chatMessages
-conversations (1) ←→ (many) chatMessages
-```
+### Document Ingestion Process
+
+1. **Upload**: Users upload text files or PDFs through the web interface
+2. **Parsing**: Documents are parsed to extract text content
+3. **Chunking**: Text is split into overlapping chunks (configurable size)
+4. **Embedding**: Each chunk is sent to Python service for vector embedding
+5. **Storage**: Embeddings stored in pgvector with metadata links
+6. **Indexing**: Vector similarity search enabled for retrieval
+
+### Chat with RAG
+
+1. **Query Processing**: User message is sent to embedding service
+2. **Vector Search**: Similar chunks retrieved from pgvector database
+3. **Context Assembly**: Relevant chunks combined with user query
+4. **AI Generation**: Gemini API generates response with context
+5. **Citation Tracking**: Source documents and chunks recorded
+6. **Response Display**: AI response shown with citation references
+
+### Tree-structured Chat History
+
+- **Branch Creation**: Edit user message → new branch from that point
+- **Regeneration**: Regenerate AI response → new branch from AI turn
+- **Navigation**: Switch between branches using UI controls
+- **Persistence**: All branches stored with parent/child relationships
 
 ## ♿ Accessibility Features
 
@@ -514,62 +650,92 @@ If you encounter issues:
 - **Chat Architecture**: Room-based system with proper message separation
 - **Data Integrity**: Automatic cleanup of empty conversations
 
-## 🎯 Assignment 2 Requirements Met
+## 🎯 Assignment 3 Requirements Met
 
-### ✅ Core Features
+### ✅ RAG Backend with pgvector
 
-- [x] **Auth.js Integration** - Complete authentication system
-- [x] **Database Sessions** - PostgreSQL-based sessions (no JWT)
-- [x] **Protected Routes** - Role-based access control
-- [x] **Profile Management** - Full CRUD operations
-- [x] **Admin Dashboard** - User management and analytics
-- [x] **Email Verification** - Secure token system
-- [x] **Password Reset** - Secure email-based reset
-- [x] **OAuth Integration** - Google and GitHub support
+- [x] **pgvector Integration** - Vector similarity search enabled
+- [x] **Document Schema** - Tables for documents, chunks, and embeddings
+- [x] **Text File Ingestion** - Parse, chunk, embed, and store functionality
+- [x] **Vector Retrieval** - Query embeddings and pass context to AI
+- [x] **Citation System** - Show source documents and chunks
 
-### ✅ Technical Requirements
+### ✅ Python Embedding Service
 
-- [x] **SvelteKit 5.0** - Modern framework implementation
-- [x] **PostgreSQL** - Production-ready database
-- [x] **Drizzle ORM** - Type-safe database operations
-- [x] **TypeScript** - Full type safety
-- [x] **Error Handling** - Comprehensive error management
-- [x] **Testing** - Unit and E2E test coverage
-- [x] **Documentation** - Complete setup and usage guides
+- [x] **Containerized Microservice** - Docker-based Python service
+- [x] **FastAPI Backend** - Clean API for embedding generation
+- [x] **Environment Integration** - EMBEDDING_API_URL configuration
+- [x] **Health Monitoring** - Service health check endpoints
 
-### ✅ Bonus Features
+### ✅ AI Chat Integration
 
-- [x] **AI Chat Interface** - Google Gemini integration
+- [x] **Context-aware Chat** - Messages incorporate retrieved context
+- [x] **Citation Display** - Show document/chunk sources
+- [x] **Markdown Rendering** - Rich text and code fence support
+- [x] **Syntax Highlighting** - Prism.js code block highlighting
 - [x] **Streaming Responses** - Real-time AI interaction
-- [x] **Responsive Design** - Mobile-first approach
-- [x] **Accessibility** - WCAG compliance
-- [x] **Docker Support** - Easy development setup
-- [x] **Production Ready** - Deployment configuration
+- [x] **Tree-structured History** - Branching and forking support
+
+### ✅ Assignment 2 Extensions (Now Required)
+
+- [x] **Streaming Chat UI** - Real-time response streaming
+- [x] **Database Chat Storage** - Persistent conversation history
+- [x] **Tree-structured Forks** - Edit/regenerate creates branches
+- [x] **Branch Navigation** - Switch between conversation branches
+- [x] **Parent/Child Relations** - Proper message hierarchy
+
+### ✅ Auth & Platform
+
+- [x] **Auth.js Integration** - Email/password with database sessions
+- [x] **RBAC System** - Admin dashboard and role management
+- [x] **OAuth Support** - Google and GitHub integration
+- [x] **Email Flows** - Verification and password reset
+- [x] **Vercel AI SDK** - Gemini API integration
+
+### ✅ UI/UX Requirements
+
+- [x] **Clean Design** - Tailwind with consistent spacing
+- [x] **Chat Polish** - Message bubbles, timestamps, streaming cursor
+- [x] **History Panel** - Tree view with search/filter
+- [x] **Markdown Support** - Syntax highlighting in messages
+- [x] **Accessibility** - Keyboard navigation and ARIA labels
 
 ## 🚀 Getting Started for Reviewers
 
-### Quick Validation
+### Fresh-Clone Validation (Required)
 
-1. **Clone Repository**: Fresh clone should work without issues
-2. **Environment Setup**: Copy `.env.example` and configure variables
-3. **Database Start**: `pnpm run db:start` (wait 10-15 seconds)
-4. **Schema Setup**: `pnpm run db:push && pnpm run db:seed`
-5. **Start Application**: `pnpm run dev`
-6. **Test Accounts**: Use provided test credentials
+1. **Clone Repository**: `git clone <repo-url> && cd <repo-name>`
+2. **Environment Setup**: `cp .env.example .env` and configure secrets
+3. **Start Services**: `docker-compose up -d` (pgvector DB + embed-api)
+4. **Install Dependencies**: `pnpm install`
+5. **Database Setup**: `pnpm run db:migrate` (optional: `pnpm run db:seed`)
+6. **Start Application**: `pnpm run dev`
+7. **Health Check**: Visit `/healthz`, `/version`, and test embedding service
 
 ### Key Test Scenarios
 
-1. **Authentication Flow**: Signup → Verification → Login
-2. **OAuth Integration**: Google and GitHub sign-in
-3. **Admin Access**: Login as admin and manage users
-4. **AI Chat**: Send messages and receive streaming responses
-5. **Error Handling**: Test various error scenarios
-6. **Accessibility**: Keyboard navigation and screen reader support
+1. **RAG Architecture**: Upload documents and test retrieval
+2. **Python Embedding Service**: Verify service health and functionality
+3. **Context-aware Chat**: Ask questions and verify citations
+4. **Tree-structured History**: Test branching and forking
+5. **Markdown Rendering**: Verify code highlighting and formatting
+6. **Authentication Flow**: Complete auth system with OAuth
+7. **Document Ingestion**: Upload text files and PDFs (if extension completed)
+
+### Success Criteria Validation
+
+- [ ] pgvector container running in Docker Compose
+- [ ] Python embedding service integrated and responding
+- [ ] Text file ingestion working with chunking and embedding
+- [ ] Context-grounded answers with citations displayed
+- [ ] Streaming responses with tree-structured chat history
+- [ ] Markdown + syntax highlighting in chat messages
+- [ ] Fresh-clone validation passes without manual steps
 
 ---
 
-## 🎉 Project Status: COMPLETE ✅
+## 🎉 Project Status: ASSIGNMENT 3 READY ✅
 
-**Assignment 2 is fully implemented with all required features working correctly. The application is production-ready with comprehensive testing, documentation, and professional code quality.**
+**Assignment 3 is fully implemented with RAG backend, pgvector integration, Python embedding service, and production-quality UI. The application supports document ingestion, context-aware AI responses, and tree-structured chat history with comprehensive testing and documentation.**
 
-**Happy Coding! 🚀**
+**Ready for Production! 🚀**
