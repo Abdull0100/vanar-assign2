@@ -75,7 +75,44 @@
 		marked.setOptions({ breaks: true, gfm: true });
 		try {
 			const result = marked(text);
-			return typeof result === 'string' ? result : text;
+			if (typeof result !== 'string') return text;
+			
+			// Process code blocks for syntax highlighting and copy functionality
+			return result.replace(/<pre><code class="language-(\w+)">([\s\S]*?)<\/code><\/pre>/g, (match, language, code) => {
+				// Decode HTML entities
+				const decodedCode = code
+					.replace(/&lt;/g, '<')
+					.replace(/&gt;/g, '>')
+					.replace(/&amp;/g, '&')
+					.replace(/&quot;/g, '"')
+					.replace(/&#39;/g, "'");
+				
+				// Apply syntax highlighting using Prism
+				const highlightedCode = Prism.highlight(decodedCode, Prism.languages[language] || Prism.languages.text, language);
+				
+				// Generate unique ID for this code block
+				const codeBlockId = `code-${Math.random().toString(36).substr(2, 9)}`;
+				
+				// Create enhanced code block with copy button
+				return `
+					<div class="code-block-container">
+						<div class="code-block-header">
+							<span class="code-language">${language}</span>
+							<button 
+								class="copy-code-btn" 
+								onclick="copyCodeToClipboard('${codeBlockId}')"
+								title="Copy code"
+							>
+								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+									<rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+									<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+								</svg>
+							</button>
+						</div>
+						<pre class="code-block"><code id="${codeBlockId}" class="language-${language}">${highlightedCode}</code></pre>
+					</div>
+				`;
+			});
 		} catch (error) {
 			console.error('Markdown rendering error:', error);
 			return text;
@@ -233,6 +270,38 @@
 			}
 		}
 		return null;
+	}
+
+	// Global function for copying code to clipboard
+	function copyCodeToClipboard(codeBlockId: string) {
+		const codeElement = document.getElementById(codeBlockId);
+		if (!codeElement) return;
+		
+		const text = codeElement.textContent || '';
+		navigator.clipboard.writeText(text).then(() => {
+			// Visual feedback - change button icon temporarily
+			const button = codeElement.closest('.code-block-container')?.querySelector('.copy-code-btn') as HTMLElement;
+			if (button) {
+				const originalHTML = button.innerHTML;
+				button.innerHTML = `
+					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<polyline points="20,6 9,17 4,12"></polyline>
+					</svg>
+				`;
+				button.style.color = 'hsl(var(--primary))';
+				setTimeout(() => {
+					button.innerHTML = originalHTML;
+					button.style.color = '';
+				}, 2000);
+			}
+		}).catch((err) => {
+			console.error('Failed to copy code: ', err);
+		});
+	}
+
+	// Make the copy function globally available
+	if (typeof window !== 'undefined') {
+		(window as any).copyCodeToClipboard = copyCodeToClipboard;
 	}
 </script>
 
@@ -543,5 +612,129 @@
 	:global(.prose th) {
 		background-color: hsl(var(--muted));
 		font-weight: 600;
+	}
+	
+	/* Enhanced code block styles */
+	:global(.code-block-container) {
+		position: relative;
+		margin: 1rem 0;
+		border-radius: 0.5rem;
+		overflow: hidden;
+		border: 1px solid hsl(var(--border));
+		background-color: hsl(var(--muted));
+	}
+	
+	:global(.code-block-header) {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 0.5rem 1rem;
+		background-color: hsl(var(--muted));
+		border-bottom: 1px solid hsl(var(--border));
+		font-size: 0.75rem;
+		font-weight: 500;
+		color: hsl(var(--muted-foreground));
+	}
+	
+	:global(.code-language) {
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+	
+	:global(.copy-code-btn) {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.25rem;
+		border: none;
+		background: transparent;
+		color: hsl(var(--muted-foreground));
+		border-radius: 0.25rem;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+	
+	:global(.copy-code-btn:hover) {
+		background-color: hsl(var(--accent));
+		color: hsl(var(--accent-foreground));
+	}
+	
+	:global(.code-block) {
+		margin: 0;
+		padding: 1rem;
+		background-color: hsl(var(--muted));
+		overflow-x: auto;
+		font-family: 'Fira Code', 'Monaco', 'Consolas', 'Courier New', monospace;
+		font-size: 0.875rem;
+		line-height: 1.5;
+	}
+	
+	:global(.code-block code) {
+		background: transparent;
+		padding: 0;
+		border-radius: 0;
+		font-size: inherit;
+		color: inherit;
+	}
+	
+	/* Prism.js theme adjustments for better contrast */
+	:global(.token.comment,
+	.token.prolog,
+	.token.doctype,
+	.token.cdata) {
+		color: hsl(var(--muted-foreground));
+		opacity: 0.7;
+	}
+	
+	:global(.token.punctuation) {
+		color: hsl(var(--foreground));
+	}
+	
+	:global(.token.property,
+	.token.tag,
+	.token.boolean,
+	.token.number,
+	.token.constant,
+	.token.symbol,
+	.token.deleted) {
+		color: hsl(var(--primary));
+	}
+	
+	:global(.token.selector,
+	.token.attr-name,
+	.token.string,
+	.token.char,
+	.token.builtin,
+	.token.inserted) {
+		color: hsl(var(--primary));
+		opacity: 0.8;
+	}
+	
+	:global(.token.operator,
+	.token.entity,
+	.token.url,
+	.language-css .token.string,
+	.style .token.string) {
+		color: hsl(var(--foreground));
+	}
+	
+	:global(.token.atrule,
+	.token.attr-value,
+	.token.keyword) {
+		color: hsl(var(--primary));
+		font-weight: 600;
+	}
+	
+	:global(.token.function,
+	.token.class-name) {
+		color: hsl(var(--primary));
+		opacity: 0.9;
+	}
+	
+	:global(.token.regex,
+	.token.important,
+	.token.variable) {
+		color: hsl(var(--primary));
+		opacity: 0.8;
 	}
 </style>
