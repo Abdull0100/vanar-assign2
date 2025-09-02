@@ -11,6 +11,8 @@ export interface TreeNode {
 	isStreaming?: boolean;
 	conversationId: string;
 	userId: string;
+	attachedDocumentId?: string | null;
+	attachedDocumentName?: string | null;
 }
 
 export interface BranchNavigation {
@@ -336,7 +338,9 @@ export class ChatTreeManager {
 				createdAt: msg.createdAt || new Date().toISOString(),
 				updatedAt: msg.updatedAt || new Date().toISOString(),
 				conversationId: msg.conversationId || '',
-				userId: msg.userId || ''
+				userId: msg.userId || '',
+				attachedDocumentId: msg.attachedDocumentId || null,
+				attachedDocumentName: msg.attachedDocumentName || null
 			};
 			this.messages.set(msg.id, treeNode);
 		}

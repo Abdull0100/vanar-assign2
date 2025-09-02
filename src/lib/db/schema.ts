@@ -134,6 +134,9 @@ export const chatMessages = pgTable('chatMessages', {
 	content: text('content').notNull(), // Message content
 	parentId: uuid('parentId'), // Parent message ID (null for root)
 	childrenIds: jsonb('childrenIds').$type<string[]>().default([]), // Forks stored here
+	// Document upload support
+	attachedDocumentId: uuid('attachedDocumentId').references(() => documents.id, { onDelete: 'set null' }), // Optional document attachment
+	attachedDocumentName: text('attachedDocumentName'), // Original document name for display
 	createdAt: timestamp('createdAt').defaultNow().notNull(),
 	updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 	// Legacy flat conversation pointer

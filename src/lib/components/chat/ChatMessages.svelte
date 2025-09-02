@@ -10,7 +10,7 @@
 	import 'prismjs/components/prism-css';
 	import 'prismjs/components/prism-markdown';
 	import 'prismjs/components/prism-sql';
-	import { Bot, User, Copy, Edit, Check, MessageSquare, RotateCcw } from '@lucide/svelte';
+	import { Bot, User, Copy, Edit, Check, MessageSquare, RotateCcw, FileText } from '@lucide/svelte';
 	import BranchNavigator from './BranchNavigator.svelte'; // Import the new component
 	import CitationDisplay from './CitationDisplay.svelte';
 
@@ -20,7 +20,11 @@
 		content: string;
 		createdAt: string;
 		isStreaming?: boolean;
+		attachedDocumentId?: string | null;
+		attachedDocumentName?: string | null;
 	}> = [];
+
+
 	export let initializing: boolean = false;
 	export let onForkMessage: ((messageId: string, newContent: string) => void) | null = null;
 	export let onRegenerateMessage: ((messageId: string) => void) | null = null;
@@ -302,7 +306,18 @@
 										<div
 											class="rounded-2xl rounded-br-sm bg-primary px-4 py-3 text-primary-foreground shadow-lg"
 										>
-											<p class="text-sm leading-relaxed">{messageItem.content}</p>
+											{#if messageItem.attachedDocumentName}
+												<!-- Document attachment indicator -->
+												<div class="mb-2 flex items-center space-x-2 rounded-lg bg-primary-foreground/10 px-3 py-2">
+													<FileText class="h-4 w-4 text-primary-foreground/70" />
+													<span class="text-xs text-primary-foreground/80">Attached: {messageItem.attachedDocumentName}</span>
+												</div>
+											{/if}
+											{#if messageItem.content}
+												<p class="text-sm leading-relaxed">{messageItem.content}</p>
+											{:else if messageItem.attachedDocumentName}
+												<p class="text-sm leading-relaxed text-primary-foreground/70 italic">File uploaded: {messageItem.attachedDocumentName}</p>
+											{/if}
 										</div>
 									{/if}
 									<div

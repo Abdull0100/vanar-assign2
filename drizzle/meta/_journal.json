@@ -183,6 +183,20 @@
       "when": 1756709096731,
       "tag": "0025_clumsy_slipstream",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1756804121864,
+      "tag": "0026_curved_red_wolf",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1756804538119,
+      "tag": "0027_robust_tiger_shark",
+      "breakpoints": true
     }
   ]
 }

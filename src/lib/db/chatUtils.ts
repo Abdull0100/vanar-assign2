@@ -100,6 +100,8 @@ export function transformDbMessagesToView(dbMessages: any[]): Array<{
 	content: string;
 	createdAt: string;
 	isStreaming?: boolean;
+	attachedDocumentId?: string | null;
+	attachedDocumentName?: string | null;
 }> {
 	if (!dbMessages || !Array.isArray(dbMessages)) return [];
 	return dbMessages.map((msg: any) => ({
@@ -107,7 +109,9 @@ export function transformDbMessagesToView(dbMessages: any[]): Array<{
 		role: msg.role || 'user',
 		content: msg.content || '',
 		createdAt: msg.createdAt,
-		isStreaming: false
+		isStreaming: false,
+		attachedDocumentId: msg.attachedDocumentId || null,
+		attachedDocumentName: msg.attachedDocumentName || null
 	}));
 }
 

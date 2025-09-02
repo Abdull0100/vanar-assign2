@@ -86,11 +86,19 @@
 		// store handles its internal timers
 	});
 
+	let attachedFile: File | null = null;
+
 	function handleSend() {
 		const text = messageText;
+		const file = attachedFile;
 		messageText = '';
-		sendMessage(text);
+		attachedFile = null;
+		sendMessage(text, file);
 		setTimeout(() => chatMessagesRef?.scrollToBottomPublic?.(), 50);
+	}
+
+	function handleFileAttach(file: File) {
+		attachedFile = file;
 	}
 
 	function toggleDocumentSidebar() {
@@ -174,7 +182,7 @@
 							onRetry={() => { clearErrorState(); handleSend(); }}
 						/>
 					{/if}
-					<ChatInput value={messageText} loading={$loading} onSend={handleSend} onInput={(v) => messageText = v} />
+					<ChatInput value={messageText} loading={$loading} onSend={handleSend} onInput={(v) => messageText = v} onFileAttach={handleFileAttach} />
 				</div>
 			</div>
 		</div>

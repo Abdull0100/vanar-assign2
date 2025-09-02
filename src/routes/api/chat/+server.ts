@@ -1,7 +1,7 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { db } from '$lib/db';
-import { chatMessages, conversations } from '$lib/db/schema';
+import { chatMessages, conversations, documents } from '$lib/db/schema';
 import { buildRecentTranscript } from '$lib/db/chatUtils';
 import { eq, inArray, and, asc, desc } from 'drizzle-orm';
 import { AuthError, ValidationError, handleApiError } from '$lib/errors';
@@ -30,24 +30,71 @@ function getRandomFallbackResponse(): string {
 	return fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
 }
 
+// File type validation helper
+function getFileType(mimeType: string): string {
+	const allowedTypes = {
+		pdf: ['application/pdf'],
+		docx: ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+		txt: ['text/plain', 'text/markdown']
+	};
+	
+	for (const [type, mimeTypes] of Object.entries(allowedTypes)) {
+		if (mimeTypes.includes(mimeType)) {
+			return type;
+		}
+	}
+	
+	return 'txt'; // Default fallback
+}
+
 export const POST: RequestHandler = async ({ request, locals }) => {
 	let userMessage: any = null; // Declare at function level for error handling
 	let targetConversationId: string | undefined; // Declare at function level for error handling
 	
 	try {
-		const body = await request.json();
-		const message: string = body.message;
-		const _history: HistoryTurn[] | undefined = Array.isArray(body.history) ? body.history : undefined;
-		const conversationId: string | undefined = body.conversationId;
-		const parentMessageId: string | undefined = body.parentMessageId;
 		const session = await locals.getSession?.();
 
 		if (!session?.user?.id) {
 			throw new AuthError('Please sign in to use the chat feature');
 		}
 
-		if (!message || typeof message !== 'string') {
-			throw new ValidationError('Message is required and must be a valid string');
+		// Handle both JSON and FormData requests
+		const contentType = request.headers.get('content-type') || '';
+		let message: string;
+		let _history: HistoryTurn[] | undefined;
+		let conversationId: string | undefined;
+		let parentMessageId: string | undefined;
+		let attachedFile: File | null = null;
+
+		if (contentType.includes('multipart/form-data')) {
+			// Handle file upload with message
+			const formData = await request.formData();
+			message = formData.get('message') as string || '';
+			conversationId = formData.get('conversationId') as string || undefined;
+			parentMessageId = formData.get('parentMessageId') as string || undefined;
+			attachedFile = formData.get('file') as File || null;
+			
+			// Parse history if provided
+			const historyStr = formData.get('history') as string;
+			if (historyStr) {
+				try {
+					_history = JSON.parse(historyStr);
+				} catch (e) {
+					console.warn('Failed to parse history from form data:', e);
+				}
+			}
+		} else {
+			// Handle regular JSON request
+			const body = await request.json();
+			message = body.message;
+			_history = Array.isArray(body.history) ? body.history : undefined;
+			conversationId = body.conversationId;
+			parentMessageId = body.parentMessageId;
+		}
+
+		// Validate that we have either a message or a file
+		if ((!message || typeof message !== 'string' || !message.trim()) && !attachedFile) {
+			throw new ValidationError('Either a message or a file attachment is required');
 		}
 
 		// Get or create conversation
@@ -189,6 +236,101 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				userId: session.user.id
 			});
 
+		// Process attached document if present
+		let attachedDocumentId: string | null = null;
+		let attachedDocumentName: string | null = null;
+		
+		if (attachedFile) {
+			try {
+				console.log(`Processing attached file: ${attachedFile.name} (${attachedFile.size} bytes)`);
+				
+				// Create document record
+				const [document] = await db.insert(documents).values({
+					userId: session.user.id,
+					conversationId: targetConversationId,
+					fileName: `${Date.now()}_${attachedFile.name}`,
+					originalName: attachedFile.name,
+					fileSize: attachedFile.size,
+					mimeType: attachedFile.type,
+					fileType: getFileType(attachedFile.type),
+					status: 'processing'
+				}).returning();
+				
+				attachedDocumentId = document.id;
+				attachedDocumentName = document.originalName;
+				
+				// Process document synchronously if there's a query, otherwise in background
+				const { DocumentIngestionService } = await import('$lib/services/DocumentIngestionService');
+				const ingestionService = new DocumentIngestionService();
+				
+				if (message && message.trim()) {
+					// If there's a query, process the document synchronously for immediate response
+					console.log(`Processing document synchronously for immediate query response...`);
+					try {
+						const result = await ingestionService.ingestDocument(
+							attachedFile,
+							session.user.id,
+							(progress) => {
+								console.log(`Document ${document.id} progress: ${progress.progress}% - ${progress.currentStep}`);
+							},
+							targetConversationId,
+							document.id
+						);
+						console.log(`✅ Document ingestion completed synchronously: ${document.id}`, {
+							totalChunks: result.totalChunks,
+							totalTokens: result.totalTokens,
+							processingTime: result.processingTime
+						});
+					} catch (error: any) {
+						console.error('❌ Synchronous document ingestion failed:', error);
+						// Update document status to failed
+						await db.update(documents)
+							.set({
+								status: 'failed',
+								errorMessage: error.message,
+								updatedAt: new Date()
+							})
+							.where(eq(documents.id, document.id));
+					}
+				} else {
+					// If no query, process in background
+					ingestionService.ingestDocument(
+						attachedFile,
+						session.user.id,
+						(progress) => {
+							console.log(`Document ${document.id} progress: ${progress.progress}% - ${progress.currentStep}`);
+						},
+						targetConversationId,
+						document.id
+					).then((result) => {
+						console.log(`✅ Document ingestion completed: ${document.id}`, {
+							totalChunks: result.totalChunks,
+							totalTokens: result.totalTokens,
+							processingTime: result.processingTime
+						});
+					}).catch((error) => {
+						console.error('❌ Document ingestion failed:', error);
+						// Update document status to failed
+						db.update(documents)
+							.set({
+								status: 'failed',
+								errorMessage: error.message,
+								updatedAt: new Date()
+							})
+							.where(eq(documents.id, document.id))
+							.catch((dbError) => {
+								console.error('Failed to update document status:', dbError);
+							});
+					});
+				}
+				
+				console.log(`Document created with ID: ${attachedDocumentId}`);
+			} catch (error) {
+				console.error('Error processing attached document:', error);
+				// Continue without document processing
+			}
+		}
+
 		// Save user message to database
 		const [userMessage] = await db.insert(chatMessages).values({
 			id: userTreeNode.id,
@@ -198,6 +340,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			content: message,
 			parentId: actualParentMessageId,
 			childrenIds: userTreeNode.childrenIds,
+			attachedDocumentId: attachedDocumentId,
+			attachedDocumentName: attachedDocumentName,
 			previousId: previousId, // Set previousId for database compatibility
 			createdAt: new Date(),
 			updatedAt: new Date()
@@ -317,8 +461,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		let retrievedChunks: Awaited<ReturnType<typeof ragService.retrieveRelevantChunks>> = [];
 
 		if (hasDocuments) {
-			// Retrieve relevant document chunks scoped to this conversation
-			retrievedChunks = await ragService.retrieveRelevantChunks(message, session.user.id, 5, 0.6, targetConversationId);
+			// Retrieve relevant document chunks with priority for conversation documents
+			retrievedChunks = await ragService.retrieveRelevantChunksWithPriority(
+				message, 
+				session.user.id, 
+				targetConversationId, 
+				5, 
+				0.6
+			);
 			ragContext = ragService.buildContextString(retrievedChunks);
 		}
 
@@ -596,6 +746,8 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
 
 
+
+
 			// Create tree manager and load messages
 			const treeManager = new ChatTreeManager();
 			treeManager.loadFromDatabase(allMessages);
@@ -714,7 +866,9 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 				role: msg.role || 'user', // Fallback for messages without role
 				content: msg.content || '',
 				createdAt: msg.createdAt || new Date().toISOString(),
-				isStreaming: false
+				isStreaming: false,
+				attachedDocumentId: msg.attachedDocumentId || null,
+				attachedDocumentName: msg.attachedDocumentName || null
 			}));
 			
 			console.log('Returning conversation data:', {
@@ -1055,6 +1209,8 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
 								conversationId: msg.conversationId,
 								parentId: msg.parentId,
 								childrenIds: msg.childrenIds,
+								attachedDocumentId: (msg as any).attachedDocumentId || null,
+								attachedDocumentName: (msg as any).attachedDocumentName || null,
 								previousId: null
 							}));
 							const transcript = buildRecentTranscript(conversationForTranscript);
@@ -1260,6 +1416,8 @@ Please provide a helpful response. Keep it conversational and relevant to the co
 						conversationId: string;
 						parentId: string | null;
 						childrenIds: string[] | null;
+						attachedDocumentId: string | null;
+						attachedDocumentName: string | null;
 						previousId: string | null;
 					}> = activeConversation.slice(0, originalMessageIndex).map(msg => ({
 						id: msg.id,
@@ -1271,6 +1429,8 @@ Please provide a helpful response. Keep it conversational and relevant to the co
 						conversationId: msg.conversationId,
 						parentId: msg.parentId,
 						childrenIds: msg.childrenIds,
+						attachedDocumentId: (msg as any).attachedDocumentId || null,
+						attachedDocumentName: (msg as any).attachedDocumentName || null,
 						previousId: null
 					}));
 					const transcript = buildRecentTranscript(conversationForTranscript);

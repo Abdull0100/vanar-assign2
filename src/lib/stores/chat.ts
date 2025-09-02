@@ -8,6 +8,8 @@ export type ChatMessage = {
 	content: string;
 	createdAt: string;
 	isStreaming?: boolean;
+	attachedDocumentId?: string | null;
+	attachedDocumentName?: string | null;
 };
 
 export type Conversation = {
@@ -84,7 +86,9 @@ export function createChatStore(userId: string | null) {
 				role: msg.role || 'user',
 				content: msg.content || '',
 				createdAt: msg.createdAt,
-				isStreaming: false
+				isStreaming: false,
+				attachedDocumentId: msg.attachedDocumentId || null,
+				attachedDocumentName: msg.attachedDocumentName || null
 			}));
 		}
 		// Fallback to the original transformation
@@ -279,9 +283,9 @@ export function createChatStore(userId: string | null) {
 		return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
 	}
 
-	async function sendMessage(messageText: string) {
+	async function sendMessage(messageText: string, attachedFile?: File | null) {
 		const messageContent = messageText.trim();
-		if (!messageContent || getValue(loading)) return;
+		if ((!messageContent && !attachedFile) || getValue(loading)) return;
 		loading.set(true);
 		error.set('');
 		if (!getValue(currentConversationId)) {
@@ -293,12 +297,15 @@ export function createChatStore(userId: string | null) {
 			role: 'user',
 			content: messageContent,
 			createdAt: new Date().toISOString(),
-			isStreaming: true
+			isStreaming: true,
+			attachedDocumentId: attachedFile ? 'temp-' + Date.now() : null,
+			attachedDocumentName: attachedFile ? attachedFile.name : null
 		};
 		messages.update((msgs) => [...msgs, chatMessage]);
 
 		if (getValue(messages).length === 1) {
-			updateConversationRoomName(messageContent.length > 40 ? messageContent.slice(0, 40) + 'â€¦' : messageContent);
+			const displayText = messageContent || (attachedFile ? `File: ${attachedFile.name}` : 'New conversation');
+			updateConversationRoomName(displayText.length > 40 ? displayText.slice(0, 40) + 'â€¦' : displayText);
 		}
 
 		try {
@@ -311,16 +318,40 @@ export function createChatStore(userId: string | null) {
 			const activePathValue = getValue(activePath);
 			const parentMessageId = activePathValue.length > 0 ? activePathValue[activePathValue.length - 1] : null;
 
-			const response = await fetch('/api/chat', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					message: messageContent,
-					history,
-					conversationId: apiConversationId,
-					parentMessageId
-				})
-			});
+			let response: Response;
+			
+			if (attachedFile) {
+				// Send as FormData for file upload
+				const formData = new FormData();
+				formData.append('message', messageContent);
+				formData.append('file', attachedFile);
+				if (apiConversationId) {
+					formData.append('conversationId', apiConversationId);
+				}
+				if (parentMessageId) {
+					formData.append('parentMessageId', parentMessageId);
+				}
+				if (history.length > 0) {
+					formData.append('history', JSON.stringify(history));
+				}
+
+				response = await fetch('/api/chat', {
+					method: 'POST',
+					body: formData
+				});
+			} else {
+				// Send as JSON for regular messages
+				response = await fetch('/api/chat', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						message: messageContent,
+						history,
+						conversationId: apiConversationId,
+						parentMessageId
+					})
+				});
+			}
 
 			if (response.ok && response.headers.get('content-type')?.includes('text/event-stream')) {
 				const reader = response.body?.getReader();

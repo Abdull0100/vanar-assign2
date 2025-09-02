@@ -347,9 +347,10 @@ export class RAGService {
 					content: row.content as string,
 					chunkIndex: row.chunkIndex as number,
 					totalChunks: row.totalChunks as number,
-					embedding: [], // We'll load this if needed
-					metadata: row.metadata as any,
-					createdAt: row.createdAt as Date
+					embedding: null, // We'll load this if needed
+					metadata: row.metadata as unknown,
+					createdAt: row.createdAt as Date,
+					conversationId: null
 				} as DocumentChunk,
 				similarity: parseFloat(row.cosine_similarity as string)
 			}));
@@ -540,6 +541,55 @@ export class RAGService {
 		} catch (error) {
 			console.error('Document check error:', error);
 			return false;
+		}
+	}
+
+	/**
+	 * Retrieve relevant chunks with priority for recently uploaded documents
+	 * This method gives higher priority to documents uploaded in the current conversation
+	 */
+	async retrieveRelevantChunksWithPriority(
+		query: string,
+		userId: string,
+		conversationId: string,
+		limit: number = 5,
+		similarityThreshold: number = 0.7
+	): Promise<RetrievedChunk[]> {
+		try {
+			// First, try to get chunks from conversation-specific documents
+			const conversationChunks = await this.retrieveRelevantChunks(
+				query,
+				userId,
+				limit,
+				similarityThreshold,
+				conversationId
+			);
+
+			// If we have enough chunks from the conversation, return them
+			if (conversationChunks.length >= limit) {
+				return conversationChunks.slice(0, limit);
+			}
+
+			// If we need more chunks, supplement with general user documents
+			const remainingLimit = limit - conversationChunks.length;
+			const generalChunks = await this.retrieveRelevantChunks(
+				query,
+				userId,
+				remainingLimit,
+				similarityThreshold
+			);
+
+			// Combine and deduplicate chunks
+			const allChunks = [...conversationChunks, ...generalChunks];
+			const uniqueChunks = allChunks.filter((chunk, index, self) => 
+				index === self.findIndex(c => c.chunk.id === chunk.chunk.id)
+			);
+
+			return uniqueChunks.slice(0, limit);
+		} catch (error) {
+			console.error('Priority retrieval error:', error);
+			// Fallback to regular retrieval
+			return this.retrieveRelevantChunks(query, userId, limit, similarityThreshold, conversationId);
 		}
 	}
 }
