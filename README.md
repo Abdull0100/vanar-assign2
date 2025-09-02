@@ -115,7 +115,7 @@ A comprehensive Retrieval-Augmented Generation (RAG) application built with **Sv
 ### 1. Clone & Setup
 
 ```bash
-git clone <your-repo-url>
+git clone (https://github.com/Abdull0100/vanar-assign2)
 cd 18-08
 pnpm install
 ```
